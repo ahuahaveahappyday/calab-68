@@ -19,27 +19,30 @@ module mycpu_top(
     output wire [ 4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata
 );
+//各个流水级是否允许指令进入
     wire        id_allowin;
     wire        ex_allowin;
     wire        mem_allowin;
     wire        wb_allowin;
-
+//流水级到下一级的信号是否有效
     wire        if_to_id_valid;
     wire        id_to_ex_valid;
     wire        ex_to_mem_valid;
     wire        mem_to_wb_valid;
-
-    wire 
-    wire [31:0] es_pc;
-    wire [31:0] ms_pc;
-
-    wire [38:0] es_rf_zip;
-    wire [37:0] ms_rf_zip;
-    wire [37:0] ws_rf_zip;
+//各流水级的pc值
+    wire [31:0] if_pc;
+    wire [31:0] id_pc;
+    wire [31:0] ex_pc;
+    wire [31:0] mem_pc;
+    wire [31:0] wb_pc;
+//待删除
+    wire [38:0] ex_rf_zip;
+    wire [37:0] mem_rf_zip;
+    wire [37:0] wb_rf_zip;
 
     wire [32:0] br_zip;
-    wire [64 -1:0] if_to_id_bus;
-    wire [148 -1:0] id_to_ex_bus;
+    wire [63:0] if_to_id_bus;
+    wire [147:0] id_to_ex_bus;
 
 
     IFreg my_ifReg(

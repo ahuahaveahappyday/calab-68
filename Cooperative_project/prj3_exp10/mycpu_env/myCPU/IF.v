@@ -1,69 +1,69 @@
 module IFreg(
     input  wire   clk,
     input  wire   resetn,
-    //
+    //if模块与指令存储器的交互接口
     output wire         inst_sram_en,
     output wire [ 3:0]  inst_sram_we,
     output wire [31:0]  inst_sram_addr,
     output wire [31:0]  inst_sram_wdata,
     input  wire [31:0]  inst_sram_rdata,
-    
-    input  wire         ds_allowin,
-    input  wire [32:0]  br_zip,
-
-
-    output wire         fs_to_ds_valid,
-    output wire [64 -1:0]  fs_to_ds_bus
+    //if模块与id模块交互接口
+    input  wire         id_allowin,
+    input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
+    output wire         if_to_id_valid,//{if_inst, if_pc}
+    output wire [63:0]  if_to_id_bus
 );
+    //if流水级需要的寄存器，根据clk不断更新
+    reg         if_valid;//寄存if流水级是否有指令
+    reg  [31:0] if_pc;//寄存if流水级的pc值
 
-    reg         fs_valid;
-    wire        fs_ready_go;
-    wire        fs_allowin;
-    wire        to_fs_valid;
+    wire [31:0] if_inst;//wire信号，在ID被寄存
 
+
+    //流水控制信号
+    wire        if_ready_go;
+    wire        if_allowin;
+
+    //生成下一条指令的PC
     wire [31:0] seq_pc;
-    wire [31:0] nextpc;
+    wire [31:0] pre_pc; //预取指令（pre-IF）
 
+    //branch类指令的信号和目标地址，来自ID模块
     wire         br_taken;
     wire [ 31:0] br_target;
 
-    assign {br_taken, br_target} = br_zip;
+//----------------------------------------------------------------------------------------------------------------------------------------------
 
-    wire [31:0] fs_inst;
-    reg  [31:0] fs_pc;
-    assign fs_to_ds_bus = {fs_inst, fs_pc};
+//流水线控制信号
+    assign if_ready_go      = 1'b1;
+    assign if_allowin       = ~if_valid | if_ready_go & id_allowin;     
+    assign if_to_id_valid   = if_valid & if_ready_go;
 
+//pre_IF阶段提前生成下一条指令的PC
+    assign seq_pc           = if_pc + 3'h4;  
+    assign pre_pc           = br_taken ? br_target : seq_pc;
 
-
-    assign to_fs_valid      = resetn;
-    assign fs_ready_go      = 1'b1;
-    assign fs_allowin       = ~fs_valid | fs_ready_go & ds_allowin;     
-    assign fs_to_ds_valid      = fs_valid & fs_ready_go;
+//更新if模块中的寄存器
     always @(posedge clk) begin
         if(~resetn)
-            fs_valid <= 1'b0;
-        else if(fs_allowin)
-            fs_valid <= to_fs_valid; 
+            if_valid <= 1'b0;
+        else if(if_allowin)
+            if_valid <= resetn; 
+    end
+    always @(posedge clk) begin
+        if(~resetn)
+            if_pc <= 32'h1bfffffc;
+        else if(if_allowin)
+            if_pc <= pre_pc;
     end
 
-
-    assign inst_sram_en     = fs_allowin & resetn;
+//模块间通信
+    assign inst_sram_en     = if_allowin & resetn;//当if流水级允许流入的时候，片选信号置位1
     assign inst_sram_we     = 4'b0;
-    assign inst_sram_addr   = nextpc;
+    assign inst_sram_addr   = pre_pc;//提前一个时钟周期向内存提交PC
     assign inst_sram_wdata  = 32'b0;
 
-
-
-    assign seq_pc           = fs_pc + 3'h4;  
-    assign nextpc           = br_taken ? br_target : seq_pc;
-
-    always @(posedge clk) begin
-        if(~resetn)
-            fs_pc <= 32'h1BFF_FFFC;
-        else if(fs_allowin)
-            fs_pc <= nextpc;
-    end
-
-    assign fs_inst    = inst_sram_rdata;
-    assign fs_to_ds_bus  = {fs_inst, fs_pc}; 
+    assign {br_taken, br_target} = id_to_if_bus;
+    assign if_to_id_bus = {if_inst, if_pc};
+    assign if_inst    = inst_sram_rdata;//来自存储器的inst
 endmodule
