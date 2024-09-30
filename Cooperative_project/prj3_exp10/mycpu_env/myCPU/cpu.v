@@ -19,30 +19,6 @@ module mycpu_top(
     output wire [ 4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata
 );
-//各个流水级是否允许指令进入
-    wire        id_allowin;
-    wire        ex_allowin;
-    wire        mem_allowin;
-    wire        wb_allowin;
-//流水级到下一级的信号是否有效
-    wire        if_to_id_valid;
-    wire        id_to_ex_valid;
-    wire        ex_to_mem_valid;
-    wire        mem_to_wb_valid;
-//各流水级的pc值
-    wire [31:0] if_pc;
-    wire [31:0] id_pc;
-    wire [31:0] ex_pc;
-    wire [31:0] mem_pc;
-    wire [31:0] wb_pc;
-//待删除
-    wire [38:0] ex_rf_zip;
-    wire [37:0] mem_rf_zip;
-    wire [37:0] wb_rf_zip;
-
-    wire [32:0] br_zip;
-    wire [63:0] if_to_id_bus;
-    wire [147:0] id_to_ex_bus;
 
 
     IFreg my_ifReg(
@@ -55,62 +31,61 @@ module mycpu_top(
         .inst_sram_wdata(inst_sram_wdata),
         .inst_sram_rdata(inst_sram_rdata),
         
-        .ds_allowin(ds_allowin),
-        .br_zip(br_zip),
-        .fs_to_ds_valid(fs_to_ds_valid),
-        .fs_to_ds_bus(fs_to_ds_bus)
+        .id_allowin(id_allowin),
+        .id_to_if_bus(id_to_if_bus),
+        .if_to_if_valid(if_to_id_valid),
+        .if_to_id_bus(if_to_id_bus)
     );
 
     IDreg my_idReg(
         .clk(clk),
         .resetn(resetn),
 
-        .ds_allowin(ds_allowin),
-        .br_zip(br_zip),
-        .fs_to_ds_valid(fs_to_ds_valid),
-        .fs_to_ds_bus(fs_to_ds_bus),
+        .if_to_id_valid(if_to_id_valid),
+        .id_allowin(id_allowin),
+        .id_to_if_bus(id_to_if_bus),
+        .if_to_id_bus(if_to_id_bus),
 
-        .es_allowin(es_allowin),
-        .ds_to_es_valid(ds_to_es_valid),
-        .ds_to_es_bus(ds_to_es_bus),
+        .ex_allowin(ex_allowin),
+        .id_to_ex_valid(id_to_ex_valid),
+        .id_to_ex_bus(id_to_ex_bus),
 
-        .ws_rf_zip(ws_rf_zip),
-        .ms_rf_zip(ms_rf_zip),
-        .es_rf_zip(es_rf_zip)
+        .wb_to_id_bus(wb_to_id_bus),
+        .mem_to_id_bus(mem_to_id_bus),
+        .ex_to_id_bus(ex_to_id_bus)
     );
 
     EXEreg my_exeReg(
         .clk(clk),
         .resetn(resetn),
         
-        .es_allowin(es_allowin),
-        .ds_to_es_valid(ds_to_es_valid),
-        .ds_to_es_bus(ds_to_es_bus),
+        .ex_allowin(ex_allowin),
+        .id_to_ex_valid(id_to_ex_valid),
+        .id_to_ex_bus(id_to_ex_bus),
+        .ex_to_id_bus(ex_to_id_bus),
 
-        .ms_allowin(ms_allowin),
-        .es_rf_zip(es_rf_zip),
-        .es_to_ms_valid(es_to_ms_valid),
-        .es_pc(es_pc),
+        .mem_allowin(mem_allowin),
+        .ex_to_mem_valid(ex_to_mem_valid),
+        .ex_to_mem_bus(ex_to_mem_bus),
         
         .data_sram_en(data_sram_en),
         .data_sram_we(data_sram_we),
         .data_sram_addr(data_sram_addr),
-        .data_sram_wdata(data_sram_wdata)
     );
 
     MEMreg my_memReg(
         .clk(clk),
         .resetn(resetn),
 
-        .ms_allowin(ms_allowin),
-        .es_rf_zip(es_rf_zip),
-        .es_to_ms_valid(es_to_ms_valid),
-        .es_pc(es_pc),
+        .mem_allowin(mem_allowin),
+        .ex_to_mem_valid(ex_to_mem_valid),
+        .ex_to_mem_bus(ex_to_mem_bus),
 
-        .ws_allowin(ws_allowin),
-        .ms_rf_zip(ms_rf_zip),
-        .ms_to_ws_valid(ms_to_ws_valid),
-        .ms_pc(ms_pc),
+        .wb_allowin(wb_allowin),
+        .mem_to_wb_valid(mem_to_wb_valid),
+        .mem_to_wb_bus(mem_to_wb_bus),
+
+        .mem_to_id_bus(mem_to_id_bus),
 
         .data_sram_rdata(data_sram_rdata)
     ) ;
@@ -119,16 +94,15 @@ module mycpu_top(
         .clk(clk),
         .resetn(resetn),
 
-        .ws_allowin(ws_allowin),
-        .ms_rf_zip(ms_rf_zip),
-        .ms_to_ws_valid(ms_to_ws_valid),
-        .ms_pc(ms_pc),
+        .wb_allowin(wb_allowin),
+        .mem_to_wb_valid(mem_to_wb_valid),
+        .mem_to_wb_bus(mem_to_wb_bus),
 
         .debug_wb_pc(debug_wb_pc),
         .debug_wb_rf_we(debug_wb_rf_we),
         .debug_wb_rf_wnum(debug_wb_rf_wnum),
         .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
-        .ws_rf_zip(ws_rf_zip)
+        .wb_to_id_bus(wb_to_id_bus)
     );
 endmodule
