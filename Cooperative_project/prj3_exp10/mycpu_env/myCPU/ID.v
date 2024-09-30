@@ -301,6 +301,7 @@ module IDreg(
     assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex);    
 
     //前递的数据在这里使用，发生conflict时代替寄存器中读出的值
+    //由于优先级的原因，所以下面的顺序不能调换
     assign rj_value  =  conflict_r1_ex ? ex_rf_wdata:
                         conflict_r1_mem ? mem_rf_wdata:
                         conflict_r1_wb  ? wb_rf_wdata : rf_rdata1; 
