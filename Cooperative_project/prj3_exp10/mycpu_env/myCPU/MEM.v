@@ -12,8 +12,7 @@ module MEMreg(
     //mem与id模块交互接口
     output wire [37:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
-    input  wire [31:0] data_sram_rdata    
-    output wire [31:0] data_sram_wdata
+    input  wire [31:0] data_sram_rdata
 
 );
 //MEM模块需要的寄存器，寄存当前时钟周期的信号
@@ -24,6 +23,7 @@ module MEMreg(
     reg         mem_res_from_mem;//load指令信号
     reg         mem_rf_we;
     reg  [4 :0] mem_rf_waddr;
+    reg  [31:0] mem_rkd_value;//源寄存器2读出的值
 
 
     wire        mem_ready_go;
@@ -54,9 +54,9 @@ module MEMreg(
 //模块间通信
     //与内存交互接口定义
     assign mem_result = data_sram_rdata;
-    assign data_sram_wdata= mem_rkd_value;
+    //assign data_sram_wdata= mem_rkd_value;
     //打包
     assign mem_rf_wdata = mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
     assign mem_to_id_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata};
-    assign mem_to_wb_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    assign mem_to_wb_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata, mem_pc};
 endmodule

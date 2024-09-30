@@ -15,7 +15,7 @@ module IDreg(
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     input  wire [38:0]            ex_to_id_bus  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 );
-
+    wire        stuck;
     wire        id_ready_go;
     reg         id_valid;
     reg  [31:0] id_inst;
@@ -294,7 +294,7 @@ module IDreg(
     assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we & need_r2;
 
     assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w;//需要使用（读）源寄存器1（rj）的指令
-    assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu & inst_and | inst_or | inst_nor | inst_xor
+    assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_and | inst_or | inst_nor | inst_xor
                               | inst_beq | inst_bne | inst_st_w;//需要使用（读）源寄存器2（rk/rd）的指令
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突

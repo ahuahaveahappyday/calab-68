@@ -20,6 +20,25 @@ module mycpu_top(
     output wire [31:0] debug_wb_rf_wdata
 );
 
+    wire id_allowin;
+    wire ex_allowin;
+    wire mem_allowin;
+    wire wb_allowin;
+
+    wire if_to_id_valid;
+    wire id_to_ex_valid;
+    wire ex_to_mem_valid;
+    wire mem_to_wb_valid;
+
+    wire [63:0]if_to_id_bus;
+    wire [147:0]id_to_ex_bus;
+    wire [102:0]ex_to_mem_bus;
+    wire [69:0]mem_to_wb_bus;
+
+    wire [32:0]id_to_if_bus;
+    wire [38:0]ex_to_id_bus;
+    wire [37:0]mem_to_id_bus;
+    wire [37:0]wb_to_id_bus;
 
     IFreg my_ifReg(
         .clk(clk),
@@ -33,7 +52,7 @@ module mycpu_top(
         
         .id_allowin(id_allowin),
         .id_to_if_bus(id_to_if_bus),
-        .if_to_if_valid(if_to_id_valid),
+        .if_to_id_valid(if_to_id_valid),
         .if_to_id_bus(if_to_id_bus)
     );
 
@@ -71,6 +90,7 @@ module mycpu_top(
         .data_sram_en(data_sram_en),
         .data_sram_we(data_sram_we),
         .data_sram_addr(data_sram_addr),
+        .data_sram_wdata(data_sram_wdata)
     );
 
     MEMreg my_memReg(
@@ -88,6 +108,7 @@ module mycpu_top(
         .mem_to_id_bus(mem_to_id_bus),
 
         .data_sram_rdata(data_sram_rdata)
+
     ) ;
 
     WBreg my_wbReg(

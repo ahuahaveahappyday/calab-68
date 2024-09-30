@@ -2,9 +2,9 @@ module EXEreg(
     input  wire        clk,
     input  wire        resetn,
     //id与ex模块交互接口
-    input  wire        ex_allowin,
-    output wire        id_to_ex_valid,
-    output wire [147:0]id_to_ex_bus,
+    output  wire        ex_allowin,
+    input wire        id_to_ex_valid,
+    input wire [147:0]id_to_ex_bus,
     output wire [38:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -14,7 +14,7 @@ module EXEreg(
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
     output wire [31:0] data_sram_addr,
-    //output wire [31:0] data_sram_wdata
+    output wire [31:0] data_sram_wdata
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
     reg         ex_valid;
@@ -41,14 +41,14 @@ module EXEreg(
     always @(posedge clk) begin
         if(~resetn)
             ex_valid <= 1'b0;
-        else if(es_allowin)
+        else if(ex_allowin)
             ex_valid <= id_to_ex_valid; 
     end
     always @(posedge clk) begin
         if(~resetn)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc} <= {148{1'b0}};
-        else if(id_to_es_valid & ex_allowin)
+        else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc} <= id_to_ex_bus;    
     end
@@ -65,10 +65,10 @@ module EXEreg(
     assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;//load 或者 store 指令有效的时候，启动sram片选信号
     assign data_sram_we     = {4{ex_mem_we & ex_valid}};//store 指令有效，内存写使能启动
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
-    
-    //assign data_sram_wdata  = ex_rkd_value;
+    assign data_sram_wdata  = ex_rkd_value;
+
     //打包
-    assign ex_to_id_bus     = {ex_res_from_mem & ex_valid, ex_rf_we & ex_valid, ex_rf_waddr, ex_alu_result};   
-    assign ex_to_mem_bus    = {ex_pc,ex_res_from_mem & ex_valid, ex_rf_we & ex_valid, ex_rf_waddr, ex_alu_result, ex_rkd_value}
+    assign ex_to_id_bus     = {ex_res_from_mem & ex_valid , ex_rf_we & ex_valid, ex_rf_waddr, ex_alu_result};   
+    assign ex_to_mem_bus    = {ex_pc,ex_res_from_mem & ex_valid, ex_rf_we & ex_valid, ex_rf_waddr, ex_alu_result, ex_rkd_value};
 
 endmodule

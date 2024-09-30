@@ -31,6 +31,10 @@ module IFreg(
 //branch类指令的信号和目标地址，来自ID模块
     wire         br_taken;
     wire [ 31:0] br_target;
+    
+    wire  to_if_valid;
+    assign to_if_valid      = resetn;
+
 
 //----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -48,7 +52,7 @@ module IFreg(
         if(~resetn)
             if_valid <= 1'b0;
         else if(if_allowin)
-            if_valid <= resetn; 
+            if_valid <= to_if_valid; 
     end
     always @(posedge clk) begin
         if(~resetn)
