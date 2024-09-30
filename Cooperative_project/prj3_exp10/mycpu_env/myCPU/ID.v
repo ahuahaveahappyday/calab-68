@@ -285,20 +285,22 @@ module IDreg(
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 //处理冲突
-//这里可能会触发一个神秘bug、后续会进行修正
-    assign conflict_r1_wb  = (|rf_raddr1) & (rf_raddr1 == wb_rf_waddr)  & wb_rf_we;
-    assign conflict_r2_wb  = (|rf_raddr2) & (rf_raddr2 == wb_rf_waddr)  & wb_rf_we;
-    assign conflict_r1_mem = (|rf_raddr1) & (rf_raddr1 == mem_rf_waddr) & mem_rf_we;
-    assign conflict_r2_mem = (|rf_raddr2) & (rf_raddr2 == mem_rf_waddr) & mem_rf_we;
-    assign conflict_r1_ex  = (|rf_raddr1) & (rf_raddr1 == ex_rf_waddr)  & ex_rf_we;
-    assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we;
+    //冲突发生的条件为：1、寄存器非0 2、寄存器号相同 3、在EX、MEM、WB流水级上面的指令对寄存器进行写操作 4、ID流水级指令需要读对应的寄存器
+    assign conflict_r1_wb  = (|rf_raddr1) & (rf_raddr1 == wb_rf_waddr)  & wb_rf_we & need_r1;
+    assign conflict_r2_wb  = (|rf_raddr2) & (rf_raddr2 == wb_rf_waddr)  & wb_rf_we & need_r2;
+    assign conflict_r1_mem = (|rf_raddr1) & (rf_raddr1 == mem_rf_waddr) & mem_rf_we & need_r1;
+    assign conflict_r2_mem = (|rf_raddr2) & (rf_raddr2 == mem_rf_waddr) & mem_rf_we & need_r2;
+    assign conflict_r1_ex  = (|rf_raddr1) & (rf_raddr1 == ex_rf_waddr)  & ex_rf_we & need_r1;
+    assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we & need_r2;
 
-    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w;//需要使用源寄存器1（rj）的指令
-    assign need_r2         =  inst_add_w & inst_sub_w & inst_slt & inst_sltu & inst_and & inst_or & inst_nor & inst_xor
-                              & inst_beq & inst_bne & inst_st_w;//需要使用源寄存器2（rk/rd）的指令
+    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w;//需要使用（读）源寄存器1（rj）的指令
+    assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu & inst_and | inst_or | inst_nor | inst_xor
+                              | inst_beq | inst_bne | inst_st_w;//需要使用（读）源寄存器2（rk/rd）的指令
 
-    assign stuck           = ex_res_from_mem & (conflict_r1_ex & need_r1|conflict_r2_ex & need_r2);    
+    //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
+    assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex);    
 
+    //前递的数据在这里使用，发生conflict时代替寄存器中读出的值
     assign rj_value  =  conflict_r1_ex ? ex_rf_wdata:
                         conflict_r1_mem ? mem_rf_wdata:
                         conflict_r1_wb  ? wb_rf_wdata : rf_rdata1; 
