@@ -2,10 +2,10 @@ module WBreg(
     input  wire        clk,
     input  wire        resetn,
 
-    output wire        ws_allowin,
-    input  wire [37:0] ms_rf_zip, // {ms_rf_we, ms_rf_waddr, ms_rf_wdata}
-    input  wire        ms_to_ws_valid,
-    input  wire [31:0] ms_pc,    
+    output wire        wb_allowin,
+    input  wire [37:0] mem_rf_zip, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    input  wire        mem_to_wb_valid,
+    input  wire [31:0] mem_pc,    
 
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -13,45 +13,45 @@ module WBreg(
     output wire [31:0] debug_wb_rf_wdata,
 
 
-    output wire [37:0] ws_rf_zip  // {ws_rf_we, ws_rf_waddr, ws_rf_wdata}
+    output wire [37:0] wb_rf_zip  // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
 );
     
-    wire        ws_ready_go;
-    reg         ws_valid;
-    reg  [31:0] ws_pc;
-    reg  [31:0] ws_rf_wdata;
-    reg  [4 :0] ws_rf_waddr;
-    reg         ws_rf_we;
+    wire        wb_ready_go;
+    reg         wb_valid;
+    reg  [31:0] wb_pc;
+    reg  [31:0] wb_rf_wdata;
+    reg  [4 :0] wb_rf_waddr;
+    reg         wb_rf_we;
 
 
 
-    assign ws_ready_go      = 1'b1;
-    assign ws_allowin       = ~ws_valid | ws_ready_go ;     
+    assign wb_ready_go      = 1'b1;
+    assign wb_allowin       = ~wb_valid | wb_ready_go ;     
     always @(posedge clk) begin
         if(~resetn)
-            ws_valid <= 1'b0;
-        else if(ws_allowin)
-            ws_valid <= ms_to_ws_valid; 
+            wb_valid <= 1'b0;
+        else if(wb_allowin)
+            wb_valid <= mem_to_wb_valid; 
     end
 
 
     always @(posedge clk) begin
         if(~resetn) begin
-            ws_pc <= 32'b0;
-            {ws_rf_we, ws_rf_waddr, ws_rf_wdata} <= 38'b0;
+            wb_pc <= 32'b0;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata} <= 38'b0;
         end
-        if(ms_to_ws_valid & ws_allowin) begin
-            ws_pc <= ms_pc;
-            {ws_rf_we, ws_rf_waddr, ws_rf_wdata} <= ms_rf_zip;
+        if(mem_to_wb_valid & wb_allowin) begin
+            wb_pc <= mem_pc;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata} <= mem_rf_zip;
         end
     end
 
 
-    assign ws_rf_zip = {ws_rf_we & ws_valid, ws_rf_waddr, ws_rf_wdata};
+    assign wb_rf_zip = {wb_rf_we & wb_valid, wb_rf_waddr, wb_rf_wdata};
 
 
-    assign debug_wb_pc = ws_pc;
-    assign debug_wb_rf_wdata = ws_rf_wdata;
-    assign debug_wb_rf_we = {4{ws_rf_we & ws_valid}};
-    assign debug_wb_rf_wnum = ws_rf_waddr;
+    assign debug_wb_pc = wb_pc;
+    assign debug_wb_rf_wdata = wb_rf_wdata;
+    assign debug_wb_rf_we = {4{wb_rf_we & wb_valid}};
+    assign debug_wb_rf_wnum = wb_rf_waddr;
 endmodule

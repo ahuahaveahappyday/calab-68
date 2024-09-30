@@ -10,25 +10,25 @@ module IFreg(
     //if模块与id模块交互接口
     input  wire         id_allowin,
     input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
-    output wire         if_to_id_valid,//{if_inst, if_pc}
-    output wire [63:0]  if_to_id_bus
+    output wire         if_to_id_valid,
+    output wire [63:0]  if_to_id_bus//{if_inst, if_pc}
 );
-    //if流水级需要的寄存器，根据clk不断更新
+//if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;//寄存if流水级是否有指令
     reg  [31:0] if_pc;//寄存if流水级的pc值
 
     wire [31:0] if_inst;//wire信号，在ID被寄存
 
 
-    //流水控制信号
+//流水控制信号
     wire        if_ready_go;
     wire        if_allowin;
 
-    //生成下一条指令的PC
+//生成下一条指令的PC
     wire [31:0] seq_pc;
     wire [31:0] pre_pc; //预取指令（pre-IF）
 
-    //branch类指令的信号和目标地址，来自ID模块
+//branch类指令的信号和目标地址，来自ID模块
     wire         br_taken;
     wire [ 31:0] br_target;
 

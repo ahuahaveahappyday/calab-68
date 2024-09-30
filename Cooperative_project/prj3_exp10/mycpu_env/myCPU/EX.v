@@ -2,15 +2,15 @@ module EXEreg(
     input  wire        clk,
     input  wire        resetn,
 
-    input  wire        es_allowin,
-    output wire        ds_to_es_valid,
-    output wire [148 -1:0] ds_to_es_bus,
+    input  wire        ex_allowin,
+    output wire        id_to_ex_valid,
+    output wire [147:0]id_to_ex_bus,
  
 
-    input  wire        ms_allowin,
-    output wire [38:0] es_rf_zip, // {es_res_from_mem, es_rf_we, es_rf_waddr, es_alu_result}
-    output wire        es_to_ms_valid,
-    output reg  [31:0] es_pc,    
+    input  wire        mem_allowin,
+    output wire [38:0] ex_rf_zip, // {es_res_from_mem, es_rf_we, es_rf_waddr, es_alu_result}
+    output wire        ex_to_mem_valid,
+    output reg  [31:0] ex_pc,    
     // data sram interface
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -18,61 +18,61 @@ module EXEreg(
     output wire [31:0] data_sram_wdata
 );
 
-    wire        es_ready_go;
-    reg         es_valid;
+    wire        ex_ready_go;
+    reg         ex_valid;
 
-    reg  [11:0] es_alu_op     ;
-    reg  [31:0] es_alu_src1   ;
-    reg  [31:0] es_alu_src2   ;
-    wire [31:0] es_alu_result ; 
-    reg  [31:0] es_rkd_value  ;
-    reg         es_res_from_mem;
-    reg         es_mem_we     ;
-    reg         es_rf_we      ;
-    reg  [4 :0] es_rf_waddr   ;
-    wire [31:0] es_mem_result ;
-
-
+    reg  [11:0] ex_alu_op     ;
+    reg  [31:0] ex_alu_src1   ;
+    reg  [31:0] ex_alu_src2   ;
+    wire [31:0] ex_alu_result ; 
+    reg  [31:0] ex_rkd_value  ;
+    reg         ex_res_from_mem;
+    reg         ex_mem_we     ;
+    reg         ex_rf_we      ;
+    reg  [4 :0] ex_rf_waddr   ;
+    wire [31:0] ex_mem_result ;
 
 
-    assign es_ready_go      = 1'b1;
-    assign es_allowin       = ~es_valid | es_ready_go & ms_allowin;     
-    assign es_to_ms_valid  = es_valid & es_ready_go;
+
+
+    assign ex_ready_go      = 1'b1;
+    assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
+    assign ex_to_mem_valid  = ex_valid & ex_ready_go;
     always @(posedge clk) begin
         if(~resetn)
-            es_valid <= 1'b0;
+            ex_valid <= 1'b0;
         else if(es_allowin)
-            es_valid <= ds_to_es_valid; 
+            ex_valid <= id_to_ex_valid; 
     end
 
 
 
     always @(posedge clk) begin
         if(~resetn)
-            {es_alu_op, es_res_from_mem, es_alu_src1, es_alu_src2,
-             es_mem_we, es_rf_we, es_rf_waddr, es_rkd_value, es_pc} <= {148{1'b0}};
-        else if(ds_to_es_valid & es_allowin)
-            {es_alu_op, es_res_from_mem, es_alu_src1, es_alu_src2,
-             es_mem_we, es_rf_we, es_rf_waddr, es_rkd_value, es_pc} <= ds_to_es_bus;    
+            {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
+             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc} <= {148{1'b0}};
+        else if(id_to_es_valid & ex_allowin)
+            {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
+             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc} <= id_to_ex_bus;    
     end
 
 
 
 
     alu u_alu(
-        .alu_op     (es_alu_op    ),
-        .alu_src1   (es_alu_src1  ),
-        .alu_src2   (es_alu_src2  ),
-        .alu_result (es_alu_result)
+        .alu_op     (ex_alu_op    ),
+        .alu_src1   (ex_alu_src1  ),
+        .alu_src2   (ex_alu_src2  ),
+        .alu_result (ex_alu_result)
     );
 
 
-    assign data_sram_en     = (es_res_from_mem || es_mem_we) && es_valid;
-    assign data_sram_we     = {4{es_mem_we & es_valid}};
-    assign data_sram_addr   = es_alu_result;
-    assign data_sram_wdata  = es_rkd_value;
+    assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;
+    assign data_sram_we     = {4{ex_mem_we & ex_valid}};
+    assign data_sram_addr   = ex_alu_result;
+    assign data_sram_wdata  = ex_rkd_value;
 
 
-    assign es_rf_zip       = {es_res_from_mem & es_valid, es_rf_we & es_valid, es_rf_waddr, es_alu_result};    
+    assign ex_rf_zip       = {ex_res_from_mem & ex_valid, ex_rf_we & ex_valid, ex_rf_waddr, ex_alu_result};    
 
 endmodule

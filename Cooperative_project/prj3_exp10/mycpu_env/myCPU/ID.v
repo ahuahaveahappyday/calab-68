@@ -1,37 +1,34 @@
 module IDreg(
-    input  wire          clk,
-    input  wire          resetn,
-
-
-    input  wire                   fs_to_ds_valid,
-    output wire                   ds_allowin,
-    output wire [32:0]            br_zip,
-    input  wire [64 -1:0] fs_to_ds_bus,
-    // ds and es interface
-    input  wire                   es_allowin,
-    output wire                   ds_to_es_valid,
-    output wire [148 -1:0] ds_to_es_bus,
-
-
-    input  wire [37:0] ws_rf_zip, // {ws_rf_we, ws_rf_waddr, ws_rf_wdata}
-    input  wire [37:0] ms_rf_zip, // {ms_rf_we, ms_rf_waddr, ms_rf_wdata}
-    input  wire [38:0] es_rf_zip  // {es_res_from_mem, es_rf_we, es_rf_waddr, es_alu_result}
+    input  wire                   clk,
+    input  wire                   resetn,
+    //if模块与id模块交互接口
+    input  wire                   if_to_id_valid,
+    output wire                   id_allowin,
+    output wire [32:0]            id_to_if_bus,//{br_taken, br_target}
+    input  wire [63:0]            if_to_id_bus,//{if_inst, if_pc}
+    //id模块与ex模块交互接口
+    input  wire                   ex_allowin,
+    output wire                   id_to_ex_valid,
+    output wire [147:0]           id_to_ex_bus,
+    //数据前递总线
+    input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
+    input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    input  wire [38:0]            ex_to_id_bus  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 );
 
-    wire        ds_ready_go;
-    reg         ds_valid;
-    reg  [31:0] ds_inst;
-    wire        ds_stall;
+    wire        id_ready_go;
+    reg         id_valid;
+    reg  [31:0] id_inst;
 
-    wire [11:0] ds_alu_op;
-    wire [31:0] ds_alu_src1   ;
-    wire [31:0] ds_alu_src2   ;
-    wire        ds_src1_is_pc;
-    wire        ds_src_to__is_imm;
-    wire        ds_res_from_mem;
-    reg  [31:0] ds_pc;
-    wire [31:0] ds_rkd_value;
-    wire        ds_mem_we;
+    wire [11:0] id_alu_op;
+    wire [31:0] id_alu_src1   ;
+    wire [31:0] id_alu_src2   ;
+    wire        id_src1_is_pc;
+    wire        id_src_is_imm;
+    wire        id_res_from_mem;
+    reg  [31:0] id_pc;
+    wire [31:0] id_rkd_value;
+    wire        id_mem_we;
 
     wire        dst_is_r1;
     wire        gr_we;
@@ -101,81 +98,87 @@ module IDreg(
     wire        conflict_r2_wb;
     wire        conflict_r1_mem;
     wire        conflict_r2_mem;
-    wire        conflict_r1_exe;
-    wire        conflict_r2_exe;
+    wire        conflict_r1_ex;
+    wire        conflict_r2_ex;
     wire        need_r1;
     wire        need_r2;
 
-    wire        ws_rf_we   ;
-    wire [ 4:0] ws_rf_waddr;
-    wire [31:0] ws_rf_wdata;
-    wire        ms_rf_we   ;
-    wire [ 4:0] ms_rf_waddr;
-    wire [31:0] ms_rf_wdata;
-    wire        es_rf_we   ;
-    wire [ 4:0] es_rf_waddr;
-    wire [31:0] es_rf_wdata;
-    wire        es_res_from_mem;
+    wire        wb_rf_we   ;
+    wire [ 4:0] wb_rf_waddr;
+    wire [31:0] wb_rf_wdata;
+    wire        mem_rf_we   ;
+    wire [ 4:0] mem_rf_waddr;
+    wire [31:0] mem_rf_wdata;
+    wire        ex_rf_we   ;
+    wire [ 4:0] ex_rf_waddr;
+    wire [31:0] ex_rf_wdata;
+    wire        ex_res_from_mem;
 
-    wire        ds_rf_we   ;
-    wire [ 4:0] ds_rf_waddr;
+    wire        id_rf_we   ;
+    wire [ 4:0] id_rf_waddr;
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------------------------
+
+// 流水线控制信号
+    assign id_ready_go      = ~stuck;//流水线阻塞的时候，id_ready_go值为零
+    assign id_allowin       = ~id_valid | id_ready_go & ex_allowin; 
+    assign id_to_ex_valid   = id_valid & id_ready_go;
 
 
-        
-    assign ds_ready_go      = ~ds_stall;
-    assign ds_allowin       = ~ds_valid | ds_ready_go & es_allowin; 
-    assign stuck            = es_res_from_mem & (conflict_r1_exe & need_r1|conflict_r2_exe & need_r2);    
-    assign ds_to_es_valid      = ds_valid & ds_ready_go;
+//更新id模块中的寄存器
     always @(posedge clk) begin
         if(~resetn)
-            ds_valid <= 1'b0;
+            id_valid <= 1'b0;
         else if(br_taken)
-            ds_valid <= 1'b0;
-        else if(ds_allowin)
-            ds_valid <= fs_to_ds_valid;
+            id_valid <= 1'b0;
+        else if(id_allowin)
+            id_valid <= if_to_id_valid;
     end
-
-
     always @(posedge clk) begin
         if(~resetn)
-            {ds_inst, ds_pc} <= 64'b0;
-        if(fs_to_ds_valid & ds_allowin) begin
-            {ds_inst, ds_pc} <= fs_to_ds_bus;
+            {id_inst, id_pc} <= 64'b0;
+        if(if_to_id_valid & id_allowin) begin
+            {id_inst, id_pc} <= if_to_id_bus;
         end
     end
 
-    assign rj_eq_rd = (rj_value == rkd_value);
-    assign br_taken = (inst_beq  &&  rj_eq_rd
-                    || inst_bne  && !rj_eq_rd
-                    || inst_jirl
-                    || inst_bl
-                    || inst_b
-                    ) && ds_valid;
-    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (ds_pc + br_offs) :
-                                                   /*inst_jirl*/ (rj_value + jirl_offs);
-    assign br_zip = {br_taken, br_target}; 
+//模块间通信
+    assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
+    assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata} = mem_to_id_bus;
+    assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata} = ex_to_id_bus;
+    assign id_to_if_bus = {br_taken, br_target}; 
 
+    assign id_rkd_value = rkd_value; 
+    assign id_to_ex_bus = {id_alu_op,          //12 bit
+                           id_res_from_mem,    //1  bit
+                           id_alu_src1,        //32 bit
+                           id_alu_src2,        //32 bit
+                           id_mem_we,          //1  bit
+                           id_rf_we,           //1  bit
+                           id_rf_waddr,        //5  bit
+                           id_rkd_value,       //32 bit
+                           id_pc               //32 bit
+                          };
 
-
-    assign op_31_26  = ds_inst[31:26];
-    assign op_25_22  = ds_inst[25:22];
-    assign op_21_20  = ds_inst[21:20];
-    assign op_19_15  = ds_inst[19:15];
-
-    assign rd   = ds_inst[ 4: 0];
-    assign rj   = ds_inst[ 9: 5];
-    assign rk   = ds_inst[14:10];
-
-    assign i12  = ds_inst[21:10];
-    assign i20  = ds_inst[24: 5];
-    assign i16  = ds_inst[25:10];
-    assign i26  = {ds_inst[ 9: 0], ds_inst[25:10]};
+//译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
+    assign op_31_26  = id_inst[31:26];
+    assign op_25_22  = id_inst[25:22];
+    assign op_21_20  = id_inst[21:20];
+    assign op_19_15  = id_inst[19:15];
+    assign rd        = id_inst[ 4: 0];
+    assign rj        = id_inst[ 9: 5];
+    assign rk        = id_inst[14:10];
+    assign i12       = id_inst[21:10];
+    assign i20       = id_inst[24: 5];
+    assign i16       = id_inst[25:10];
+    assign i26       = {id_inst[ 9: 0], id_inst[25:10]};
 
     decoder_6_64 u_dec0(.in(op_31_26 ), .out(op_31_26_d ));
     decoder_4_16 u_dec1(.in(op_25_22 ), .out(op_25_22_d ));
     decoder_2_4  u_dec2(.in(op_21_20 ), .out(op_21_20_d ));
     decoder_5_32 u_dec3(.in(op_19_15 ), .out(op_19_15_d ));
 
+    //每一条指令的译码信号
     assign inst_add_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h00];
     assign inst_sub_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h02];
     assign inst_slt    = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h04];
@@ -195,22 +198,24 @@ module IDreg(
     assign inst_bl     = op_31_26_d[6'h15];
     assign inst_beq    = op_31_26_d[6'h16];
     assign inst_bne    = op_31_26_d[6'h17];
-    assign inst_lu12i_w= op_31_26_d[6'h05] & ~ds_inst[25];
+    assign inst_lu12i_w= op_31_26_d[6'h05] & ~id_inst[25];
 
-    assign ds_alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
+    //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
+    assign id_alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
                         | inst_jirl | inst_bl;
-    assign ds_alu_op[ 1] = inst_sub_w;
-    assign ds_alu_op[ 2] = inst_slt;
-    assign ds_alu_op[ 3] = inst_sltu;
-    assign ds_alu_op[ 4] = inst_and;
-    assign ds_alu_op[ 5] = inst_nor;
-    assign ds_alu_op[ 6] = inst_or;
-    assign ds_alu_op[ 7] = inst_xor;
-    assign ds_alu_op[ 8] = inst_slli_w;
-    assign ds_alu_op[ 9] = inst_srli_w;
-    assign ds_alu_op[10] = inst_srai_w;
-    assign ds_alu_op[11] = inst_lu12i_w;
+    assign id_alu_op[ 1] = inst_sub_w;
+    assign id_alu_op[ 2] = inst_slt;
+    assign id_alu_op[ 3] = inst_sltu;
+    assign id_alu_op[ 4] = inst_and;
+    assign id_alu_op[ 5] = inst_nor;
+    assign id_alu_op[ 6] = inst_or;
+    assign id_alu_op[ 7] = inst_xor;
+    assign id_alu_op[ 8] = inst_slli_w;
+    assign id_alu_op[ 9] = inst_srli_w;
+    assign id_alu_op[10] = inst_srai_w;
+    assign id_alu_op[11] = inst_lu12i_w;
 
+    //各条指令需要的立即数格式
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w;
     assign need_si16  =  inst_jirl | inst_beq | inst_bne;
@@ -219,86 +224,87 @@ module IDreg(
     assign src2_is_4  =  inst_jirl | inst_bl;
 
     assign imm = src2_is_4 ? 32'h4                      :
-                need_si20 ? {i20[19:0], 12'b0}         :
-    /*need_ui5 || need_si12*/{{20{i12[11]}}, i12[11:0]} ;
+                 need_si20 ? {i20[19:0], 12'b0}         :
+    /*need_ui5 || need_si12*/{{20{i12[11]}}, i12[11:0]} ;//ui5立即数只需要5位，而且是截取的，所以不需要另外写
+
+
+    //跳转地址建立
+    assign rj_eq_rd = (rj_value == rkd_value);
+    assign br_taken = (inst_beq  &&  rj_eq_rd
+                    || inst_bne  && !rj_eq_rd
+                    || inst_jirl
+                    || inst_bl
+                    || inst_b
+                    ) && id_valid;
+    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (id_pc + br_offs) :
+                                                   /*inst_jirl*/ (rj_value + jirl_offs);
 
     assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                                 {{14{i16[15]}}, i16[15:0], 2'b0} ;
-
     assign jirl_offs = {{14{i16[15]}}, i16[15:0], 2'b0};
 
+    //alu源操作数的选择
+    assign id_src1_is_pc    = inst_jirl | inst_bl;
+    assign id_src2_is_imm   = inst_slli_w |
+                              inst_srli_w |
+                              inst_srai_w |
+                              inst_addi_w |
+                              inst_ld_w   |
+                              inst_st_w   |
+                              inst_lu12i_w|
+                              inst_jirl   |
+                              inst_bl     ;
+    assign id_alu_src1 = id_src1_is_pc  ? id_pc[31:0] : rj_value;
+    assign id_alu_src2 = id_src2_is_imm ? imm : rkd_value;
+
+    //寄存器的读地址选择、寄存器的实例化
     assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w;
-
-    assign ds_src1_is_pc    = inst_jirl | inst_bl;
-
-    assign ds_src2_is_imm   = inst_slli_w |
-                        inst_srli_w |
-                        inst_srai_w |
-                        inst_addi_w |
-                        inst_ld_w   |
-                        inst_st_w   |
-                        inst_lu12i_w|
-                        inst_jirl   |
-                        inst_bl     ;
-
-    assign ds_alu_src1 = ds_src1_is_pc  ? ds_pc[31:0] : rj_value;
-    assign ds_alu_src2 = ds_src2_is_imm ? imm : rkd_value;
-
-    assign ds_rkd_value = rkd_value;
-    assign ds_res_from_mem  = inst_ld_w;
-    assign dst_is_r1     = inst_bl;
-    assign gr_we         = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_b & ds_valid; 
-    assign ds_mem_we        = inst_st_w & ds_valid;   
-    assign dest          = dst_is_r1 ? 5'd1 : rd;
-
-
     assign rf_raddr1 = rj;
     assign rf_raddr2 = src_reg_is_rd ? rd :rk;
-    assign ds_rf_we    = gr_we ; 
-    assign ds_rf_waddr = dest; 
-
-
-    assign {ws_rf_we, ws_rf_waddr, ws_rf_wdata} = ws_rf_zip;
-    assign {ms_rf_we, ms_rf_waddr, ms_rf_wdata} = ms_rf_zip;
-    assign {es_res_from_mem, es_rf_we, es_rf_waddr, es_rf_wdata} = es_rf_zip;
-    regfile u_regfile(
+     regfile u_regfile(
         .clk    (clk      ),
         .raddr1 (rf_raddr1),
         .rdata1 (rf_rdata1),
         .raddr2 (rf_raddr2),
         .rdata2 (rf_rdata2),
-        .we     (ws_rf_we    ),
-        .waddr  (ws_rf_waddr ),
-        .wdata  (ws_rf_wdata )
+        .we     (wb_rf_we    ),
+        .waddr  (wb_rf_waddr ),
+        .wdata  (wb_rf_wdata )
     );
 
+    //寄存器的写地址和写使能
+    assign gr_we            = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_b & id_valid; 
+    assign dst_is_r1        = inst_bl;
+    assign dest             = dst_is_r1 ? 5'd1 : rd;
+    assign id_rf_we         = gr_we ; 
+    assign id_rf_waddr      = dest; 
 
-    assign conflict_r1_wb = (|rf_raddr1) & (rf_raddr1 == ws_rf_waddr) & ws_rf_we;
-    assign conflict_r2_wb = (|rf_raddr2) & (rf_raddr2 == ws_rf_waddr) & ws_rf_we;
-    assign conflict_r1_mem = (|rf_raddr1) & (rf_raddr1 == ms_rf_waddr) & ms_rf_we;
-    assign conflict_r2_mem = (|rf_raddr2) & (rf_raddr2 == ms_rf_waddr) & ms_rf_we;
-    assign conflict_r1_exe = (|rf_raddr1) & (rf_raddr1 == es_rf_waddr) & es_rf_we;
-    assign conflict_r2_exe = (|rf_raddr2) & (rf_raddr2 == es_rf_waddr) & es_rf_we;
-    assign need_r1         = ~ds_src1_is_pc & (|ds_alu_op);
-    assign need_r2         = ~ds_src2_is_imm & (|ds_alu_op);
+    //处理load、store指令的信号（向后面的流水级传递）
+    assign id_res_from_mem  = inst_ld_w & id_valid;
+    assign id_mem_we        = inst_st_w & id_valid;  
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------
+//处理冲突
+//这里可能会触发一个神秘bug、后续会进行修正
+    assign conflict_r1_wb  = (|rf_raddr1) & (rf_raddr1 == wb_rf_waddr)  & wb_rf_we;
+    assign conflict_r2_wb  = (|rf_raddr2) & (rf_raddr2 == wb_rf_waddr)  & wb_rf_we;
+    assign conflict_r1_mem = (|rf_raddr1) & (rf_raddr1 == mem_rf_waddr) & mem_rf_we;
+    assign conflict_r2_mem = (|rf_raddr2) & (rf_raddr2 == mem_rf_waddr) & mem_rf_we;
+    assign conflict_r1_ex  = (|rf_raddr1) & (rf_raddr1 == ex_rf_waddr)  & ex_rf_we;
+    assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we;
 
-    assign rj_value  =  conflict_r1_exe ? es_rf_wdata:
-                        conflict_r1_mem ? ms_rf_wdata:
-                        conflict_r1_wb  ? ws_rf_wdata : rf_rdata1; 
-    assign rkd_value =  conflict_r2_exe ? es_rf_wdata:
-                        conflict_r2_mem ? ms_rf_wdata:
-                        conflict_r2_wb  ? ws_rf_wdata : rf_rdata2; 
+    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w;//需要使用源寄存器1（rj）的指令
+    assign need_r2         =  inst_add_w & inst_sub_w & inst_slt & inst_sltu & inst_and & inst_or & inst_nor & inst_xor
+                              & inst_beq & inst_bne & inst_st_w;//需要使用源寄存器2（rk/rd）的指令
 
+    assign stuck           = ex_res_from_mem & (conflict_r1_ex & need_r1|conflict_r2_ex & need_r2);    
 
-    assign ds_to_es_bus = {ds_alu_op,          //12 bit
-                        ds_res_from_mem,    //1  bit
-                        ds_alu_src1,        //32 bit
-                        ds_alu_src2,        //32 bit
-                        ds_mem_we,          //1  bit
-                        ds_rf_we,           //1  bit
-                        ds_rf_waddr,        //5  bit
-                        ds_rkd_value,       //32 bit
-                        ds_pc               //32 bit
-                        };
+    assign rj_value  =  conflict_r1_ex ? ex_rf_wdata:
+                        conflict_r1_mem ? mem_rf_wdata:
+                        conflict_r1_wb  ? wb_rf_wdata : rf_rdata1; 
+    assign rkd_value =  conflict_r2_ex ? ex_rf_wdata:
+                        conflict_r2_mem ? mem_rf_wdata:
+                        conflict_r2_wb  ? wb_rf_wdata : rf_rdata2; 
+
+    
 endmodule
