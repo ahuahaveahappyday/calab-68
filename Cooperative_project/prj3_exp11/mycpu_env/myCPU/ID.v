@@ -34,6 +34,10 @@ module IDreg(
     wire        gr_we;
     wire        src_reg_is_rd;
     wire        rj_eq_rd;
+    wire        rj_lt_rd;
+    wire        rj_gt_rd;
+    wire        rj_ge_rd;
+    wire        signed_cmp;
     wire [4: 0] dest;
     wire [31:0] rj_value;
     wire [31:0] rkd_value;
@@ -77,6 +81,10 @@ module IDreg(
     wire        inst_bl;
     wire        inst_beq;
     wire        inst_bne;
+    wire        inst_blt;
+    wire        inst_bge;
+    wire        inst_bltu;
+    wire        inst_bgeu;
     wire        inst_lu12i_w;
     wire        inst_slti;
     wire        inst_sltui;
@@ -214,6 +222,10 @@ module IDreg(
     assign inst_bl     = op_31_26_d[6'h15];
     assign inst_beq    = op_31_26_d[6'h16];
     assign inst_bne    = op_31_26_d[6'h17];
+    assign inst_blt    = op_31_26_d[6'h18];
+    assign inst_bge    = op_31_26_d[6'h19];
+    assign inst_bltu   = op_31_26_d[6'h1a];
+    assign inst_bgeu   = op_31_26_d[6'h1b];
     assign inst_lu12i_w= op_31_26_d[6'h05] & ~id_inst[25];
     assign inst_slti   = op_31_26_d[6'h00] & op_25_22_d[4'h8];
     assign inst_sltui  = op_31_26_d[6'h00] & op_25_22_d[4'h9];
@@ -258,7 +270,7 @@ module IDreg(
     //各条指令需要的立即数格式
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui;
-    assign need_si16  =  inst_jirl | inst_beq | inst_bne;
+    assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;     //添加blt等指令
     assign need_si20  =  inst_lu12i_w | inst_pcaddul2i;
     assign need_si26  =  inst_b | inst_bl;
     assign need_ui12  =  inst_andi   | inst_ori | inst_xori ;
@@ -272,14 +284,23 @@ module IDreg(
 
     //跳转地址建立
     assign rj_eq_rd = (rj_value == rkd_value);
+    assign rj_lt_rd = (rj_value < rkd_value);                                   //无符号数比较：GR[rj]小于GR[rd]
+    assign rj_gt_rd = (rj_value > rkd_value);                                   //无符号数比较：GR[rj]大于GR[rd]
+    assign rj_ge_rd = rj_gt_rd || rj_eq_rd;                                     //无符号数比较：GR[rj]大于等于GR[rd]
+    assign signed_cmp = rj_value[31] ? (rkd_value[31] ? rj_gt_rd : 1'b1) :         
+                                       (rkd_value[31] ? 1'b1 : rj_lt_rd);       //有符号数比较：GR[rj]小于GR[rd]
     assign br_taken = (inst_beq  &&  rj_eq_rd
                     || inst_bne  && !rj_eq_rd
+                    || inst_blt  &&  signed_cmp                                 //添加blt等指令的跳转条件
+                    || inst_bge  && !signed_cmp
+                    || inst_bltu &&  rj_lt_rd
+                    || inst_bgeu &&  rj_ge_rd
                     || inst_jirl
                     || inst_bl
                     || inst_b
                     ) && id_valid;
-    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (id_pc + br_offs) :
-                                                   /*inst_jirl*/ (rj_value + jirl_offs);
+    assign br_target = (inst_beq || inst_bne || inst_blt || inst_bltu || inst_bge || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
+                                                   /*inst_jirl*/ (rj_value + jirl_offs);        //添加blt等指令的跳转地址：与bne,beq相同
 
     assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                                 {{14{i16[15]}}, i16[15:0], 2'b0} ;
@@ -306,7 +327,7 @@ module IDreg(
     assign id_alu_src2 = id_src2_is_imm ? imm : rkd_value;
 
     //寄存器的读地址选择、寄存器的实例化
-    assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w;
+    assign src_reg_is_rd = inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_w;       //添加blt等指令
     assign rf_raddr1 = rj;
     assign rf_raddr2 = src_reg_is_rd ? rd :rk;
      regfile u_regfile(
@@ -321,7 +342,7 @@ module IDreg(
     );
 
     //寄存器的写地址和写使能
-    assign gr_we            = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_b & id_valid; 
+    assign gr_we            = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & id_valid;    //添加blt等指令
     assign dst_is_r1        = inst_bl;
     assign dest             = dst_is_r1 ? 5'd1 : rd;
     assign id_rf_we         = gr_we ; 
@@ -343,8 +364,9 @@ module IDreg(
 
     assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w & ~inst_pcaddul2i;//需要使用（读）源寄存器1（rj）的指令
     assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_and | inst_or | inst_nor | inst_xor
-                              | inst_beq | inst_bne | inst_st_w | inst_sll_w| inst_srl_w | inst_sra_w | inst_mul_w |
-                              inst_mulh_w | inst_mulh_wu | inst_mod_w | inst_mod_wu | inst_div_w |inst_div_wu;
+                              | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu                           //添加blt等指令
+                              | inst_st_w | inst_sll_w| inst_srl_w | inst_sra_w | inst_mul_w 
+                              | inst_mulh_w | inst_mulh_wu | inst_mod_w | inst_mod_wu | inst_div_w |inst_div_wu;
                               //需要使用（读）源寄存器2（rk/rd）的指令
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
