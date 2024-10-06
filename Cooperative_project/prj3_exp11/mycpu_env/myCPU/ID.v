@@ -258,7 +258,7 @@ module IDreg(
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
-    assign id_alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
+    assign id_alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w  | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h
                         | inst_jirl | inst_bl | inst_pcaddul2i;
     assign id_alu_op[ 1] = inst_sub_w;
     assign id_alu_op[ 2] = inst_slt | inst_slti;
