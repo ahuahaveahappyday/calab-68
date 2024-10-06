@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [18:0]           id_to_ex_bus,
+    output wire [154:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -102,6 +102,12 @@ module IDreg(
     wire        inst_div_wu;
     wire        inst_mod_w;
     wire        inst_mod_wu;
+    wire        inst_ld_b;
+    wire        inst_ld_h;
+    wire        inst_ld_bu;
+    wire        inst_ld_hu;
+    wire        inst_st_b;
+    wire        inst_st_h;
 
     wire        need_ui5;
     wire        need_si12;
@@ -243,6 +249,12 @@ module IDreg(
     assign inst_mod_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h01];
     assign inst_div_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h02];
     assign inst_mod_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h03];
+    assign inst_ld_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h0];
+    assign inst_ld_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h1];
+    assign inst_ld_bu  = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
+    assign inst_ld_hu  = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
+    assign inst_st_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h4];
+    assign inst_st_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h5];
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
