@@ -281,7 +281,8 @@ module IDreg(
 
     //各条指令需要的立即数格式
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
-    assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui;
+    assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui 
+                        | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h;
     assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;     //添加blt等指令
     assign need_si20  =  inst_lu12i_w | inst_pcaddul2i;
     assign need_si26  =  inst_b | inst_bl;
@@ -334,7 +335,14 @@ module IDreg(
                               inst_ori    |
                               inst_xori   |
                               inst_slti   |
-                              inst_sltui;
+                              inst_sltui  |
+                              inst_ld_b   |
+                              inst_ld_h   |
+                              inst_ld_bu  |
+                              inst_ld_hu  |
+                              inst_st_b   |
+                              inst_st_h;
+                    
     assign id_alu_src1 = id_src1_is_pc  ? id_pc[31:0] : rj_value;
     assign id_alu_src2 = id_src2_is_imm ? imm : rkd_value;
 
