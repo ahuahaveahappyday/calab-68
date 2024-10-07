@@ -371,8 +371,8 @@ module IDreg(
     assign id_rf_waddr      = dest; 
 
     //处理load、store指令的信号（向后面的流水级传递）
-    assign id_res_from_mem  = inst_ld_w & inst_ld_b & inst_ld_h & inst_ld_bu & inst_ld_hu & id_valid;
-    assign id_mem_we        = inst_st_w & inst_st_b & inst_st_h & id_valid;  
+    assign id_res_from_mem  = (inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu) & id_valid;
+    assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
 
     assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
 
