@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [154:0]           id_to_ex_bus,
+    output wire [158:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -29,6 +29,7 @@ module IDreg(
     reg  [31:0] id_pc;
     wire [31:0] id_rkd_value;
     wire        id_mem_we;
+    wire [3:0]  id_ld_st_type;
 
     wire        dst_is_r1;
     wire        gr_we;
@@ -187,7 +188,8 @@ module IDreg(
                            id_rf_we,           //1  bit
                            id_rf_waddr,        //5  bit
                            id_rkd_value,       //32 bit
-                           id_pc               //32 bit
+                           id_pc,               //32 bit
+                           id_ld_st_type
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -369,8 +371,10 @@ module IDreg(
     assign id_rf_waddr      = dest; 
 
     //处理load、store指令的信号（向后面的流水级传递）
-    assign id_res_from_mem  = inst_ld_w & id_valid;
-    assign id_mem_we        = inst_st_w & id_valid;  
+    assign id_res_from_mem  = inst_ld_w & inst_ld_b & inst_ld_h & inst_ld_bu & inst_ld_hu & id_valid;
+    assign id_mem_we        = inst_st_w & inst_st_b & inst_st_h & id_valid;  
+
+    assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 //处理冲突
