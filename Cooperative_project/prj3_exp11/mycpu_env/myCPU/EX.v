@@ -28,10 +28,11 @@ module EXEreg(
     reg         ex_rf_we;//寄存器写使能
     reg  [4 :0] ex_rf_waddr;//寄存器写地址
     reg  [3:0]  ex_ld_st_type;  // to identify different type of load and store
-
+                                //st.b: 0x01000; st.h: 0x0101; st.w: 0x0110
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
     wire        alu_complete;
+    wire [3:0]  ex_sram_we;
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
@@ -67,10 +68,12 @@ module EXEreg(
 //模块间通信
     //与内存交互接口定义
     assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;//load 或者 store 指令有效的时候，启动sram片选信号
-    assign data_sram_we     = {4{ex_mem_we & ex_valid}};//store 指令有效，内存写使能启动
+    assign data_sram_we     = {4{ex_mem_we & ex_valid}} & ex_sram_we;//store 指令有效，内存写使能启动
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
-    assign data_sram_wdata  = ex_rkd_value;
-
+    assign data_sram_wdata  = ex_rkd_value << {data_sram_addr[1:0], 3'b000};
+    assign ex_sram_we       = ({4{ex_ld_st_type[1:0] == 2'd0}} & (4'b0001 << ex_alu_result[1:0]))           // st.b
+                              |({4{ex_ld_st_type[1:0] == 2'd1}} & (ex_alu_result[1] ? 4'b1100 : 4'b0011))            // st.h
+                              |({4{ex_ld_st_type[1:0] == 2'd2}} & 4'b1111) ;          // st.w
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 
