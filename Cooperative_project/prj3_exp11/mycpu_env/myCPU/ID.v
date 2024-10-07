@@ -35,9 +35,9 @@ module IDreg(
     wire        gr_we;
     wire        src_reg_is_rd;
     wire        rj_eq_rd;
-    wire        rj_lt_rd;
-    wire        rj_gt_rd;
-    wire        rj_ge_rd;
+    wire        rj_ltu_rd;
+    //wire        rj_gt_rd;
+    // wire        rj_geu_rd;
     wire        signed_cmp;
     wire [4: 0] dest;
     wire [31:0] rj_value;
@@ -299,17 +299,17 @@ module IDreg(
 
     //跳转地址建立
     assign rj_eq_rd = (rj_value == rkd_value);
-    assign rj_lt_rd = (rj_value < rkd_value);                                   //无符号数比较：GR[rj]小于GR[rd]
-    assign rj_gt_rd = (rj_value > rkd_value);                                   //无符号数比较：GR[rj]大于GR[rd]
-    assign rj_ge_rd = rj_gt_rd || rj_eq_rd;                                     //无符号数比较：GR[rj]大于等于GR[rd]
-    assign signed_cmp = rj_value[31] ? (rkd_value[31] ? rj_gt_rd : 1'b1) :         
-                                       (rkd_value[31] ? 1'b1 : rj_lt_rd);       //有符号数比较：GR[rj]小于GR[rd]
+    assign rj_ltu_rd = (rj_value < rkd_value);                                   //无符号数比较：GR[rj]小于GR[rd]
+    // assign rj_gt_rd = (rj_value > rkd_value);                                   //无符号数比较：GR[rj]大于GR[rd]
+    // assign rj_geu_rd = ~rj_ltu_rd;                                     //无符号数比较：GR[rj]大于等于GR[rd]
+    assign rj_lt_rd = ($signed(rj_value) < $signed(rkd_value));       //有符号数比较：GR[rj]小于GR[rd]
+
     assign br_taken = (inst_beq  &&  rj_eq_rd
                     || inst_bne  && !rj_eq_rd
-                    || inst_blt  &&  signed_cmp                                 //添加blt等指令的跳转条件
-                    || inst_bge  && !signed_cmp
-                    || inst_bltu &&  rj_lt_rd
-                    || inst_bgeu &&  rj_ge_rd
+                    || inst_blt  &&  rj_lt_rd                                 //添加blt等指令的跳转条件
+                    || inst_bge  && !rj_lt_rd
+                    || inst_bltu &&  rj_ltu_rd
+                    || inst_bgeu &&  !rj_ltu_rd
                     || inst_jirl
                     || inst_bl
                     || inst_b
