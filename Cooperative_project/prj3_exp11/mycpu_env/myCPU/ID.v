@@ -180,7 +180,7 @@ module IDreg(
     assign id_to_if_bus = {br_taken, br_target}; 
 
     assign id_rkd_value = rkd_value; 
-    assign id_to_ex_bus = {id_alu_op,          //12 bit
+    assign id_to_ex_bus = {id_alu_op,          //19 bit
                            id_res_from_mem,    //1  bit
                            id_alu_src1,        //32 bit
                            id_alu_src2,        //32 bit
@@ -189,7 +189,7 @@ module IDreg(
                            id_rf_waddr,        //5  bit
                            id_rkd_value,       //32 bit
                            id_pc,               //32 bit
-                           id_ld_st_type
+                           id_ld_st_type        //4 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
