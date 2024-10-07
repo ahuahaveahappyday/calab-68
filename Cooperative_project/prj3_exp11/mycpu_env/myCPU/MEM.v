@@ -64,10 +64,10 @@ module MEMreg(
     assign mem_byte_result =    ({8{mem_sram_addr[1:0] == 2'd0}} & data_sram_rdata[7:0])
                                 |({8{mem_sram_addr[1:0] == 2'd1}} & data_sram_rdata[15:8])
                                 |({8{mem_sram_addr[1:0] == 2'd2}} & data_sram_rdata[23:16])
-                                |({8{mem_sram_addr[1:0] == 2'd2}} & data_sram_rdata[31:24]);
+                                |({8{mem_sram_addr[1:0] == 2'd3}} & data_sram_rdata[31:24]);
 
-    assign mem_result =         ({32{mem_ld_st_type[1:0] == 2'd0}} & ({{24{mem_ld_st_type[3] & mem_byte_result[7]}}, mem_byte_result[7:0]})) // mem_ld_st_type[3] identify if signed externed
-                                |({32{mem_ld_st_type[1:0] == 2'd1}} & ({{16{mem_ld_st_type[3] & mem_half_result[15]}}, mem_half_result[15:0]}))
+    assign mem_result =         ({32{mem_ld_st_type[1:0] == 2'd0}} & ({{24{~mem_ld_st_type[3] & mem_byte_result[7]}}, mem_byte_result[7:0]})) // mem_ld_st_type[3] identify if signed externed
+                                |({32{mem_ld_st_type[1:0] == 2'd1}} & ({{16{~mem_ld_st_type[3] & mem_half_result[15]}}, mem_half_result[15:0]}))
                                 |({32{mem_ld_st_type[1:0] == 2'd2}} & mem_word_result);
     //assign data_sram_wdata= mem_rkd_value;
     //打包

@@ -364,7 +364,7 @@ module IDreg(
     );
 
     //寄存器的写地址和写使能
-    assign gr_we            = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & id_valid;    //添加blt等指令
+    assign gr_we            = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & id_valid;    //添加blt等指令
     assign dst_is_r1        = inst_bl;
     assign dest             = dst_is_r1 ? 5'd1 : rd;
     assign id_rf_we         = gr_we ; 
