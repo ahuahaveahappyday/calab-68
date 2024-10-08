@@ -96,38 +96,85 @@
 
 \noindent
 $\bullet$
-\textbf{寄存器堆设计}。
-请输入你的实验报告内容。
+\textbf{访存指令添加}。
+\begin{enumerate}
+  \item 首先添加访存地址和访存操作类型的数据通路
+  
+  在ID（译码）阶段添加判断当前的load 或 store操作的类型，包括是否无符号扩展，数据的位宽。并将相应的信号沿着流水级传递到MEM（访存）阶段。
 
-如果一段话写不下，可以再这里继续新的段落。
+  \begin{lstlisting}[language=verilog]
+    assign id_op_st_ld_b      = op_25_22[1:0] == 2'd0;    // 位宽为1 byte
+    assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;    // 位宽为2 byte
+    assign id_op_st_ld_u      = op_25_22[3];              // 无符号数扩展
+  \end{lstlisting}
+
+  在EX到MEM的传递的数据中添加访存地址的最低两个bit，使得MEM阶段可以获取到从sram中取出来1字节的数据内部的偏移。
+  \item 在load操作的结果处添加多路选择器（在访存流水级）
+  
+  首先，通过操作的数据位宽和访存地址来选择出从sram中输出的的数据的有效部分。
+  \begin{lstlisting}[language=verilog]
+    assign mem_word_result =    data_sram_rdata;   // ld.w 的有效部分
+    assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
+                                : data_sram_rdata[15:0];    // ld.h 的有效部分
+    assign mem_byte_result =    ({8{mem_data_sram_addr[1:0] == 2'd0}} & data_sram_rdata[7:0])
+                                |({8{mem_data_sram_addr[1:0] == 2'd1}} & data_sram_rdata[15:8])
+                                |({8{mem_data_sram_addr[1:0] == 2'd2}} & data_sram_rdata[23:16])
+                                |({8{mem_data_sram_addr[1:0] == 2'd3}} & data_sram_rdata[31:24]);
+                                // ld.b 的有效部分
+
+  \end{lstlisting}
+
+  然后根据有符号扩展还是无符号数扩展，对结果进行扩展，最终得到可以写入目的寄存器（rd）的结果\verb|mem_result|。
+  \begin{lstlisting}[language=verilog]
+    // mem_op_st_ld_b， mem_op_st_ld_h 分别表示数据位宽为1byte和2byte
+    // mem_op_st_ld_u 表示数据进行无符号数扩展（即0扩展）
+    // ~mem_op_st_ld_u & mem_byte_result[7]  或~mem_op_st_ld_u & mem_half_result[15] 表示符号位
+    assign mem_result 
+    = mem_op_st_ld_b ? ({{24{~mem_op_st_ld_u & mem_byte_result[7]}}, mem_byte_result[7:0]}):       
+      mem_op_st_ld_h ? ({{16{~mem_op_st_ld_u & mem_half_result[15]}}, mem_half_result[15:0]}) :
+      mem_word_result;
+  \end{lstlisting}
+
+  \item 在store操作中传递给\verb|data_sram|的信号处添加选择器
+  
+  首先，根据访存的位宽和地址，通过多路选择和移位操作确定字节使能信号。
+  \begin{lstlisting}[language=verilog]
+    // 字节使能
+    // st.b 时，根据访存地址的最低两位进行移位操作。有四种不同情况
+    // st.h 时，根据访存地址的最低两位添加二选以选择器。有两种不同情况
+    assign ex_sram_we = ex_op_st_ld_b ? (4'b0001 << ex_data_sram_addr[1:0]) :           // st.b
+                      ex_op_st_ld_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
+                      4'b1111;                                    // st.w
+  \end{lstlisting}
+  确定字节使能后，生成写入数据。不需要将数据进行移动，而是仅仅根据数据长度，对有效部分进行赋值连接操作，
+  确保数据在写入时能拿到有效的数据。
+\begin{lstlisting}[language=verilog]
+  //生成写入数据
+  assign data_sram_wdata  =    ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:
+                              ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
+                              ex_rkd_value[31:0];
+\end{lstlisting}
+\end{enumerate}
+
 
 \vspace{1ex}
-
-\noindent
-$\bullet$
-\textbf{ALU设计}。
-请输入你的实验报告内容。
-
-如果一段话写不下，可以再这里继续新的段落。
-
-\vspace{1ex}
-
-\noindent
-$\bullet$
-\textbf{其他关键模块设计}。
-请输入你的实验报告内容。
-
-如果一段话写不下，可以再这里继续新的段落。
 
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
 
 \noindent
 $\bullet$
-\textbf{寄存器堆设计问题}。
-请输入你的实验报告内容。
+\textbf{data_sram写使能bug}。
+在仿真中，在load指令中，写入寄存器的结果与标准结果不一致。
 
-如果一段话写不下，可以再这里继续新的段落。
+然后在波形图中查看从sram直接返回的数据，发现同样与标准结果不一致，于是排除是新添加的load多路选择器的问题。
 
+进而在反汇编代码中，发现在load指令前，有一条store指令，地址相同。于是在波形图中查看相关波形，发现该指令ex阶段的sram写使能没有拉高，再回溯到id阶段，
+发现是mem写使能的逻辑或写成逻辑与了，导致不能向sram写入数据。
+
+\begin{lstlisting}[language=verilog]
+//  assign id_mem_we        = inst_st_w & inst_st_b & inst_st_h & id_valid;  
+assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
+\end{lstlisting}
 \vspace{1ex}
 
 \noindent
@@ -159,44 +206,5 @@ $\bullet$
   \includegraphics[width=10cm]{fig/Maxwell.pdf}
   \caption{这是第二张图}
 \end{figure}
-
-\section{对讲义中思考题（如有）的理解和回答}
-
-\noindent
-$\bullet$
-\textbf{思考题1：请输入思考题内容}。
-
-在这里写下你的回答。
-
-如果一段写不下，在这里开始新的段落。
-
-插入并排图片，可以参考如下方法：
-\begin{figure}[H]
-  \centering
-  \subfigure[并排图片示例1]{
-      \includegraphics[width=7.5cm]{fig/Gaussian.pdf}}
-  \hspace{0.5in}
-  \subfigure[并排图片示例2]{
-      \includegraphics[width=7.5cm]{fig/Maxwell.pdf}}
-  \hspace{0.5in}
-  \caption{并排图片}
-\end{figure}
-
-
-\vspace{1ex}
-
-\noindent
-$\bullet$
-\textbf{思考题2：请输入思考题内容}。
-
-在这里写下你的回答。
-
-如果一段写不下，在这里开始新的段落。
-
-\section{实验所耗时间}
-
-\newcommand{\labTime}{123} % 请在这里填写实验所耗时间（单位：小时）
-
-在课后，你花费了大约\underline{\makebox[5em][c]{\labTime}}小时完成此次实验。
 
 \end{document}
