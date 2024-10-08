@@ -9,7 +9,7 @@ module EXEreg(
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [137:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [107:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     //ex模块与数据存储器交互
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -37,8 +37,7 @@ module EXEreg(
     wire [31:0] ex_alu_result;
     wire        alu_complete;
     wire [3:0]  ex_sram_we;
-    wire        op_st_b;
-    wire        op_st_h;
+    wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
@@ -80,9 +79,10 @@ module EXEreg(
                                 ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
                                                 ex_rkd_value[31:0];
     
-    assign ex_sram_we        =  ex_op_st_ld_b ? (4'b0001 << ex_alu_result[1:0]) :           // st.b
+    assign ex_sram_we       =   ex_op_st_ld_b ? (4'b0001 << ex_alu_result[1:0]) :           // st.b
                                 ex_op_st_ld_h ? (ex_alu_result[1] ? 4'b1100 : 4'b0011) :    // st.h
                                                 4'b1111;                                    // st.w
+    assign ex_data_sram_addr   =   ex_alu_result[1:0];
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 
@@ -94,7 +94,7 @@ module EXEreg(
                                 ex_rf_waddr, 
                                 ex_alu_result, 
                                 ex_rkd_value,
-                                data_sram_addr,
+                                ex_data_sram_addr,
                                 //ex_ld_st_type
                                 ex_op_st_ld_b,       // 1 bit
                                 ex_op_st_ld_h,       // 1 bit
