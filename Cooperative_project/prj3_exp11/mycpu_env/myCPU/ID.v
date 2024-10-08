@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [158:0]           id_to_ex_bus,
+    output wire [157:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -30,6 +30,9 @@ module IDreg(
     wire [31:0] id_rkd_value;
     wire        id_mem_we;
     wire [3:0]  id_ld_st_type;
+    wire        id_op_st_ld_b;             // byte
+    wire        id_op_st_ld_h;             // half word
+    wire        id_op_st_ld_u;         // zero extended
 
     wire        dst_is_r1;
     wire        gr_we;
@@ -189,7 +192,10 @@ module IDreg(
                            id_rf_waddr,        //5  bit
                            id_rkd_value,       //32 bit
                            id_pc,               //32 bit
-                           id_ld_st_type        //4 bit
+                           //id_ld_st_type        //4 bit
+                           id_op_st_ld_b,       // 1 bit
+                           id_op_st_ld_h,       // 1 bit
+                           id_op_st_ld_u        // 1 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -375,6 +381,9 @@ module IDreg(
     assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
 
     assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
+    assign id_op_st_ld_b      = op_25_22[1:0] == 2'd0;
+    assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;
+    assign id_op_st_ld_u      = op_25_22[3];
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 //处理冲突

@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [158:0] id_to_ex_bus,
+    input wire [157:0] id_to_ex_bus,
     output wire [38:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [138:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [137:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     //ex模块与数据存储器交互
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -27,12 +27,18 @@ module EXEreg(
     reg         ex_mem_we;//store指令码
     reg         ex_rf_we;//寄存器写使能
     reg  [4 :0] ex_rf_waddr;//寄存器写地址
-    reg  [3:0]  ex_ld_st_type;  // to identify different type of load and store
+    //reg  [3:0]  ex_ld_st_type;  // to identify different type of load and store
                                 //st.b: 0x01000; st.h: 0x0101; st.w: 0x0110
+    reg         ex_op_st_ld_b;
+    reg         ex_op_st_ld_h;
+    reg         ex_op_st_ld_u;
+    
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
     wire        alu_complete;
     wire [3:0]  ex_sram_we;
+    wire        op_st_b;
+    wire        op_st_h;
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
@@ -49,10 +55,10 @@ module EXEreg(
     always @(posedge clk) begin
         if(~resetn)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
-             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, ex_ld_st_type} <= {158{1'b0}};
+             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u} <= {157{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
-             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, ex_ld_st_type} <= id_to_ex_bus;    
+             ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u} <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -70,10 +76,13 @@ module EXEreg(
     assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;//load 或者 store 指令有效的时候，启动sram片选信号
     assign data_sram_we     = {4{ex_mem_we & ex_valid}} & ex_sram_we;//store 指令有效，内存写使能启动
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
-    assign data_sram_wdata  = ex_rkd_value << {data_sram_addr[1:0], 3'b000};
-    assign ex_sram_we       = ({4{ex_ld_st_type[1:0] == 2'd0}} & (4'b0001 << ex_alu_result[1:0]))           // st.b
-                              |({4{ex_ld_st_type[1:0] == 2'd1}} & (ex_alu_result[1] ? 4'b1100 : 4'b0011))            // st.h
-                              |({4{ex_ld_st_type[1:0] == 2'd2}} & 4'b1111) ;          // st.w
+    assign data_sram_wdata  =   ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:
+                                ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
+                                                ex_rkd_value[31:0];
+    
+    assign ex_sram_we        =  ex_op_st_ld_b ? (4'b0001 << ex_alu_result[1:0]) :           // st.b
+                                ex_op_st_ld_h ? (ex_alu_result[1] ? 4'b1100 : 4'b0011) :    // st.h
+                                                4'b1111;                                    // st.w
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 
@@ -86,7 +95,10 @@ module EXEreg(
                                 ex_alu_result, 
                                 ex_rkd_value,
                                 data_sram_addr,
-                                ex_ld_st_type
+                                //ex_ld_st_type
+                                ex_op_st_ld_b,       // 1 bit
+                                ex_op_st_ld_h,       // 1 bit
+                                ex_op_st_ld_u        // 1 bit
                                 };
 
 endmodule
