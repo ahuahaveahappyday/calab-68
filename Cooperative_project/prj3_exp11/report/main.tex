@@ -149,11 +149,11 @@ $\bullet$
                       ex_op_st_ld_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
                       4'b1111;                                    // st.w
   \end{lstlisting}
-  确定字节使能后，生成写入数据。不需要将数据进行移动，而是仅仅根据数据长度，对有效部分进行赋值连接操作，
+  确定字节使能后，生成写入数据。不需要将数据进行移动，而是仅仅根据数据长度，对有效部分进行复制连接操作，
   确保数据在写入时能拿到有效的数据。
 \begin{lstlisting}[language=verilog]
   //生成写入数据
-  //对有效部分进行赋值连接操作
+  //对有效部分进行复制连接操作
   assign data_sram_wdata  =    ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:
                               ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
                               ex_rkd_value[31:0];
