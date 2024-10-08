@@ -98,7 +98,7 @@
 $\bullet$
 \textbf{访存指令添加}。
 \begin{enumerate}
-  \item 首先添加访存地址和访存操作类型的数据通路
+  \item 添加访存操作类型的数据通路
   
   在ID（译码）阶段添加判断当前的load 或 store操作的类型，包括是否无符号扩展，数据的位宽。并将相应的信号沿着流水级传递到MEM（访存）阶段。
 
@@ -107,12 +107,15 @@ $\bullet$
     assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;    // 位宽为2 byte
     assign id_op_st_ld_u      = op_25_22[3];              // 无符号数扩展
   \end{lstlisting}
+\item 添加从EX到MEM访存地址最低两位传递数据通路
 
   在EX到MEM的传递的数据中添加访存地址的最低两个bit，使得MEM阶段可以获取到从sram中取出来1字节的数据内部的偏移。
+
   \item 在load操作的结果处添加多路选择器（在访存流水级）
   
   首先，通过操作的数据位宽和访存地址来选择出从sram中输出的的数据的有效部分。
   \begin{lstlisting}[language=verilog]
+    // mem_data_sram_addr[2] 是上一小节中传递过到mem级的访存地址后两位
     assign mem_word_result =    data_sram_rdata;   // ld.w 的有效部分
     assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
                                 : data_sram_rdata[15:0];    // ld.h 的有效部分
@@ -150,6 +153,7 @@ $\bullet$
   确保数据在写入时能拿到有效的数据。
 \begin{lstlisting}[language=verilog]
   //生成写入数据
+  //对有效部分进行赋值连接操作
   assign data_sram_wdata  =    ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:
                               ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
                               ex_rkd_value[31:0];
@@ -169,7 +173,7 @@ $\bullet$
 然后在波形图中查看从sram直接返回的数据，发现同样与标准结果不一致，于是排除是新添加的load多路选择器的问题。
 
 进而在反汇编代码中，发现在load指令前，有一条store指令，地址相同。于是在波形图中查看相关波形，发现该指令ex阶段的sram写使能没有拉高，再回溯到id阶段，
-发现是mem写使能的逻辑或写成逻辑与了，导致不能向sram写入数据。
+发现是mem写使能中，不同种类的load之间的逻辑连接错写成与，导致不能向sram写入数据。
 
 \begin{lstlisting}[language=verilog]
 //  assign id_mem_we        = inst_st_w & inst_st_b & inst_st_h & id_valid;  
