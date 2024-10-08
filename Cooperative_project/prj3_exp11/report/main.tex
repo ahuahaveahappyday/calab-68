@@ -82,7 +82,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %改这里可以修改实验报告表头的信息
 \newcommand{\name}{艾华春， 李霄宇， 王敬华}
-\newcommand{\studentNum}{2022K8009916011}
+\newcommand{\studentNum}{2022K8009916011,2022K8009929029,2022K8009925009}
 \newcommand{\major}{计算机科学与技术}
 \newcommand{\labNum}{3}
 \newcommand{\labName}{在流水线中添加普通用户态指令}
@@ -287,6 +287,46 @@ $\bullet$
 
 \noindent
 $\bullet$
+\textbf{转移指令添加}。
+\begin{enumerate}
+    \item 首先添加无符号数和有符号数小于比较结果的数据通路
+
+    无符号数比较直接使用<进行判断，有符号数比较先将操作数转换成signed在进行比较。
+
+    \begin{lstlisting}[language=verilog]
+    assign rj_ltu_rd = (rj_value < rkd_value);                                   //无符号数比较：GR[rj]小于GR[rd]                          
+    assign rj_lt_rd = ($signed(rj_value) < $signed(rkd_value));       //有符号数比较：GR[rj]小于GR[rd]
+    \end{lstlisting}
+
+    \item 再据此补全跳转条件
+
+    blt和bltu可直接使用rj\_ltu\_rd和rj\_lt\_rd作为跳转条件，bge和bgeu则直接将二者取反即可。
+
+    \begin{lstlisting}[language=verilog]
+    assign br_taken = (inst_beq  &&  rj_eq_rd
+                    || inst_bne  && !rj_eq_rd
+                    || inst_blt  &&  rj_lt_rd                                 //添加blt等指令的跳转条件
+                    || inst_bge  && !rj_lt_rd
+                    || inst_bltu &&  rj_ltu_rd
+                    || inst_bgeu &&  !rj_ltu_rd
+                    || inst_jirl
+                    || inst_bl
+                    || inst_b
+                    ) && id_valid;
+    \end{lstlisting}
+
+    \item 跳转地址复用
+
+    新添加的四个跳转指令跳转地址可直接复用beq等指令的控制逻辑。
+
+    \begin{lstlisting}[language=verilog]
+    assign br_target = (inst_beq || inst_bne || inst_blt || inst_bltu || inst_bge || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
+        /*inst_jirl*/ (rj_value + jirl_offs);        //添加blt等指令的跳转地址：与bne,beq相同
+    \end{lstlisting}
+\end{enumerate}
+
+\noindent
+$\bullet$
 \textbf{访存指令添加}。
 \begin{enumerate}
   \item 添加访存操作类型的数据通路
@@ -357,6 +397,21 @@ $\bullet$
 \vspace{1ex}
 
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
+
+\noindent
+$\bullet$
+\textbf{data_sram写使能bug}。
+一开始时有符号数的比较条件尝试不使用类型转换的方法去写一个有符号数比较器。
+\begin{lstlisting}[language=verilog]
+ assign signed_cmp = rj_value[31] ? (rkd_value[31] ? rj_gt_rd : 1'b1) :         
+                                       (rkd_value[31] ? 1'b1 : rj_lt_rd);       //有符号数比较：GR[rj]小于GR[rd]
+\end{lstlisting}
+
+仿真时发现跳转出错，再波形图中擦好看发现signed\_cmp变量出现问题，仔细查看发现GR[rj]为负而GR[rd]为正时以及GR[rj]为正而GR[rd]为负时赋值反了，于是干脆就直接改用类型转换的方法做有符号数比较了。
+\begin{lstlisting}
+assign rj_lt_rd = ($signed(rj_value) < $signed(rkd_value));       //有符号数比较：GR[rj]小于GR[rd]
+\end{lstlisting}
+\vspace{1ex}
 
 \noindent
 $\bullet$
