@@ -29,7 +29,7 @@ module IDreg(
     reg  [31:0] id_pc;
     wire [31:0] id_rkd_value;
     wire        id_mem_we;
-    wire [3:0]  id_ld_st_type;
+    // wire [3:0]  id_ld_st_type;
     wire        id_op_st_ld_b;             // byte
     wire        id_op_st_ld_h;             // half word
     wire        id_op_st_ld_u;         // zero extended
@@ -380,7 +380,7 @@ module IDreg(
     assign id_res_from_mem  = (inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu) & id_valid;
     assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
 
-    assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
+    // assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
     assign id_op_st_ld_b      = op_25_22[1:0] == 2'd0;
     assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;
     assign id_op_st_ld_u      = op_25_22[3];

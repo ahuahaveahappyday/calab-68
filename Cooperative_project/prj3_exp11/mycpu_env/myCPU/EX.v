@@ -79,8 +79,8 @@ module EXEreg(
                                 ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
                                                 ex_rkd_value[31:0];
     
-    assign ex_sram_we       =   ex_op_st_ld_b ? (4'b0001 << ex_alu_result[1:0]) :           // st.b
-                                ex_op_st_ld_h ? (ex_alu_result[1] ? 4'b1100 : 4'b0011) :    // st.h
+    assign ex_sram_we       =   ex_op_st_ld_b ? (4'b0001 << ex_data_sram_addr[1:0]) :           // st.b
+                                ex_op_st_ld_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
                                                 4'b1111;                                    // st.w
     assign ex_data_sram_addr   =   ex_alu_result[1:0];
     //打包
