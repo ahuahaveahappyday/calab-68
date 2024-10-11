@@ -1,7 +1,10 @@
 `define CSR_CRMD 0
 `define CSR_CRMD_PLV 1:0
-
-
+`define CSR_CRMD_PIE 2
+`define CSR_CRMD_DA 3
+`define CSR_CRMD_PG 4
+`define CSR_CRMD_DATF 6:5
+`define CSR_CRMD_DATM 8:7
 
 module csrfile(
     input  wire        clk,
@@ -28,9 +31,13 @@ module csrfile(
 );
 reg [1:0]   csr_crmd_plv;
 reg         csr_crmd_ie;
+wire        csr_crmd_da;
+wire        csr_crmd_pg;
+wire        csr_crmd_datf;
+wire        csr_crmd_datm;
 
 reg [1:0]   csr_prmd_pplv;
-
+reg         csr_prmd_pie;
 
 
 
@@ -42,9 +49,9 @@ reg [1:0]   csr_prmd_pplv;
 always @(posedge clk)begin
     if(reset)
         csr_crmd_plv <=     2'b0;
-    else if (wb_ex)             // exception 
+    else if (wb_ex)             // enter exception 
         csr_crmd_plv <=     2'b0;
-    else if(ertn_flush)           // restore to pplv
+    else if(ertn_flush)           // return from exception
         csr_crmd_plv <=     csr_prmd_pplv;
     else if(csr_we && csr_num == `CSR_CRMD)     // inst access
         csr_crmd_plv <=     csr_wmask[`CSR_CRMD_PLV] & csr_wvalue[`CSR_CRMD_PLV]
@@ -53,10 +60,22 @@ end
 
 // IE
 always @(posedge clk)begin
-
+    if(reset)
+        csr_crmd_ie <=      1'b0;
+    else if(wb_ex)          // enter exception
+        csr_crmd_ie <=      1'b0;
+    else if(ertn_flush)     // return from exception
+        csr_crmd_ie <=      csr_prmd_pie;
+    else if(csr_we && csr_num == `CSR_CRMD)     // inst access
+        csr_crmd_ie <=      csr_wmask[`CSR_CRMD_PIE] & csr_wvalue[`CSR_CRMD_PIE]
+                            | ~csr_wmask[`CSR_CRMD_PIE] & csr_crmd_ie;
 end
 
-
+// DA, PG, DATF, DATM
+assign csr_crmd_da  =   1'b1;
+assign csr_crmd_pg  =   1'b0;
+assign csr_crmd_datf  = 2'b00;
+assign csr_crmd_datm  = 2'b00;
 
 
 
