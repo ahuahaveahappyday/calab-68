@@ -29,7 +29,6 @@ module IDreg(
     reg  [31:0] id_pc;
     wire [31:0] id_rkd_value;
     wire        id_mem_we;
-    // wire [3:0]  id_ld_st_type;
     wire        id_op_st_ld_b;             // byte
     wire        id_op_st_ld_h;             // half word
     wire        id_op_st_ld_u;         // zero extended
@@ -39,9 +38,6 @@ module IDreg(
     wire        src_reg_is_rd;
     wire        rj_eq_rd;
     wire        rj_ltu_rd;
-    //wire        rj_gt_rd;
-    // wire        rj_geu_rd;
-    wire        signed_cmp;
     wire [4: 0] dest;
     wire [31:0] rj_value;
     wire [31:0] rkd_value;
@@ -112,6 +108,10 @@ module IDreg(
     wire        inst_ld_hu;
     wire        inst_st_b;
     wire        inst_st_h;
+    wire        inst_csrrd;
+    wire        inst_csrwr;
+    wire        inst_csxchg;
+    wire        inst_ertn;
 
     wire        need_ui5;
     wire        need_si12;
@@ -192,7 +192,6 @@ module IDreg(
                            id_rf_waddr,        //5  bit
                            id_rkd_value,       //32 bit
                            id_pc,               //32 bit
-                           //id_ld_st_type        //4 bit
                            id_op_st_ld_b,       // 1 bit
                            id_op_st_ld_h,       // 1 bit
                            id_op_st_ld_u        // 1 bit
@@ -263,6 +262,10 @@ module IDreg(
     assign inst_ld_hu  = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
     assign inst_st_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h4];
     assign inst_st_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h5];
+    assign inst_csrrd  = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj == 5'b0;
+    assign inst_csrwr  = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj == 5'b1;
+    assign inst_csxchg = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
+    assign inst_ertn   = op_31_26_d[6'h06] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
@@ -306,8 +309,6 @@ module IDreg(
     //跳转地址建立
     assign rj_eq_rd = (rj_value == rkd_value);
     assign rj_ltu_rd = (rj_value < rkd_value);                                   //无符号数比较：GR[rj]小于GR[rd]
-    // assign rj_gt_rd = (rj_value > rkd_value);                                   //无符号数比较：GR[rj]大于GR[rd]
-    // assign rj_geu_rd = ~rj_ltu_rd;                                     //无符号数比较：GR[rj]大于等于GR[rd]
     assign rj_lt_rd = ($signed(rj_value) < $signed(rkd_value));       //有符号数比较：GR[rj]小于GR[rd]
 
     assign br_taken = (inst_beq  &&  rj_eq_rd
