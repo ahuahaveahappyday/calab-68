@@ -18,25 +18,17 @@
 `define CSR_CRMD_PG         4
 `define CSR_CRMD_DATF       6:5
 `define CSR_CRMD_DATM       8:7
-
 `define CSR_PRMD_PPLV       1:0
 `define CSR_PRMD_PIE       1:0
-
 `define CSR_ECFG_LIE        12:0
-
 `define CSR_ESTAT_IS10      1:0
-
 `define CSR_ERA_PC          31:0
-
 `define CSR_EENTRY_VA       31:6
 `define CSR_SAVE_DATA       31:0
 `define CSR_TICLR_CLR       0
 // ECODE
-
 `define ECODE_ADE           5'h8
 `define ECODE_ALE           5'h9    
-
-
 // ESUBCODE
 `define ESUBCODE_ADEF       1
 module csrfile(
@@ -227,7 +219,36 @@ end
 
 
 
+// read csr value---------------------------------
+wire [31:0] csr_crmd_rvalue;
+wire [31:0] csr_prmd_rvalue;
+wire [31:0] csr_estat_rvalue;
+wire [31:0] csr_era_rvalue;
+wire [31:0] csr_eentry_rvalue;
+wire [31:0] csr_save0_rvalue;
+wire [31:0] csr_save1_rvalue;
+wire [31:0] csr_save2_rvalue;
+wire [31:0] csr_save3_rvalue;
 
-//TODO
+assign csr_crmd_rvalue =    {23'b0, csr_crmd_datm, csr_crmd_datf, csr_crmd_pg, 
+                            csr_crmd_da, csr_crmd_ie, csr_crmd_plv};
+assign csr_prmd_rvalue =    {29'b0, csr_prmd_pie, csr_prmd_pplv};
+assign csr_estat_rvalue=    {19'b0, csr_estat_esubcode, csr_estat_ecode, 1'b0, csr_estat_is};
+assign csr_era_rvalue  =    csr_era_pc;
+assign csr_eentry_rvalue=   {csr_eentry_va, 6'b0};
+assign csr_save0_rvalue=    csr_save0_data;
+assign csr_save1_rvalue=    csr_save1_data;
+assign csr_save2_rvalue=    csr_save2_data;
+assign csr_save3_rvalue=    csr_save3_data;
+
+assign csr_rvalue =         {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
+                            |{32{csr_num == `CSR_PRMD}} & csr_prmd_rvalue
+                            |{32{csr_num == `CSR_ESTAT}} & csr_estat_rvalue
+                            |{32{csr_num == `CSR_ERA}} & csr_era_rvalue
+                            |{32{csr_num == `CSR_EENTRY}} & csr_eentry_rvalue
+                            |{32{csr_num == `CSR_SAVE0}} & csr_save0_rvalue
+                            |{32{csr_num == `CSR_SAVE1}} & csr_save1_rvalue
+                            |{32{csr_num == `CSR_SAVE2}} & csr_save2_rvalue
+                            |{32{csr_num == `CSR_SAVE3}} & csr_save3_rvalue;
 
 endmodule
