@@ -40,6 +40,22 @@ module mycpu_top(
     wire [37:0]mem_to_id_bus;
     wire [37:0]wb_to_id_bus;
 
+    wire            csr_re;
+    wire [13:0]     csr_num;
+    wire [31:0]     csr_rvalue;
+    wire            csr_we;
+    wire [31:0]     csr_wmask;
+    wire [31:0]     csr_wvalue;
+
+    wire            wb_ex;
+    wire [5:0]      wb_ecode;
+    wire [8:0]      wb_esubcode;
+    wire [31:0]     wb_pc;
+    wire [31:0]     wb_vaddr;
+
+    wire            ertn_flush;
+    wire [7:0]      hw_int_in;
+    wire            ipi_int_in;
     IFreg my_ifReg(
         .clk(clk),
         .resetn(resetn),
@@ -125,5 +141,29 @@ module mycpu_top(
         .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
         .wb_to_id_bus(wb_to_id_bus)
+    );
+
+    CSRfile my_csrfild(
+        .clk(clk),
+        .resetn(resetn),
+
+        .csr_re(csr_re),
+        .csr_num(csr_num),
+        .csr_rvalue(csr_rvalue),
+        .csr_we(csr_we),
+        .csr_wmask(csr_wmask),
+        .csr_wvalue(csr_wvalue),
+
+        .wb_ex(wb_ex),
+        .wb_ecode(wb_ecode),
+        .wb_esubcode(wb_esubcode),
+        .wb_pc(wb_pc),
+        .wb_vaddr(wb_vaddr),
+
+        .ertn_flush(ertn_flush),
+
+        .hw_int_in(),
+        .ipi_int_in()
+
     );
 endmodule

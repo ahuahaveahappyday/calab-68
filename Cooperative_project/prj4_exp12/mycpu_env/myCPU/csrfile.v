@@ -1,16 +1,16 @@
 // CSR_NUM
-`define CSR_CRMD            9'h0
-`define CSR_PRMD            9'h1
-`define CSR_ECFG            9'h4
-`define CSR_ESTAT           9'h5
-`define CSR_ERA             9'h6
-`define CSR_BADV            9'h7
-`define CSR_EENTRY          9'h12
-`define CSR_SAVE0           9'h30
-`define CSR_SAVE1           9'h31
-`define CSR_SAVE2           9'h32
-`define CSR_SAVE3           9'h33
-`define CSR_TICLR           9'h44
+`define CSR_CRMD            14'h0
+`define CSR_PRMD            14'h1
+`define CSR_ECFG            14'h4
+`define CSR_ESTAT           14'h5
+`define CSR_ERA             14'h6
+`define CSR_BADV            14'h7
+`define CSR_EENTRY          14'h12
+`define CSR_SAVE0           14'h30
+`define CSR_SAVE1           14'h31
+`define CSR_SAVE2           14'h32
+`define CSR_SAVE3           14'h33
+`define CSR_TICLR           14'h44
 // INDEX OF DOMAIN
 `define CSR_CRMD_PLV        1:0
 `define CSR_CRMD_PIE        2
@@ -31,13 +31,13 @@
 `define ECODE_ALE           5'h9    
 // ESUBCODE
 `define ESUBCODE_ADEF       1
-module csrfile(
+module CSRfile(
     input  wire        clk,
-    input  wire        reset,
+    input  wire        resetn,
     // inst access-------------------------
     // read port
     input wire          csr_re,         // read_enable
-    input wire  [8:0]  csr_num,        // num of csr, address
+    input wire  [13:0]  csr_num,        // num of csr, address
     output wire [31:0]  csr_rvalue,
     // write port
     input wire          csr_we,
@@ -93,7 +93,7 @@ reg  [31:0]  time_cnt;
 /*---------------------------CRMD---------------------------------------------------*/
 // PLV
 always @(posedge clk)begin
-    if(reset)
+    if(~resetn)
         csr_crmd_plv <=     2'b0;
     else if (wb_ex)             // enter exception 
         csr_crmd_plv <=     2'b0;
@@ -106,7 +106,7 @@ end
 
 // IE
 always @(posedge clk)begin
-    if(reset)
+    if(~resetn)
         csr_crmd_ie <=      1'b0;
     else if(wb_ex)          // enter exception
         csr_crmd_ie <=      1'b0;
@@ -139,7 +139,7 @@ end
 
 /*---------------------------ECFG---------------------------------------------------*/
 always @(posedge clk)begin
-    if(reset)
+    if(~resetn)
         csr_ecfg_lie <= 13'b0;
     else if (csr_we && csr_num == `CSR_ECFG)            // csr_ecfg_lie[10] == 0 
         csr_ecfg_lie <=     csr_wmask[`CSR_ECFG_LIE] & 13'h1bff & csr_wvalue[`CSR_ECFG_LIE]
@@ -149,7 +149,7 @@ end
 /*---------------------------ESTAT---------------------------------------------------*/
 // is
 always @(posedge clk)begin
-    if(reset)
+    if(~resetn)
         csr_estat_is[1:0] <= 2'b0;
     else if(csr_we && csr_num == `CSR_ESTAT)
         csr_estat_is[1:0] <= csr_wmask[`CSR_ESTAT_IS10]  & csr_wvalue[`CSR_ESTAT_IS10]
