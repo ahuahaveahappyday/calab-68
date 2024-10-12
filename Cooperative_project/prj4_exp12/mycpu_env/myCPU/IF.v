@@ -11,7 +11,11 @@ module IFreg(
     input  wire         id_allowin,
     input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
-    output wire [63:0]  if_to_id_bus//{if_inst, if_pc}
+    output wire [63:0]  if_to_id_bus,//{if_inst, if_pc}
+    //if与wb交互接口
+    input wire  [31:0]  wb_to_if_bus,
+    //etrn清空流水线
+    input  wire         ertn_flush
 );
 //if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;//寄存if流水级是否有指令
@@ -35,8 +39,11 @@ module IFreg(
     wire  to_if_valid;
     assign to_if_valid      = resetn;
 
-
+// 指令ertn读取的era
+    wire [31:0]  ertn_era;
 //----------------------------------------------------------------------------------------------------------------------------------------------
+// 指令ertn读取的era
+    assign ertn_era         = wb_to_if_bus;
 
 //流水线控制信号
     assign if_ready_go      = 1'b1;
@@ -45,7 +52,9 @@ module IFreg(
 
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           = if_pc + 3'h4;  
-    assign pre_pc           = br_taken ? br_target : seq_pc;
+    assign pre_pc           =   ertn_flush ? ertn_era
+                                : br_taken ? br_target 
+                                : seq_pc;
 
 //更新if模块中的寄存器
     always @(posedge clk) begin

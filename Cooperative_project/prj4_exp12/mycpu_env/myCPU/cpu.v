@@ -31,8 +31,8 @@ module mycpu_top(
     wire mem_to_wb_valid;
 
     wire [63:0]if_to_id_bus;
-    wire [205:0]id_to_ex_bus;
-    wire [123:0]ex_to_mem_bus;
+    wire [206:0]id_to_ex_bus;
+    wire [156:0]ex_to_mem_bus;
     wire [149:0]mem_to_wb_bus;
 
     wire [32:0]id_to_if_bus;
@@ -56,6 +56,7 @@ module mycpu_top(
     wire            ertn_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
+    
     IFreg my_ifReg(
         .clk(clk),
         .resetn(resetn),
@@ -69,7 +70,9 @@ module mycpu_top(
         .id_allowin(id_allowin),
         .id_to_if_bus(id_to_if_bus),
         .if_to_id_valid(if_to_id_valid),
-        .if_to_id_bus(if_to_id_bus)
+        .if_to_id_bus(if_to_id_bus),
+
+        .ertn_flush(ertn_flush)
     );
 
     IDreg my_idReg(
@@ -87,7 +90,9 @@ module mycpu_top(
 
         .wb_to_id_bus(wb_to_id_bus),
         .mem_to_id_bus(mem_to_id_bus),
-        .ex_to_id_bus(ex_to_id_bus)
+        .ex_to_id_bus(ex_to_id_bus),
+
+        .ertn_flush(ertn_flush)
     );
 
     EXEreg my_exeReg(
@@ -106,7 +111,9 @@ module mycpu_top(
         .data_sram_en(data_sram_en),
         .data_sram_we(data_sram_we),
         .data_sram_addr(data_sram_addr),
-        .data_sram_wdata(data_sram_wdata)
+        .data_sram_wdata(data_sram_wdata),
+
+        .ertn_flush(ertn_flush)
     );
 
     MEMreg my_memReg(
@@ -123,7 +130,9 @@ module mycpu_top(
 
         .mem_to_id_bus(mem_to_id_bus),
 
-        .data_sram_rdata(data_sram_rdata)
+        .data_sram_rdata(data_sram_rdata),
+
+        .ertn_flush(ertn_flush)
 
     ) ;
 
@@ -147,7 +156,9 @@ module mycpu_top(
         .csr_rvalue(csr_rvalue),
         .csr_we(csr_we),
         .csr_wmask(csr_wmask),
-        .csr_wvalue(csr_wvalue)
+        .csr_wvalue(csr_wvalue),
+
+        .ertn_flush(ertn_flush)
     );
 
     CSRfile my_csrfild(

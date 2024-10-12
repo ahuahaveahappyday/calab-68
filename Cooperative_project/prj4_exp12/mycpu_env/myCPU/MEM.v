@@ -4,15 +4,17 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [155:0]ex_to_mem_bus, 
+    input  wire [156:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [149:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [150:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
-    input  wire [31:0] data_sram_rdata
+    input  wire [31:0] data_sram_rdata,
+
+    input  wire         ertn_flush
 
 );
 //MEM模块需要的寄存器，寄存当前时钟周期的信号
@@ -34,6 +36,7 @@ module MEMreg(
     reg         mem_csr_we;
     reg  [13:0] mem_csr_num;
     reg  [31:0] mem_csr_wmask;
+    reg         mem_ertn_flush;
 
     wire        mem_ready_go;
     wire [31:0] mem_rf_wdata;
@@ -55,6 +58,8 @@ module MEMreg(
     always @(posedge clk) begin
         if(~resetn)
             mem_valid <= 1'b0;
+        else if(ertn_flush)
+            mem_valid <= 1'b0;
         else
             mem_valid <= ex_to_mem_valid & mem_allowin; 
     end
@@ -63,13 +68,13 @@ module MEMreg(
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
-             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask} <= 156'b0;
+             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush} <= 157'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
-            mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask} <= ex_to_mem_bus;
+            mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
@@ -99,6 +104,7 @@ module MEMreg(
                             mem_csr_we,                 // 1 bit
                             mem_csr_num,                 // 14 bit
                             mem_csr_wmask,               // 32 bit
-                            mem_csr_wvalue               // 32 bit
+                            mem_csr_wvalue,               // 32 bit
+                            mem_ertn_flush              // 1 bit
                             };               
 endmodule

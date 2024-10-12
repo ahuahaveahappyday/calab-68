@@ -9,11 +9,13 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [205:0]           id_to_ex_bus,
+    output wire [206:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
-    input  wire [39:0]            ex_to_id_bus  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
+    input  wire [39:0]            ex_to_id_bus,  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
+
+    input  wire                   ertn_flush
 );
     wire        stuck;
     wire        id_ready_go;
@@ -159,6 +161,8 @@ module IDreg(
     wire        id_csr_we;
     wire [31:0] id_csr_wmask;
 
+    wire        id_ertn_flush;
+
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -172,7 +176,7 @@ module IDreg(
     always @(posedge clk) begin
         if(~resetn)
             id_valid <= 1'b0;
-        else if(br_taken)
+        else if(br_taken || ertn_flush)
             id_valid <= 1'b0;
         else if(id_allowin)
             id_valid <= if_to_id_valid;
@@ -207,7 +211,8 @@ module IDreg(
                            id_csr_re,           // 1 bit
                            id_csr_we,           // 1 bit
                            id_csr_num,           // 14 bit
-                           id_csr_wmask         // 32 bit
+                           id_csr_wmask,         // 32 bit
+                           id_ertn_flush        // 1 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -434,10 +439,13 @@ module IDreg(
                         conflict_r2_wb  ? wb_rf_wdata : rf_rdata2; 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 // CSR读写
-    assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg;
-    assign id_csr_num = csr_num; 
+    assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg || inst_ertn;
+    assign id_csr_num = inst_ertn ?     14'h6           // CSR_ERA
+                                        :csr_num; 
 
     assign id_csr_we  = inst_csrwr || inst_csxchg;
     assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;
+
+    assign id_ertn_flush = inst_ertn;
 
 endmodule
