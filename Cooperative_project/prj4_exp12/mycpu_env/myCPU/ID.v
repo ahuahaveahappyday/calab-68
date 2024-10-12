@@ -368,7 +368,8 @@ module IDreg(
     assign id_alu_src2 = id_src2_is_imm ? imm : rkd_value;
 
     //寄存器的读地址选择、寄存器的实例化
-    assign src_reg_is_rd = inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_w | inst_st_b | inst_st_h;       //添加blt等指令
+    assign src_reg_is_rd =      inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu 
+                                | inst_st_w | inst_st_b | inst_st_h | inst_csrwr | inst_csxchg;     
     assign rf_raddr1 = rj;
     assign rf_raddr2 = src_reg_is_rd ? rd :rk;
      regfile u_regfile(
@@ -408,12 +409,12 @@ module IDreg(
     assign conflict_r1_ex  = (|rf_raddr1) & (rf_raddr1 == ex_rf_waddr)  & ex_rf_we & need_r1;
     assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we & need_r2;
 
-    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w & ~inst_pcaddul2i;//需要使用（读）源寄存器1（rj）的指令
+    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w & ~inst_pcaddul2i & ~inst_csrrd & ~inst_csrwr;//需要使用（读）源寄存器1（rj）的指令
     assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_and | inst_or | inst_nor | inst_xor
                               | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu                           //添加blt等指令
                               | inst_st_w | inst_sll_w| inst_srl_w | inst_sra_w | inst_mul_w 
                               | inst_mulh_w | inst_mulh_wu | inst_mod_w | inst_mod_wu | inst_div_w |inst_div_wu
-                              | inst_st_b | inst_st_h;
+                              | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg;
                               //需要使用（读）源寄存器2（rk/rd）的指令
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
