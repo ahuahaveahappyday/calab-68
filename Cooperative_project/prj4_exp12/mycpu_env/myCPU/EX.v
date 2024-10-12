@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [173:0] id_to_ex_bus,
+    input wire [205:0] id_to_ex_bus,
     output wire [38:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [123:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [155:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     //ex模块与数据存储器交互
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -35,6 +35,7 @@ module EXEreg(
     reg         ex_csr_re;
     reg         ex_csr_we;
     reg  [13:0] ex_csr_num;
+    reg  [31:0] ex_csr_wmask;
     
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
@@ -58,11 +59,11 @@ module EXEreg(
         if(~resetn)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
-              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u, ex_csr_re, ex_csr_we, ex_csr_num}       <= {174{1'b0}};
+              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u, ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask}       <= {206{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
-             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u,ex_csr_re, ex_csr_we, ex_csr_num}        <= id_to_ex_bus;    
+             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u,ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask}        <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -105,7 +106,8 @@ module EXEreg(
                                 ex_op_st_ld_u,              // 1 bit
                                 ex_csr_re,                  // 1 bit
                                 ex_csr_we,                  // 1 bit
-                                ex_csr_num                  // 14 bit        
+                                ex_csr_num,                  // 14 bit        
+                                ex_csr_wmask                // 32 bit
                                 };
 
 endmodule

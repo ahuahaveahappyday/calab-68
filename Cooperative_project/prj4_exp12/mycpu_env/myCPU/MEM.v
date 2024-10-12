@@ -4,11 +4,11 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [123:0]ex_to_mem_bus, 
+    input  wire [155:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [85:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [117:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [37:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
@@ -33,6 +33,7 @@ module MEMreg(
     reg         mem_csr_re;
     reg         mem_csr_we;
     reg  [13:0] mem_csr_num;
+    reg  [31:0] mem_csr_wmask;
 
     wire        mem_ready_go;
     wire [31:0] mem_rf_wdata;
@@ -57,12 +58,14 @@ module MEMreg(
         if(~resetn) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
-             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,mem_csr_re,mem_csr_we,mem_csr_num} <= 124'b0;
+             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
+             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask} <= 156'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
-            mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,mem_csr_re,mem_csr_we,mem_csr_num} <= ex_to_mem_bus;
+            mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
+            mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask} <= ex_to_mem_bus;
         end
     end
 
@@ -89,5 +92,7 @@ module MEMreg(
                             mem_pc,                     // 32 bit
                             mem_csr_re,                 // 1 bit
                             mem_csr_we,                 // 1 bit
-                            mem_csr_num};               // 14 bit
+                            mem_csr_num,                 // 14 bit
+                            mem_csr_wmask               // 32 bit
+                            };               
 endmodule

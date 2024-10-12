@@ -4,7 +4,7 @@ module WBreg(
     //mem与wb模块交互接口
     output wire        wb_allowin,
     input  wire        mem_to_wb_valid,
-    input  wire [85:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    input  wire [117:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
     //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -33,6 +33,9 @@ module WBreg(
     reg         wb_csr_re;
     reg         wb_csr_we;
     reg  [13:0] wb_csr_num;
+    reg  [31:0] wb_csr_wmask;
+
+    wire [31:0] final_rf_wdata;
 
 //流水线控制信号
     assign wb_ready_go      = 1'b1;
@@ -47,19 +50,20 @@ module WBreg(
     end
     always @(posedge clk) begin
         if(~resetn) begin
-            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num} <= 86'b0;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask} <= 118'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
-            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num} <= mem_to_wb_bus;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask} <= mem_to_wb_bus;
         end
     end
 
 //模块间通信
-    assign wb_to_id_bus = {wb_rf_we & wb_valid, wb_rf_waddr, wb_rf_wdata};
+    assign final_rf_wdata = wb_csr_re ? csr_rvalue : wb_rf_wdata;
+    assign wb_to_id_bus = {wb_rf_we & wb_valid, wb_rf_waddr, final_rf_wdata};
 
     //debug信号
     assign debug_wb_pc = wb_pc;
-    assign debug_wb_rf_wdata = wb_rf_wdata;
+    assign debug_wb_rf_wdata = final_rf_wdata;
     assign debug_wb_rf_we = {4{wb_rf_we & wb_valid}};//注意，这里& wb_valid不能省略！必须保证wb流水级有指令才能进行trace比对
     assign debug_wb_rf_wnum = wb_rf_waddr;
 //csr_file模块读写信号
@@ -67,5 +71,5 @@ module WBreg(
     assign csr_num = wb_csr_num;
 
     assign csr_we = wb_csr_we;
-
+    assign csr_wmask = wb_csr_wmask;
 endmodule

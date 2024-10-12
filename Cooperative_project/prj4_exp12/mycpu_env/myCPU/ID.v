@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [173:0]           id_to_ex_bus,
+    output wire [205:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -155,8 +155,7 @@ module IDreg(
     wire        id_csr_re;
     wire [13:0] id_csr_num;
     wire        id_csr_we;
-    // wire [31:0] id_csr_wmask;
-    // wire [31:0] id_csr_wvalue;
+    wire [31:0] id_csr_wmask;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -205,7 +204,8 @@ module IDreg(
                            id_op_st_ld_u,       // 1 bit
                            id_csr_re,           // 1 bit
                            id_csr_we,           // 1 bit
-                           id_csr_num           // 14 bit
+                           id_csr_num,           // 14 bit
+                           id_csr_wmask         // 32 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -384,7 +384,8 @@ module IDreg(
     );
 
     //寄存器的写地址和写使能
-    assign gr_we            = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & id_valid;    //添加blt等指令
+    assign gr_we            =   ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne 
+                                & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & id_valid;    
     assign dst_is_r1        = inst_bl;
     assign dest             = dst_is_r1 ? 5'd1 : rd;
     assign id_rf_we         = gr_we ; 
@@ -394,7 +395,6 @@ module IDreg(
     assign id_res_from_mem  = (inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu) & id_valid;
     assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
 
-    // assign id_ld_st_type      = op_25_22;         // to identify different type of load and store
     assign id_op_st_ld_b      = op_25_22[1:0] == 2'd0;
     assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;
     assign id_op_st_ld_u      = op_25_22[3];
@@ -434,6 +434,6 @@ module IDreg(
     assign id_csr_num = csr_num; 
 
     assign id_csr_we  = inst_csrwr || inst_csxchg;
-    // assign id_csr_wmask = ;
+    assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;
 
 endmodule
