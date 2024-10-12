@@ -11,7 +11,15 @@ module WBreg(
     output wire [ 4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata,
     //mem与id模块交互接口
-    output wire [37:0] wb_to_id_bus  // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
+    output wire [37:0] wb_to_id_bus,  // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
+    //mem与csr_file模块交互接口
+    output wire        csr_re,
+    output wire [13:0] csr_num,
+    input  wire [31:0] csr_rvalue,
+
+    output wire        csr_we,
+    output wire [31:0] csr_wmask,
+    output wire [31:0] csr_wvalue
 );
     
     wire        wb_ready_go;
@@ -54,4 +62,10 @@ module WBreg(
     assign debug_wb_rf_wdata = wb_rf_wdata;
     assign debug_wb_rf_we = {4{wb_rf_we & wb_valid}};//注意，这里& wb_valid不能省略！必须保证wb流水级有指令才能进行trace比对
     assign debug_wb_rf_wnum = wb_rf_waddr;
+//csr_file模块读写信号
+    assign csr_re = wb_csr_re;
+    assign csr_num = wb_csr_num;
+
+    assign csr_we = wb_csr_we;
+
 endmodule

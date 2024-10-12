@@ -140,7 +140,14 @@ module mycpu_top(
         .debug_wb_rf_wnum(debug_wb_rf_wnum),
         .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
-        .wb_to_id_bus(wb_to_id_bus)
+        .wb_to_id_bus(wb_to_id_bus),
+
+        .csr_re(csr_re),
+        .csr_num(csr_num),
+        .csr_rvalue(csr_rvalue),
+        .csr_we(csr_we),
+        .csr_wmask(csr_wmask),
+        .csr_wvalue(csr_wvalue)
     );
 
     CSRfile my_csrfild(
