@@ -8,7 +8,7 @@ module MEMreg(
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [117:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [149:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [37:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
@@ -42,6 +42,9 @@ module MEMreg(
     wire [15:0] mem_half_result;
     wire [8:0] mem_byte_result;
 
+    wire [31:0] mem_csr_wvalue;
+// CSR 写数据
+    assign mem_csr_wvalue = mem_rkd_value;
 //流水线控制信号
     assign mem_ready_go      = 1'b1;
     assign mem_allowin       = ~mem_valid | mem_ready_go & wb_allowin;     
@@ -93,6 +96,7 @@ module MEMreg(
                             mem_csr_re,                 // 1 bit
                             mem_csr_we,                 // 1 bit
                             mem_csr_num,                 // 14 bit
-                            mem_csr_wmask               // 32 bit
+                            mem_csr_wmask,               // 32 bit
+                            mem_csr_wvalue               // 32 bit
                             };               
 endmodule
