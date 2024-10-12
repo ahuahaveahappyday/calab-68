@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [157:0]           id_to_ex_bus,
+    output wire [173:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -56,6 +56,7 @@ module IDreg(
     wire [19:0] i20;
     wire [15:0] i16;
     wire [25:0] i26;
+    wire [13:0] csr_num;
 
     wire [63:0] op_31_26_d;
     wire [15:0] op_25_22_d;
@@ -150,6 +151,13 @@ module IDreg(
 
     wire        id_rf_we   ;
     wire [ 4:0] id_rf_waddr;
+
+    wire        id_csr_re;
+    wire [13:0] id_csr_num;
+    wire        id_csr_we;
+    // wire [31:0] id_csr_wmask;
+    // wire [31:0] id_csr_wvalue;
+
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -194,7 +202,10 @@ module IDreg(
                            id_pc,               //32 bit
                            id_op_st_ld_b,       // 1 bit
                            id_op_st_ld_h,       // 1 bit
-                           id_op_st_ld_u        // 1 bit
+                           id_op_st_ld_u,       // 1 bit
+                           id_csr_re,           // 1 bit
+                           id_csr_we,           // 1 bit
+                           id_csr_num           // 14 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -209,6 +220,7 @@ module IDreg(
     assign i20       = id_inst[24: 5];
     assign i16       = id_inst[25:10];
     assign i26       = {id_inst[ 9: 0], id_inst[25:10]};
+    assign csr_num   = {id_inst[23:10]};
 
     decoder_6_64 u_dec0(.in(op_31_26 ), .out(op_31_26_d ));
     decoder_4_16 u_dec1(.in(op_25_22 ), .out(op_25_22_d ));
@@ -415,6 +427,12 @@ module IDreg(
     assign rkd_value =  conflict_r2_ex ? ex_rf_wdata:
                         conflict_r2_mem ? mem_rf_wdata:
                         conflict_r2_wb  ? wb_rf_wdata : rf_rdata2; 
+//------------------------------------------------------------------------------------------------------------------------------------------------------
+// CSR读写
+    assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg;
+    assign id_csr_num = csr_num; 
 
-    
+    assign id_csr_we  = inst_csrwr || inst_csxchg;
+    // assign id_csr_wmask = ;
+
 endmodule

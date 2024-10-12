@@ -4,7 +4,7 @@ module WBreg(
     //mem与wb模块交互接口
     output wire        wb_allowin,
     input  wire        mem_to_wb_valid,
-    input  wire [69:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    input  wire [85:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
     //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -22,6 +22,9 @@ module WBreg(
     reg  [31:0] wb_rf_wdata;
     reg  [4 :0] wb_rf_waddr;
     reg         wb_rf_we;
+    reg         wb_csr_re;
+    reg         wb_csr_we;
+    reg  [13:0] wb_csr_num;
 
 //流水线控制信号
     assign wb_ready_go      = 1'b1;
@@ -36,10 +39,10 @@ module WBreg(
     end
     always @(posedge clk) begin
         if(~resetn) begin
-            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc} <= 69'b0;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num} <= 86'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
-            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc} <= mem_to_wb_bus;
+            {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc,wb_csr_re,wb_csr_we,wb_csr_num} <= mem_to_wb_bus;
         end
     end
 
