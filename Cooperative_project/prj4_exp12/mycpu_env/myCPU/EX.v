@@ -5,7 +5,7 @@ module EXEreg(
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
     input wire [205:0] id_to_ex_bus,
-    output wire [38:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
+    output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
@@ -43,6 +43,8 @@ module EXEreg(
     wire [3:0]  ex_sram_we;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
 
+    wire        ex_res_from_wb;
+
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
     assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
@@ -76,6 +78,8 @@ module EXEreg(
         .alu_result     (ex_alu_result),
         .complete       (alu_complete)
     );
+// 寄存器写回数据来自wb级
+    assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
     //与内存交互接口定义
     assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;//load 或者 store 指令有效的时候，启动sram片选信号
@@ -93,7 +97,8 @@ module EXEreg(
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 
                                 ex_rf_waddr, 
-                                ex_alu_result};   
+                                ex_alu_result,
+                                ex_res_from_wb & ex_valid};   
     assign ex_to_mem_bus    =   {ex_pc,                     // 32 bit
                                 ex_res_from_mem & ex_valid, // 1 bit
                                 ex_rf_we & ex_valid,        // 1 bit

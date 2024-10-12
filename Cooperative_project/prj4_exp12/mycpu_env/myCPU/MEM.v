@@ -10,7 +10,7 @@ module MEMreg(
     output wire        mem_to_wb_valid,
     output wire [149:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
-    output wire [37:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
     input  wire [31:0] data_sram_rdata
 
@@ -43,6 +43,7 @@ module MEMreg(
     wire [8:0] mem_byte_result;
 
     wire [31:0] mem_csr_wvalue;
+    wire        mem_res_from_wb;
 // CSR 写数据
     assign mem_csr_wvalue = mem_rkd_value;
 //流水线控制信号
@@ -71,7 +72,8 @@ module MEMreg(
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask} <= ex_to_mem_bus;
         end
     end
-
+// 寄存器写回数据来自wb级
+    assign mem_res_from_wb  = mem_csr_re;
 //模块间通信
     //与内存交互接口定义
     assign mem_word_result =    data_sram_rdata;
@@ -88,7 +90,7 @@ module MEMreg(
     //assign data_sram_wdata= mem_rkd_value;
     //打包
     assign mem_rf_wdata = mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
-    assign mem_to_id_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata};
+    assign mem_to_id_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb & mem_valid};
     assign mem_to_wb_bus  = {mem_rf_we & mem_valid,     // 1 bit
                             mem_rf_waddr,               // 5 bit
                             mem_rf_wdata,               // 32 bit

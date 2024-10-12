@@ -12,8 +12,8 @@ module IDreg(
     output wire [205:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
-    input  wire [37:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
-    input  wire [38:0]            ex_to_id_bus  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
+    input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    input  wire [39:0]            ex_to_id_bus  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 );
     wire        stuck;
     wire        id_ready_go;
@@ -148,6 +148,8 @@ module IDreg(
     wire [ 4:0] ex_rf_waddr;
     wire [31:0] ex_rf_wdata;
     wire        ex_res_from_mem;
+    wire        ex_res_from_wb;
+    wire        mem_res_from_wb;
 
     wire        id_rf_we   ;
     wire [ 4:0] id_rf_waddr;
@@ -185,8 +187,8 @@ module IDreg(
 
 //模块间通信
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
-    assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata} = mem_to_id_bus;
-    assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata} = ex_to_id_bus;
+    assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb} = mem_to_id_bus;
+    assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
     assign id_to_if_bus = {br_taken, br_target}; 
 
     assign id_rkd_value = rkd_value; 
@@ -418,7 +420,9 @@ module IDreg(
                               //需要使用（读）源寄存器2（rk/rd）的指令
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
-    assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex);    
+    assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex)
+                            |ex_res_from_wb & (conflict_r1_ex|conflict_r2_ex)
+                            |mem_res_from_wb & (conflict_r1_mem|conflict_r2_mem);    
 
     //前递的数据在这里使用，发生conflict时代替寄存器中读出的值
     //由于优先级的原因，所以下面的顺序不能调换
