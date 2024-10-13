@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [222:0] id_to_ex_bus,
+    input wire [221:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [172:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [171:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire        mem_to_ex_bus,   // ex_en
     input  wire        wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
@@ -33,15 +33,22 @@ module EXEreg(
     reg  [4 :0] ex_rf_waddr;//寄存器写地址
     reg         ex_op_st_ld_b;
     reg         ex_op_st_ld_h;
+    reg         ex_op_st_ld_w;
     reg         ex_op_st_ld_u;
     reg         ex_csr_re;
     reg         ex_csr_we;
     reg  [13:0] ex_csr_num;
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
-    reg         ex_excep_en;
-    reg  [5:0]  ex_excep_ecode;
+    wire        ex_excep_en;
+    reg         ex_excep_ADEF;
+    reg         ex_excep_SYSCALL;
+    reg         ex_excep_ALE;
+    reg         ex_excep_BRK;
+    reg         ex_excep_INE;
     reg  [8:0]  ex_excep_esubcode;
+    
+    reg         id_excep_en;
     
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
@@ -71,15 +78,15 @@ module EXEreg(
         if(~resetn)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
-              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u, ex_csr_re, 
+              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_csr_re, 
               ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              ex_excep_en, ex_excep_ecode, ex_excep_esubcode}       <= {223{1'b0}};
+              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}       <= {222{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
-             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u,ex_csr_re, 
+             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u,ex_csr_re, 
              ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-             ex_excep_en, ex_excep_ecode, ex_excep_esubcode}        <= id_to_ex_bus;    
+             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}        <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -132,8 +139,16 @@ module EXEreg(
                                 ex_csr_wmask,                // 32 bit
                                 ex_ertn_flush,               // 1 bit
                                 ex_excep_en,                 // 1 bit
-                                ex_excep_ecode,             // 6 bit
+                                ex_excep_ADEF,               // 1 bit
+                                ex_excep_SYSCALL,             // 1 bit
+                                ex_excep_ALE,               // 1 bit
+                                ex_excep_BRK,               // 1 bit
+                                ex_excep_INE,               // 1 bit
                                 ex_excep_esubcode           // 9 bit
                                 };
+
+// 地址非对齐异常处理
+    assign ex_excep_ALE = (ex_op_st_ld_h & ex_alu_result[0]) | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0]));     // 记录该条指令是否存在ALE异常
+    assign ex_excep_en = ex_excep_ALE | id_excep_en;
 
 endmodule

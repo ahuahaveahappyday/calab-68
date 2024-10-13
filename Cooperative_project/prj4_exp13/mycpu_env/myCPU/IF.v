@@ -11,7 +11,7 @@ module IFreg(
     input  wire         id_allowin,
     input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
-    output wire [63:0]  if_to_id_bus,//{if_inst, if_pc}
+    output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
     //if与wb交互接口
     input wire  [31:0]  wb_to_if_bus,
     //etrn清空流水线
@@ -38,6 +38,12 @@ module IFreg(
     
     wire   to_if_valid;
     assign to_if_valid      = resetn;
+
+// 异常相关
+    wire        pre_if_excep_en;
+    wire        pre_if_excep_ADEF;
+    reg         if_excep_en;
+    reg         if_excep_ADEF;
 
 // 指令ertn读取的era
     wire [31:0]  wb_csr_rvalue;
@@ -79,6 +85,15 @@ module IFreg(
     assign inst_sram_wdata  = 32'b0;
 
     assign {br_taken, br_target} = id_to_if_bus;
-    assign if_to_id_bus = {if_inst, if_pc};
+    assign if_to_id_bus = {if_inst, if_pc, if_excep_en, if_excep_ADE};          //
     assign if_inst    = inst_sram_rdata;//来自存储器的inst
+
+//取指地址错异常处理
+    assign pre_if_excep_ADEF   =     pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
+    assign pre_if_excep_en =        pre_if_excep_ADEF;
+    always @(posedge clk)begin
+        if_excep_en  <= pre_if_excep_en;
+        if_excep_ADEF <= pre_if_excep_ADEF;
+    end
+
 endmodule

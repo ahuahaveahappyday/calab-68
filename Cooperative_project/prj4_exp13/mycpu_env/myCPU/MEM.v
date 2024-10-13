@@ -4,11 +4,11 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [172:0]ex_to_mem_bus, 
+    input  wire [171:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [166:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [165:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与ex模块交互接口
@@ -37,9 +37,15 @@ module MEMreg(
     reg  [13:0] mem_csr_num;
     reg  [31:0] mem_csr_wmask;
     reg         mem_ertn_flush;
-    reg         mem_excep_en;
-    reg [5:0]   mem_excep_ecode;
+    wire        mem_excep_en;
+    reg         mem_excep_ADEF;
+    reg         mem_excep_SYSCALL;
+    reg         mem_excep_ALE;
+    reg         mem_excep_BRK;
+    reg         mem_excep_INE;
     reg [8:0]   mem_excep_esubcode;
+
+    wire        ex_excep_en;
 
     wire        mem_ready_go;
     wire [31:0] mem_rf_wdata;
@@ -72,14 +78,14 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             mem_excep_en, mem_excep_ecode, mem_excep_esubcode} <= 173'b0;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_esubcode} <= 172'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             mem_excep_en, mem_excep_ecode, mem_excep_esubcode} <= ex_to_mem_bus;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_esubcode} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
@@ -112,8 +118,16 @@ module MEMreg(
                             mem_csr_wvalue,               // 32 bit
                             mem_ertn_flush,              // 1 bit
                             mem_excep_en,               // 1 bit
-                            mem_excep_ecode,            // 6 bit
+                            mem_excep_ADEF,             // 1 bit
+                            mem_excep_SYSCALL,            // 1 bit
+                            mem_excep_ALE,              // 1 bit
+                            mem_excep_BRK,              // 1 bit
+                            mem_excep_INE,              // 1 bit
                             mem_excep_esubcode          // 9 bit
                             };        
     assign mem_to_ex_bus  = mem_excep_en & mem_valid;    
+
+//异常处理
+    assign mem_excep_en = ex_excep_en;
+
 endmodule

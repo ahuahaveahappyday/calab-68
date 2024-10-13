@@ -5,11 +5,11 @@ module IDreg(
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
     output wire [32:0]            id_to_if_bus,//{br_taken, br_target}
-    input  wire [63:0]            if_to_id_bus,//{if_inst, if_pc}
+    input  wire [65:0]            if_to_id_bus,//{if_inst, if_pc}
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [222:0]           id_to_ex_bus,
+    output wire [221:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -33,6 +33,7 @@ module IDreg(
     wire        id_mem_we;
     wire        id_op_st_ld_b;             // byte
     wire        id_op_st_ld_h;             // half word
+    wire        id_op_st_ld_w;             // word
     wire        id_op_st_ld_u;         // zero extended
 
     wire        dst_is_r1;
@@ -117,6 +118,8 @@ module IDreg(
     wire        inst_csxchg;
     wire        inst_ertn;
     wire        inst_syscall;
+    wire        inst_break;
+    wire        no_inst;
 
     wire        need_ui5;
     wire        need_si12;
@@ -167,8 +170,13 @@ module IDreg(
 
     // 异常相关
     wire        id_excep_en;
-    wire [5:0]  id_excep_ecode;
+    wire        id_excep_SYSCALL;
+    wire        id_excep_BRK;
+    wire        id_excep_INE;
     wire [8:0]  id_excep_esubcode;
+
+    wire        if_excep_en;
+    wire        id_excep_ADEF;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -190,9 +198,9 @@ module IDreg(
     end
     always @(posedge clk) begin
         if(~resetn)
-            {id_inst, id_pc} <= 64'b0;
+            {id_inst, id_pc, if_excep_en, id_excep_ADEF} <= 66'b0;
         if(if_to_id_valid & id_allowin) begin
-            {id_inst, id_pc} <= if_to_id_bus;
+            {id_inst, id_pc, if_excep_en, id_excep_ADEF} <= if_to_id_bus;
         end
     end
 
@@ -214,6 +222,7 @@ module IDreg(
                            id_pc,               //32 bit
                            id_op_st_ld_b,       // 1 bit
                            id_op_st_ld_h,       // 1 bit
+                           if_op_st_ld_w,       // 1 bit
                            id_op_st_ld_u,       // 1 bit
                            id_csr_re,           // 1 bit
                            id_csr_we,           // 1 bit
@@ -221,7 +230,10 @@ module IDreg(
                            id_csr_wmask,         // 32 bit
                            id_ertn_flush,        // 1 bit
                            id_excep_en,          // 1 bit
-                           id_excep_ecode,       // 6 bit
+                           id_excep_ADEF,        // 1 bit
+                           id_excep_SYSCALL,       // 1 bit
+                           id_excep_BRK,         // 1 bit
+                           id_excep_INE,         // 1 bit
                            id_excep_esubcode     // 9 bit
                           };
 
@@ -297,6 +309,12 @@ module IDreg(
     assign inst_csxchg = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
     assign inst_ertn   = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
     assign inst_syscall= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
+    assign inst_break  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
+    assign no_inst = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w | inst_srli_w | inst_srai_w  
+                    | inst_addi_w | inst_ld_w | inst_st_w | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu
+                    | inst_lu12i_w | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddul2i
+                    | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_ld_b | inst_ld_h | inst_ld_bu
+                    | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break);          //指令不存在
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
@@ -416,6 +434,7 @@ module IDreg(
 
     assign id_op_st_ld_b      = op_25_22[1:0] == 2'd0;
     assign id_op_st_ld_h      = op_25_22[1:0] == 2'd1;
+    assign id_op_st_ld_w      = inst_ld_w | inst_st_w;
     assign id_op_st_ld_u      = op_25_22[3];
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -460,9 +479,11 @@ module IDreg(
     assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;
 
     assign id_ertn_flush = inst_ertn;
-// 异常处理
-    assign id_excep_en =        inst_syscall;
-    assign id_excep_ecode =     6'hb;   // SYSCALL
-    assign id_excep_esubcode =  6'h0;
+// 系统调用,断点，指令不存在异常处理
+    assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
+    assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
+    assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常
+    assign id_excep_en =        id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+    assign id_excep_esubcode =  9'h0;
 
 endmodule

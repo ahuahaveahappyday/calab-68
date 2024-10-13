@@ -37,7 +37,7 @@
 `define ECODE_ADE           5'h8
 `define ECODE_ALE           5'h9    
 // ESUBCODE
-`define ESUBCODE_ADEF       1
+`define ESUBCODE_ADEF       0
 module CSRfile(
     input  wire        clk,
     input  wire        resetn,
