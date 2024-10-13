@@ -5,7 +5,7 @@
 `define CSR_ESTAT           14'h5
 `define CSR_ERA             14'h6
 `define CSR_BADV            14'h7
-`define CSR_EENTRY          14'h12
+`define CSR_EENTRY          14'hc
 `define CSR_SAVE0           14'h30
 `define CSR_SAVE1           14'h31
 `define CSR_SAVE2           14'h32
