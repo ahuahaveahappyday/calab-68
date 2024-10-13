@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [206:0]           id_to_ex_bus,
+    output wire [222:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -59,6 +59,7 @@ module IDreg(
     wire [15:0] i16;
     wire [25:0] i26;
     wire [13:0] csr_num;
+    wire [14:0] code;
 
     wire [63:0] op_31_26_d;
     wire [15:0] op_25_22_d;
@@ -115,6 +116,7 @@ module IDreg(
     wire        inst_csrwr;
     wire        inst_csxchg;
     wire        inst_ertn;
+    wire        inst_syscall;
 
     wire        need_ui5;
     wire        need_si12;
@@ -162,6 +164,11 @@ module IDreg(
     wire [31:0] id_csr_wmask;
 
     wire        id_ertn_flush;
+
+    // 异常相关
+    wire        id_excep_en;
+    wire [5:0]  id_excep_ecode;
+    wire [8:0]  id_excep_esubcode;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -212,7 +219,10 @@ module IDreg(
                            id_csr_we,           // 1 bit
                            id_csr_num,           // 14 bit
                            id_csr_wmask,         // 32 bit
-                           id_ertn_flush        // 1 bit
+                           id_ertn_flush,        // 1 bit
+                           id_excep_en,          // 1 bit
+                           id_excep_ecode,       // 6 bit
+                           id_excep_esubcode     // 9 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -228,6 +238,7 @@ module IDreg(
     assign i16       = id_inst[25:10];
     assign i26       = {id_inst[ 9: 0], id_inst[25:10]};
     assign csr_num   = {id_inst[23:10]};
+    assign code      = id_inst[14:0];
 
     decoder_6_64 u_dec0(.in(op_31_26 ), .out(op_31_26_d ));
     decoder_4_16 u_dec1(.in(op_25_22 ), .out(op_25_22_d ));
@@ -285,6 +296,7 @@ module IDreg(
     assign inst_csrwr  = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj == 5'b1;
     assign inst_csxchg = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
     assign inst_ertn   = op_31_26_d[6'h06] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
+    assign inst_syscall= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
@@ -447,5 +459,9 @@ module IDreg(
     assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;
 
     assign id_ertn_flush = inst_ertn;
+// 异常处理
+    assign id_excep_en =        inst_syscall;
+    assign id_excep_ecode =     6'hb;   // SYSCALL
+    assign id_excep_esubcode =  6'h0;
 
 endmodule

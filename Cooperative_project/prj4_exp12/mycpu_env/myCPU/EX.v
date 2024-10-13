@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [206:0] id_to_ex_bus,
+    input wire [222:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [156:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [172:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     //ex模块与数据存储器交互
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -29,8 +29,6 @@ module EXEreg(
     reg         ex_mem_we;//store指令码
     reg         ex_rf_we;//寄存器写使能
     reg  [4 :0] ex_rf_waddr;//寄存器写地址
-    //reg  [3:0]  ex_ld_st_type;  // to identify different type of load and store
-                                //st.b: 0x01000; st.h: 0x0101; st.w: 0x0110
     reg         ex_op_st_ld_b;
     reg         ex_op_st_ld_h;
     reg         ex_op_st_ld_u;
@@ -39,6 +37,9 @@ module EXEreg(
     reg  [13:0] ex_csr_num;
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
+    reg         ex_excep_en;
+    reg  [5:0]  ex_excep_ecode;
+    reg  [8:0]  ex_excep_esubcode;
     
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
@@ -67,12 +68,14 @@ module EXEreg(
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u, ex_csr_re, 
-              ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush}       <= {207{1'b0}};
+              ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
+              ex_excep_en, ex_excep_ecode, ex_excep_esubcode}       <= {223{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_u,ex_csr_re, 
-             ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush}        <= id_to_ex_bus;    
+             ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
+             ex_excep_en, ex_excep_ecode, ex_excep_esubcode}        <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -120,7 +123,10 @@ module EXEreg(
                                 ex_csr_we,                  // 1 bit
                                 ex_csr_num,                  // 14 bit        
                                 ex_csr_wmask,                // 32 bit
-                                ex_ertn_flush               // 1 bit
+                                ex_ertn_flush,               // 1 bit
+                                ex_excep_en,                 // 1 bit
+                                ex_excep_ecode,             // 6 bit
+                                ex_excep_esubcode           // 9 bit
                                 };
 
 endmodule

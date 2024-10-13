@@ -4,11 +4,11 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [156:0]ex_to_mem_bus, 
+    input  wire [172:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [150:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [166:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与dram交互接口
@@ -27,8 +27,6 @@ module MEMreg(
     reg  [4 :0] mem_rf_waddr;
     reg  [31:0] mem_rkd_value;//源寄存器2读出的值
     reg  [1:0]  mem_data_sram_addr;
-    // reg  [3:0]  mem_ld_st_type;     // ld.b: 0x0000 ; ld.h: 0x0001; ld.w: 0010; ld.bu: 0x1000; ld.hu: 0x1001; 
-                                    // st.b: 0x01000; st.h: 0x0101; st.w: 0x0110
     reg         mem_op_st_ld_b;
     reg         mem_op_st_ld_h;
     reg         mem_op_st_ld_u;
@@ -37,6 +35,9 @@ module MEMreg(
     reg  [13:0] mem_csr_num;
     reg  [31:0] mem_csr_wmask;
     reg         mem_ertn_flush;
+    reg         mem_excep_en;
+    reg [5:0]   mem_excep_ecode;
+    reg [8:0]   mem_excep_esubcode;
 
     wire        mem_ready_go;
     wire [31:0] mem_rf_wdata;
@@ -105,6 +106,9 @@ module MEMreg(
                             mem_csr_num,                 // 14 bit
                             mem_csr_wmask,               // 32 bit
                             mem_csr_wvalue,               // 32 bit
-                            mem_ertn_flush              // 1 bit
+                            mem_ertn_flush,              // 1 bit
+                            mem_excep_en,               // 1 bit
+                            mem_excep_ecode,            // 6 bit
+                            mem_excep_esubcode          // 9 bit
                             };               
 endmodule
