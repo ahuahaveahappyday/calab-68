@@ -30,9 +30,7 @@ module WBreg(
     output wire [31:0] wb_ex_pc,
 
 
-    output wire        ertn_flush,
-    output wire        ex_flush
-    
+    output wire        ertn_flush
 );
     
     wire        wb_ready_go;

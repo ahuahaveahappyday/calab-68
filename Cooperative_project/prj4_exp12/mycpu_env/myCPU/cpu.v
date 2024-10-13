@@ -56,7 +56,6 @@ module mycpu_top(
     wire [31:0]     wb_vaddr;
 
     wire            ertn_flush;
-    wire            ex_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
     
@@ -75,7 +74,7 @@ module mycpu_top(
         .if_to_id_valid(if_to_id_valid),
         .if_to_id_bus(if_to_id_bus),
 
-        .flush(ertn_flush || ex_flush)
+        .flush(ertn_flush || wb_ex)
     );
 
     IDreg my_idReg(
@@ -95,7 +94,7 @@ module mycpu_top(
         .mem_to_id_bus(mem_to_id_bus),
         .ex_to_id_bus(ex_to_id_bus),
 
-        .flush(ertn_flush || ex_flush)
+        .flush(ertn_flush || wb_ex)
     );
 
     EXEreg my_exeReg(
@@ -119,7 +118,7 @@ module mycpu_top(
         .data_sram_addr(data_sram_addr),
         .data_sram_wdata(data_sram_wdata),
 
-        .flush(ertn_flush || ex_flush)
+        .flush(ertn_flush || wb_ex)
     );
 
     MEMreg my_memReg(
@@ -139,7 +138,7 @@ module mycpu_top(
 
         .data_sram_rdata(data_sram_rdata),
 
-        .flush(ertn_flush || ex_flush)
+        .flush(ertn_flush || wb_ex)
 
     ) ;
 
@@ -167,7 +166,6 @@ module mycpu_top(
         .csr_wvalue(csr_wvalue),
 
         .ertn_flush(ertn_flush),
-        .ex_flush(ex_flush),
 
         .wb_ex(wb_ex),
         .wb_ecode(wb_ecode),
