@@ -14,16 +14,22 @@ module WBreg(
     output wire [37:0] wb_to_id_bus,  // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     //wb与if模块交互接口
     output wire [31:0] wb_to_if_bus, // {era}
-    //mem与csr_file模块交互接口
+    //mem与csr_file模块指令访问
     output wire        csr_re,
     output wire [13:0] csr_num,
     input  wire [31:0] csr_rvalue,
-
     output wire        csr_we,
     output wire [31:0] csr_wmask,
     output wire [31:0] csr_wvalue,
+    //mem与csr_file模块异常
+    output wire        wb_ex,
+    output wire [5:0]  wb_ecode,
+    output wire [8:0]  wb_esubcode,
+    output wire [31:0] wb_ex_pc,
+
 
     output wire        ertn_flush
+    
 );
     
     wire        wb_ready_go;
@@ -89,4 +95,9 @@ module WBreg(
 //清空流水线
     assign ertn_flush = wb_ertn_flush;
     assign wb_to_if_bus = csr_rvalue;
+// 异常处理
+    assign wb_ex =      wb_excep_en & wb_valid;
+    assign wb_ecode =   wb_excep_ecode;
+    assign wb_esubcode =wb_excep_esubcode;
+    assign wb_ex_pc =   wb_pc;
 endmodule
