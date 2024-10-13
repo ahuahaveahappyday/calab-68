@@ -61,6 +61,8 @@ module WBreg(
     always @(posedge clk) begin
         if(~resetn)
             wb_valid <= 1'b0;
+        else if(wb_ex || ertn_flush)
+            wb_valid <= 1'b0;
         else if(wb_allowin)
             wb_valid <= mem_to_wb_valid; 
     end

@@ -66,7 +66,7 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             if_pc <= 32'h1bfffffc;
-        else if(if_allowin)
+        else if(if_allowin || flush)
             if_pc <= pre_pc;
     end
 
