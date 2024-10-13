@@ -47,7 +47,9 @@ module IFreg(
 
 //流水线控制信号
     assign if_ready_go      = 1'b1;
-    assign if_allowin       = ~if_valid | if_ready_go & id_allowin;     
+    assign if_allowin       =   ~if_valid 
+                                | if_ready_go & id_allowin 
+                                | flush;     
     assign if_to_id_valid   = if_valid & if_ready_go;
 
 //pre_IF阶段提前生成下一条指令的PC
@@ -66,7 +68,7 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             if_pc <= 32'h1bfffffc;
-        else if(if_allowin || flush)
+        else if(if_allowin)
             if_pc <= pre_pc;
     end
 
