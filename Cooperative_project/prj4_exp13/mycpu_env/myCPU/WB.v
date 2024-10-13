@@ -47,7 +47,7 @@ module WBreg(
     reg  [31:0] wb_csr_wmask;
     reg  [31:0] wb_csr_wvalue;
     reg         wb_ertn_flush;
-    reg         wb_excep_en;
+    wire        wb_excep_en;
     reg         wb_excep_ADEF;
     reg         wb_excep_SYSCALL;
     reg         wb_excep_ALE;
@@ -55,7 +55,7 @@ module WBreg(
     reg         wb_excep_INE;
     reg  [8:0]  wb_excep_esubcode;
 
-    wire        mem_excep_en;
+    reg        mem_excep_en;
 
     wire [31:0] final_rf_wdata;
 

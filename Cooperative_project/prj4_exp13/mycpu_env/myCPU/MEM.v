@@ -45,7 +45,7 @@ module MEMreg(
     reg         mem_excep_INE;
     reg [8:0]   mem_excep_esubcode;
 
-    wire        ex_excep_en;
+    reg         ex_excep_en;
 
     wire        mem_ready_go;
     wire [31:0] mem_rf_wdata;

@@ -175,8 +175,8 @@ module IDreg(
     wire        id_excep_INE;
     wire [8:0]  id_excep_esubcode;
 
-    wire        if_excep_en;
-    wire        id_excep_ADEF;
+    reg        if_excep_en;
+    reg        id_excep_ADEF;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ module IDreg(
                            id_pc,               //32 bit
                            id_op_st_ld_b,       // 1 bit
                            id_op_st_ld_h,       // 1 bit
-                           if_op_st_ld_w,       // 1 bit
+                           id_op_st_ld_w,       // 1 bit
                            id_op_st_ld_u,       // 1 bit
                            id_csr_re,           // 1 bit
                            id_csr_we,           // 1 bit
@@ -467,13 +467,14 @@ module IDreg(
                         conflict_r1_wb  ? wb_rf_wdata : rf_rdata1; 
     assign rkd_value =  conflict_r2_ex ? ex_rf_wdata:
                         conflict_r2_mem ? mem_rf_wdata:
-                        conflict_r2_wb  ? wb_rf_wdata : rf_rdata2; 
+                        conflict_r2_wb  ? wb_rf_wdata : rf_rdata2;
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 // CSR读写
     assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg || inst_ertn;
     assign id_csr_num = inst_ertn ?     14'h6           // CSR_ERA
                         :id_excep_en ?   14'hc           // CSR_EENTRY
-                                        :csr_num; 
+                                        :csr_num;
 
     assign id_csr_we  = inst_csrwr || inst_csxchg;
     assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;

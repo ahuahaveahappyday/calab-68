@@ -43,7 +43,7 @@ module EXEreg(
     wire        ex_excep_en;
     reg         ex_excep_ADEF;
     reg         ex_excep_SYSCALL;
-    reg         ex_excep_ALE;
+    wire         ex_excep_ALE;
     reg         ex_excep_BRK;
     reg         ex_excep_INE;
     reg  [8:0]  ex_excep_esubcode;
