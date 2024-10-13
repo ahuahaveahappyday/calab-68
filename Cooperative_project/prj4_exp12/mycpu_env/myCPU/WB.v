@@ -14,6 +14,8 @@ module WBreg(
     output wire [37:0] wb_to_id_bus,  // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     //wb与if模块交互接口
     output wire [31:0] wb_to_if_bus, // {era}
+    //wb与ex模块交互接口
+    output wire        wb_to_ex_bus,
     //mem与csr_file模块指令访问
     output wire        csr_re,
     output wire [13:0] csr_num,
@@ -79,7 +81,7 @@ module WBreg(
 //模块间通信
     assign final_rf_wdata = wb_csr_re ? csr_rvalue : wb_rf_wdata;
     assign wb_to_id_bus = {wb_rf_we & wb_valid, wb_rf_waddr, final_rf_wdata};
-
+    assign wb_to_ex_bus = wb_excep_en & wb_valid;
     //debug信号
     assign debug_wb_pc = wb_pc;
     assign debug_wb_rf_wdata = final_rf_wdata;
@@ -98,6 +100,6 @@ module WBreg(
 // 异常处理
     assign wb_ex =      wb_excep_en & wb_valid;
     assign wb_ecode =   wb_excep_ecode;
-    assign wb_esubcode =wb_excep_esubcode;
+    assign wb_esubcode= wb_excep_esubcode;
     assign wb_ex_pc =   wb_pc;
 endmodule

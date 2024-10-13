@@ -10,6 +10,8 @@ module EXEreg(
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
     output wire [172:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    input  wire        mem_to_ex_bus,   // ex_en
+    input  wire        wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
@@ -48,6 +50,8 @@ module EXEreg(
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
 
     wire        ex_res_from_wb;
+    wire        mem_excep_en;
+    wire        wb_excep_en;
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
@@ -92,7 +96,7 @@ module EXEreg(
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
     //与内存交互接口定义
-    assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid;//load 或者 store 指令有效的时候，启动sram片选信号
+    assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid && ~mem_excep_en && ~wb_excep_en;//load 或者 store 指令有效的时候，启动sram片选信号
     assign data_sram_we     = {4{ex_mem_we & ex_valid}} & ex_sram_we;//store 指令有效，内存写使能启动
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
     assign data_sram_wdata  =   ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:

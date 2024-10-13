@@ -11,6 +11,8 @@ module MEMreg(
     output wire [166:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    //mem与ex模块交互接口
+    output wire        mem_to_ex_bus,   // ex
     //mem与dram交互接口
     input  wire [31:0] data_sram_rdata,
 
@@ -110,5 +112,6 @@ module MEMreg(
                             mem_excep_en,               // 1 bit
                             mem_excep_ecode,            // 6 bit
                             mem_excep_esubcode          // 9 bit
-                            };               
+                            };        
+    assign mem_to_ex_bus  = mem_excep_en & mem_valid;    
 endmodule
