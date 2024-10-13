@@ -18,7 +18,7 @@ module EXEreg(
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
 
-    input  wire         ertn_flush
+    input  wire         flush
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
     reg         ex_valid;
@@ -62,7 +62,7 @@ module EXEreg(
     always @(posedge clk) begin
         if(~resetn)
             ex_valid <= 1'b0;
-        else if(ertn_flush)
+        else if(flush)
             ex_valid <= 1'b0;
         else if(ex_allowin)
             ex_valid <= id_to_ex_valid; 

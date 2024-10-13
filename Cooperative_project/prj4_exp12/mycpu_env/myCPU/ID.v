@@ -15,7 +15,7 @@ module IDreg(
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     input  wire [39:0]            ex_to_id_bus,  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 
-    input  wire                   ertn_flush
+    input  wire                   flush
 );
     wire        stuck;
     wire        id_ready_go;
@@ -183,7 +183,7 @@ module IDreg(
     always @(posedge clk) begin
         if(~resetn)
             id_valid <= 1'b0;
-        else if(br_taken || ertn_flush)
+        else if(br_taken || flush)
             id_valid <= 1'b0;
         else if(id_allowin)
             id_valid <= if_to_id_valid;

@@ -30,7 +30,8 @@ module WBreg(
     output wire [31:0] wb_ex_pc,
 
 
-    output wire        ertn_flush
+    output wire        ertn_flush,
+    output wire        ex_flush
     
 );
     
@@ -99,6 +100,7 @@ module WBreg(
     assign wb_to_if_bus = csr_rvalue;
 // 异常处理
     assign wb_ex =      wb_excep_en & wb_valid;
+    assign ex_flush =   wb_excep_en & wb_valid;     // 清空流水线
     assign wb_ecode =   wb_excep_ecode;
     assign wb_esubcode= wb_excep_esubcode;
     assign wb_ex_pc =   wb_pc;

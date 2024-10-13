@@ -15,7 +15,7 @@ module IFreg(
     //if与wb交互接口
     input wire  [31:0]  wb_to_if_bus,
     //etrn清空流水线
-    input  wire         ertn_flush
+    input  wire         flush
 );
 //if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;//寄存if流水级是否有指令
@@ -52,7 +52,7 @@ module IFreg(
 
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           = if_pc + 3'h4;  
-    assign pre_pc           =   ertn_flush ? ertn_era
+    assign pre_pc           =   flush ? ertn_era
                                 : br_taken ? br_target 
                                 : seq_pc;
 

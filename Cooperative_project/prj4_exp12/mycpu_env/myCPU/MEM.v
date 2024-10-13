@@ -16,7 +16,7 @@ module MEMreg(
     //mem与dram交互接口
     input  wire [31:0] data_sram_rdata,
 
-    input  wire         ertn_flush
+    input  wire         flush
 
 );
 //MEM模块需要的寄存器，寄存当前时钟周期的信号
@@ -61,7 +61,7 @@ module MEMreg(
     always @(posedge clk) begin
         if(~resetn)
             mem_valid <= 1'b0;
-        else if(ertn_flush)
+        else if(flush)
             mem_valid <= 1'b0;
         else
             mem_valid <= ex_to_mem_valid & mem_allowin; 

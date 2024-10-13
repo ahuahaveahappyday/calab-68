@@ -39,6 +39,8 @@ module mycpu_top(
     wire [39:0]ex_to_id_bus;
     wire [38:0]mem_to_id_bus;
     wire [37:0]wb_to_id_bus;
+    wire       wb_to_ex_bus;
+    wire       mem_to_ex_bus;
 
     wire            csr_re;
     wire [13:0]     csr_num;
@@ -54,6 +56,7 @@ module mycpu_top(
     wire [31:0]     wb_vaddr;
 
     wire            ertn_flush;
+    wire            ex_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
     
@@ -72,7 +75,7 @@ module mycpu_top(
         .if_to_id_valid(if_to_id_valid),
         .if_to_id_bus(if_to_id_bus),
 
-        .ertn_flush(ertn_flush)
+        .flush(ertn_flush || ex_flush)
     );
 
     IDreg my_idReg(
@@ -92,7 +95,7 @@ module mycpu_top(
         .mem_to_id_bus(mem_to_id_bus),
         .ex_to_id_bus(ex_to_id_bus),
 
-        .ertn_flush(ertn_flush)
+        .flush(ertn_flush || ex_flush)
     );
 
     EXEreg my_exeReg(
@@ -107,13 +110,16 @@ module mycpu_top(
         .mem_allowin(mem_allowin),
         .ex_to_mem_valid(ex_to_mem_valid),
         .ex_to_mem_bus(ex_to_mem_bus),
+
+        .wb_to_ex_bus(wb_to_ex_bus),
+        .mem_to_ex_bus(mem_to_ex_bus),
         
         .data_sram_en(data_sram_en),
         .data_sram_we(data_sram_we),
         .data_sram_addr(data_sram_addr),
         .data_sram_wdata(data_sram_wdata),
 
-        .ertn_flush(ertn_flush)
+        .flush(ertn_flush || ex_flush)
     );
 
     MEMreg my_memReg(
@@ -129,10 +135,11 @@ module mycpu_top(
         .mem_to_wb_bus(mem_to_wb_bus),
 
         .mem_to_id_bus(mem_to_id_bus),
+        .mem_to_ex_bus(mem_to_ex_bus),
 
         .data_sram_rdata(data_sram_rdata),
 
-        .ertn_flush(ertn_flush)
+        .flush(ertn_flush || ex_flush)
 
     ) ;
 
@@ -150,6 +157,7 @@ module mycpu_top(
         .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
         .wb_to_id_bus(wb_to_id_bus),
+        .wb_to_ex_bus(wb_to_ex_bus),
 
         .csr_re(csr_re),
         .csr_num(csr_num),
@@ -159,6 +167,7 @@ module mycpu_top(
         .csr_wvalue(csr_wvalue),
 
         .ertn_flush(ertn_flush),
+        .ex_flush(ex_flush),
 
         .wb_ex(wb_ex),
         .wb_ecode(wb_ecode),
