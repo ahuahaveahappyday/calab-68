@@ -59,6 +59,9 @@ module mycpu_top(
     wire            ertn_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
+    // exp12暂时设置为0
+    assign hw_int_in = 8'b0;
+    assign ipi_int_in = 1'b0;
     
     IFreg my_ifReg(
         .clk(clk),
@@ -195,8 +198,8 @@ module mycpu_top(
 
         .ertn_flush(ertn_flush),
 
-        .hw_int_in(),
-        .ipi_int_in()
+        .hw_int_in(hw_int_in),
+        .ipi_int_in(ipi_int_in)
 
     );
 endmodule

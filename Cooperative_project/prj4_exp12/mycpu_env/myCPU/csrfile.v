@@ -294,7 +294,7 @@ wire [31:0] csr_save3_rvalue;
 assign csr_crmd_rvalue =    {23'b0, csr_crmd_datm, csr_crmd_datf, csr_crmd_pg, 
                             csr_crmd_da, csr_crmd_ie, csr_crmd_plv};
 assign csr_prmd_rvalue =    {29'b0, csr_prmd_pie, csr_prmd_pplv};
-assign csr_estat_rvalue=    {19'b0, csr_estat_esubcode, csr_estat_ecode, 1'b0, csr_estat_is};
+assign csr_estat_rvalue=    {1'b0, csr_estat_esubcode, csr_estat_ecode, 3'b0, csr_estat_is};
 assign csr_era_rvalue  =    csr_era_pc;
 assign csr_eentry_rvalue=   {csr_eentry_va, 6'b0};
 assign csr_save0_rvalue=    csr_save0_data;
