@@ -92,7 +92,7 @@ module WBreg(
     assign csr_re = wb_csr_re;
     assign csr_num = wb_csr_num;
 
-    assign csr_we = wb_csr_we;
+    assign csr_we = wb_csr_we & wb_valid;
     assign csr_wmask = wb_csr_wmask;
     assign csr_wvalue = wb_csr_wvalue;
 //清空流水线
