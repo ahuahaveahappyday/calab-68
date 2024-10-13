@@ -145,7 +145,7 @@ always @(posedge clk)begin
         csr_prmd_pplv <=     csr_crmd_plv;
         csr_prmd_pie  <=     csr_crmd_ie;
     end
-    else if(csr_we && csr_num == `CSR_CRMD)     // inst access
+    else if(csr_we && csr_num == `CSR_PRMD)     // inst access
         csr_prmd_pplv <=     csr_wmask[`CSR_PRMD_PPLV] & csr_wvalue[`CSR_PRMD_PPLV]
                             | ~csr_wmask[`CSR_PRMD_PPLV] & csr_prmd_pplv;
         csr_prmd_pie  <=     csr_wmask[`CSR_PRMD_PIE] & csr_wvalue[`CSR_PRMD_PIE]
