@@ -41,6 +41,7 @@ module mycpu_top(
     wire [37:0]wb_to_id_bus;
     wire       wb_to_ex_bus;
     wire       mem_to_ex_bus;
+    wire [31:0]wb_to_if_bus;
 
     wire            csr_re;
     wire [13:0]     csr_num;
@@ -73,6 +74,7 @@ module mycpu_top(
         .id_to_if_bus(id_to_if_bus),
         .if_to_id_valid(if_to_id_valid),
         .if_to_id_bus(if_to_id_bus),
+        .wb_to_if_bus(wb_to_if_bus),
 
         .flush(ertn_flush || wb_ex)
     );
@@ -157,6 +159,7 @@ module mycpu_top(
 
         .wb_to_id_bus(wb_to_id_bus),
         .wb_to_ex_bus(wb_to_ex_bus),
+        .wb_to_if_bus(wb_to_if_bus),
 
         .csr_re(csr_re),
         .csr_num(csr_num),
