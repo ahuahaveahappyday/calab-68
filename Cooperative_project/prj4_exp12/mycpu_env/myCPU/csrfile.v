@@ -10,6 +10,9 @@
 `define CSR_SAVE1           14'h31
 `define CSR_SAVE2           14'h32
 `define CSR_SAVE3           14'h33
+`define CSR_TID             14'h40      \\
+`define CSR_TCFG            14'h41      \\
+`define CSR_TVAL            14'h42      \\
 `define CSR_TICLR           14'h44
 // INDEX OF DOMAIN
 `define CSR_CRMD_PLV        1:0
@@ -25,6 +28,10 @@
 `define CSR_ERA_PC          31:0
 `define CSR_EENTRY_VA       31:6
 `define CSR_SAVE_DATA       31:0
+`define CSR_TID_TID         31:0
+`define CSR_TCFG_EN         0
+`define CSR_TCFG_PERIOD     1
+`define CSR_TCFG_INITV      31:2
 `define CSR_TICLR_CLR       0
 // ECODE
 `define ECODE_ADE           5'h8
@@ -73,8 +80,6 @@ reg [12:0]   csr_ecfg_lie;
 
 reg [12:0]   csr_estat_is;
 
-reg          csr_tcfg_en;
-
 reg  [5:0]     csr_estat_ecode;
 reg  [8:0]     csr_estat_esubcode;
 
@@ -89,7 +94,18 @@ reg [31:0]      csr_save1_data;
 reg [31:0]      csr_save2_data;
 reg [31:0]      csr_save3_data;
 
-reg  [31:0]  time_cnt;
+reg [31:0]      csr_tid_tid;
+
+reg          csr_tcfg_en;
+reg          csr_tcfg_periodic;
+reg [29:0]   csr_tcfg_initval;
+
+wire [31:0]  tcfg_next_value;
+wire [31:0]  csr_tval;
+
+wire         csr_ticlr_clr;
+
+reg  [31:0]  timer_cnt;
 /*---------------------------CRMD---------------------------------------------------*/
 // PLV
 always @(posedge clk)begin
@@ -158,7 +174,7 @@ always @(posedge clk)begin
     csr_estat_is[9:2]   <= hw_int_in[7:0];          // come from hardware sampling
     csr_estat_is[10]    <= 1'b0;                    // reserved
 
-    if(time_cnt[31:0] == 32'b0)                     // time counter interrupt
+    if(timer_cnt[31:0] == 32'b0)                     // time counter interrupt
         csr_estat_is[11] <= 1'b1;
     else if(csr_we && csr_num == `CSR_TICLR && csr_wmask[`CSR_TICLR_CLR] && csr_wvalue[`CSR_TICLR_CLR])
         csr_estat_is[11] <= 1'b0;
@@ -217,7 +233,52 @@ always @(posedge clk)begin
                             | ~csr_wmask[`CSR_SAVE_DATA]  & csr_save3_data;
 end
 
+/*---------------------------TID-------------------------------------------------------*/           //add TID
+always @(posedge clk)begin
+    if(~resetn)
+        csr_tid_tid <= 32'b0;
+    else if(csr_we && csr_num == `CSR_TID)
+        csr_tid_tid <= csr_wmask[`CSR_TID_TID] & csr_wvalue[`CSR_TID_TID]
+                        | ~csr_wmask[`CSR_TID_TID] & csr_tid_tid;
+end
 
+/*---------------------------TCFG------------------------------------------------------*/           //add TCFG
+always @(posedge clk)begin
+    if(~resetn)
+        csr_tcfg_en <= 1'b0;
+    else if(csr_we && csr_num==`CSR_TCFG)
+        csr_tcfg_en <= csr_wmask[`CSR_TCFG_EN] & csr_wvalue[`CSR_TCFG_EN]
+                        | ~csr_wmask[`CSR_TCFG_EN] & csr_tcfg_en;
+    
+    if(csr_we && csr_num==`CSR_TCFG)begin
+        csr_tcfg_periodic <= csr_wmask[`CSR_TCFG_PERIOD] & csr_wvalue[`CSR_TCFG_PERIOD]
+                            | ~csr_wmask[`CSR_TCFG_PERIOD] & csr_tcfg_periodic;
+        csr_tcfg_initval  <= csr_wmask[`CSR_TCFG_INITV] & csr_wvalue[`CSR_TCFG_INITV]
+                            | ~csr_wmask[`CSR_TCFG_INITV] & csr_tcfg_initval;
+    end
+end
+
+/*---------------------------TVAL------------------------------------------------------*/           //add TVAL
+assign tcfg_next_value = csr_wmask[31:0] & csr_wvalue[31:0]
+                        | ~csr_wmask[31:0] & {csr_tcfg_initval,csr_tcfg_periodic,csr_tcfg_en};      //value of TCFG in the next clk
+
+always @(posedge clk)begin
+    if(~resetn)
+        timer_cnt <= 32'hffffffff;
+    else if(csr_we && csr_num==`CSR_TCFG && tcfg_next_value[`CSR_TCFG_EN])
+        timer_cnt <= {tcfg_next_value[`CSR_TCFG_INITV],2'b0};
+    else if(csr_tcfg_en && timer_cnt!=32'hffffffff) begin
+        if(timer_cnt[31:0]==32'b0 && csr_tcfg_periodic)
+            timer_cnt <= {csr_tcfg_initval,2'b0};
+        else
+            timer_cnt <= timer_cnt -1'b1;
+    end
+end
+
+assign csr_tval = timer_cnt[31:0];
+
+/*---------------------------TICLR------------------------------------------------------*/           //add TICLR
+assign csr_ticlr_clr = 1'b0;
 
 // read csr value---------------------------------
 wire [31:0] csr_crmd_rvalue;
