@@ -94,11 +94,11 @@ module WBreg(
     assign csr_wmask = wb_csr_wmask;
     assign csr_wvalue = wb_csr_wvalue;
 //清空流水线
-    assign ertn_flush = wb_ertn_flush;
+    assign ertn_flush = wb_ertn_flush & wb_valid;
     assign wb_to_if_bus = csr_rvalue;
 // 异常处理
     assign wb_ex =      wb_excep_en & wb_valid;
-    assign ex_flush =   wb_excep_en & wb_valid;     // 清空流水线
+    // assign ex_flush =   wb_excep_en & wb_valid;     // 清空流水线
     assign wb_ecode =   wb_excep_ecode;
     assign wb_esubcode= wb_excep_esubcode;
     assign wb_ex_pc =   wb_pc;

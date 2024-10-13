@@ -71,13 +71,15 @@ module MEMreg(
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
-             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush} <= 157'b0;
+             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
+             mem_excep_en, mem_excep_ecode, mem_excep_esubcode} <= 173'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
-            mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush} <= ex_to_mem_bus;
+            mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
+             mem_excep_en, mem_excep_ecode, mem_excep_esubcode} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级

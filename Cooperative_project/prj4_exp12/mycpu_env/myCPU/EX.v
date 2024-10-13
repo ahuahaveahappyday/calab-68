@@ -92,6 +92,9 @@ module EXEreg(
         .alu_result     (ex_alu_result),
         .complete       (alu_complete)
     );
+// 来自mem和wb的异常数据
+    assign mem_excep_en = mem_to_ex_bus;
+    assign wb_excep_en  = wb_to_ex_bus;
 // 寄存器写回数据来自wb级
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
