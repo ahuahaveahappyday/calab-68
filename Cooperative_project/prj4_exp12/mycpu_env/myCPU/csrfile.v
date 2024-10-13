@@ -10,9 +10,9 @@
 `define CSR_SAVE1           14'h31
 `define CSR_SAVE2           14'h32
 `define CSR_SAVE3           14'h33
-`define CSR_TID             14'h40      \\
-`define CSR_TCFG            14'h41      \\
-`define CSR_TVAL            14'h42      \\
+`define CSR_TID             14'h40     
+`define CSR_TCFG            14'h41     
+`define CSR_TVAL            14'h42     
 `define CSR_TICLR           14'h44
 // INDEX OF DOMAIN
 `define CSR_CRMD_PLV        1:0

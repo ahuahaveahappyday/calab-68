@@ -292,10 +292,10 @@ module IDreg(
     assign inst_ld_hu  = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
     assign inst_st_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h4];
     assign inst_st_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h5];
-    assign inst_csrrd  = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj == 5'b0;
-    assign inst_csrwr  = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj == 5'b1;
-    assign inst_csxchg = op_31_26_d[6'h00] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
-    assign inst_ertn   = op_31_26_d[6'h06] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
+    assign inst_csrrd  = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj == 5'b0;
+    assign inst_csrwr  = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj == 5'b1;
+    assign inst_csxchg = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
+    assign inst_ertn   = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
     assign inst_syscall= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
 
 
