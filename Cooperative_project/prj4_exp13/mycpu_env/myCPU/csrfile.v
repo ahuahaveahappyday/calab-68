@@ -62,7 +62,8 @@ module CSRfile(
     input wire          ertn_flush,
     // Sampling each interrupt source each clk
     input wire [7:0]    hw_int_in,
-    input wire          ipi_int_in      // Internuclear interrupt
+    input wire          ipi_int_in,      // Internuclear interrupt
+    output              has_int
     //TODO
 
 );
@@ -106,6 +107,10 @@ wire [31:0]  csr_tval;
 wire         csr_ticlr_clr;
 
 reg  [31:0]  timer_cnt;
+
+//实现中断处理
+assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0)&& (csr_crmd_ie == 1'b1);
+
 /*---------------------------CRMD---------------------------------------------------*/
 // PLV
 always @(posedge clk)begin

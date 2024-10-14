@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [224:0] id_to_ex_bus,
+    input wire [225:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [205:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [206:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire        mem_to_ex_bus,   // ex_en
     input  wire        wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
@@ -52,6 +52,7 @@ module EXEreg(
     wire         ex_excep_ALE;
     reg         ex_excep_BRK;
     reg         ex_excep_INE;
+    reg         ex_excep_INT;
     reg  [8:0]  ex_excep_esubcode;
     
     reg         id_excep_en;
@@ -88,13 +89,13 @@ module EXEreg(
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}       <= {225{1'b0}};
+              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode}       <= {226{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}        <= id_to_ex_bus;    
+             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode}     <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -155,6 +156,7 @@ module EXEreg(
                                 ex_excep_ALE,               // 1 bit
                                 ex_excep_BRK,               // 1 bit
                                 ex_excep_INE,               // 1 bit
+                                ex_excep_INT,               //i bit
                                 ex_excep_esubcode           // 9 bit
                                 };
 

@@ -30,10 +30,10 @@ module mycpu_top(
     wire ex_to_mem_valid;
     wire mem_to_wb_valid;
 
-    wire [63:0]if_to_id_bus;
-    wire [222:0]id_to_ex_bus;
-    wire [172:0]ex_to_mem_bus;
-    wire [166:0]mem_to_wb_bus;
+    wire [65:0]if_to_id_bus;
+    wire [225:0]id_to_ex_bus;
+    wire [206:0]ex_to_mem_bus;
+    wire [167:0]mem_to_wb_bus;
 
     wire [32:0]id_to_if_bus;
     wire [39:0]ex_to_id_bus;
@@ -59,6 +59,7 @@ module mycpu_top(
     wire            ertn_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
+    wire            has_int;
 
     wire [63:0]     counter;
     // exp12暂时设置为0
@@ -101,7 +102,8 @@ module mycpu_top(
         .mem_to_id_bus(mem_to_id_bus),
         .ex_to_id_bus(ex_to_id_bus),
 
-        .flush(ertn_flush || wb_ex)
+        .flush(ertn_flush || wb_ex),
+        .has_int(has_int)
     );
 
     EXEreg my_exeReg(
@@ -203,7 +205,8 @@ module mycpu_top(
         .ertn_flush(ertn_flush),
 
         .hw_int_in(hw_int_in),
-        .ipi_int_in(ipi_int_in)
+        .ipi_int_in(ipi_int_in),
+        .has_int(has_int)
 
     );
 

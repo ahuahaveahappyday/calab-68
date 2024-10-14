@@ -9,13 +9,14 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [224:0]           id_to_ex_bus,
+    output wire [225:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     input  wire [39:0]            ex_to_id_bus,  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 
-    input  wire                   flush
+    input  wire                   flush,
+    input  wire                   has_int
 );
     wire        stuck;
     wire        id_ready_go;
@@ -176,6 +177,7 @@ module IDreg(
     wire        id_ertn_flush;
 
     // 异常相关
+    wire        id_excep_INT;//中断
     wire        id_excep_en;
     wire        id_excep_SYSCALL;
     wire        id_excep_BRK;
@@ -244,6 +246,7 @@ module IDreg(
                            id_excep_SYSCALL,       // 1 bit
                            id_excep_BRK,         // 1 bit
                            id_excep_INE,         // 1 bit
+                           id_excep_INT,         //1 bit
                            id_excep_esubcode     // 9 bit
                           };
 
@@ -501,7 +504,8 @@ module IDreg(
     assign id_read_counter_low = inst_rdcntvl_w;
     assign id_read_TID         = inst_rdcntid; 
 
-// 系统调用,断点，指令不存在异常处理
+// 中断,系统调用,断点，指令不存在异常处理
+    assign id_excep_INT     =   has_int;        // 记录中断信号
     assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
     assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
     assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常

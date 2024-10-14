@@ -4,7 +4,7 @@ module WBreg(
     //mem与wb模块交互接口
     output wire        wb_allowin,
     input  wire        mem_to_wb_valid,
-    input  wire [166:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    input  wire [167:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
     //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -55,6 +55,7 @@ module WBreg(
     reg         wb_excep_ALE;
     reg         wb_excep_BRK;
     reg         wb_excep_INE;
+    reg         wb_excep_INT;
     reg  [8:0]  wb_excep_esubcode;
 
     reg        mem_excep_en;
@@ -78,12 +79,12 @@ module WBreg(
         if(~resetn) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush
-            ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_esubcode} <= 167'b0;
+            ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_INT,wb_excep_esubcode} <= 168'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush,
-            mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_esubcode} <= mem_to_wb_bus;
+            mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE,wb_excep_INT, wb_excep_esubcode} <= mem_to_wb_bus;
         end
     end
 
@@ -111,7 +112,8 @@ module WBreg(
     assign wb_excep_en = mem_excep_en;
     assign wb_ex =      wb_excep_en & wb_valid;
     // assign ex_flush =   wb_excep_en & wb_valid;     // 清空流水线
-    assign wb_ecode =   wb_excep_ADEF    ? 6'h8 :       //ADEF
+    assign wb_ecode =   wb_excep_INT     ? 6'h0 :       //INT 中断
+                        wb_excep_ADEF    ? 6'h8 :       //ADEF
                         wb_excep_SYSCALL ? 6'hb :       //SYSCALL
                         wb_excep_BRK     ? 6'hc :       //BRK
                         wb_excep_INE     ? 6'hd :       //INE
