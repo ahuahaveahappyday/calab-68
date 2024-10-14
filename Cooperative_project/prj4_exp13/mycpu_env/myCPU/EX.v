@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [221:0] id_to_ex_bus,
+    input wire [224:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [171:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [205:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire        mem_to_ex_bus,   // ex_en
     input  wire        wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
@@ -37,6 +37,10 @@ module EXEreg(
     reg         ex_op_st_ld_h;
     reg         ex_op_st_ld_w;
     reg         ex_op_st_ld_u;
+    reg         ex_read_counter;
+    reg         ex_read_counter_low;
+    reg         ex_read_TID;
+
     reg         ex_csr_re;
     reg         ex_csr_we;
     reg  [13:0] ex_csr_num;
@@ -57,6 +61,8 @@ module EXEreg(
     wire        alu_complete;
     wire [3:0]  ex_sram_we;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
+
+    wire [31:0] ex_counter_result;
 
     wire        ex_res_from_wb;
     wire        mem_excep_en;
@@ -80,14 +86,14 @@ module EXEreg(
         if(~resetn)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
-              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_csr_re, 
-              ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}       <= {222{1'b0}};
+              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
+              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
+              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}       <= {225{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
-             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u,ex_csr_re, 
-             ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
+             ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
+             ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE, ex_excep_esubcode}        <= id_to_ex_bus;    
     end
 
@@ -135,6 +141,9 @@ module EXEreg(
                                 ex_op_st_ld_b,              // 1 bit
                                 ex_op_st_ld_h,              // 1 bit
                                 ex_op_st_ld_u,              // 1 bit
+                                ex_read_counter,            // 1 bit
+                                ex_counter_result,          // 32 bit
+                                ex_read_TID,                // 1 bit
                                 ex_csr_re,                  // 1 bit
                                 ex_csr_we,                  // 1 bit
                                 ex_csr_num,                  // 14 bit        
@@ -148,6 +157,9 @@ module EXEreg(
                                 ex_excep_INE,               // 1 bit
                                 ex_excep_esubcode           // 9 bit
                                 };
+
+// 读计数器
+    assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
 
 // 地址非对齐异常处理
     assign ex_excep_ALE = (ex_op_st_ld_h & ex_alu_result[0]) | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0]));     // 记录该条指令是否存在ALE异常

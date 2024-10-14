@@ -4,11 +4,11 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [171:0]ex_to_mem_bus, 
+    input  wire [205:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [165:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [166:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与ex模块交互接口
@@ -32,6 +32,10 @@ module MEMreg(
     reg         mem_op_st_ld_b;
     reg         mem_op_st_ld_h;
     reg         mem_op_st_ld_u;
+    reg         mem_read_counter;
+    reg  [31:0] mem_counter_result;
+    reg         mem_read_TID;
+
     reg         mem_csr_re;
     reg         mem_csr_we;
     reg  [13:0] mem_csr_num;
@@ -76,14 +80,14 @@ module MEMreg(
         if(~resetn) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
-             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
+             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_esubcode} <= 172'b0;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_esubcode} <= 206'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
-            mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u,
+            mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_esubcode} <= ex_to_mem_bus;
         end
@@ -105,12 +109,14 @@ module MEMreg(
                                 mem_word_result;
     //assign data_sram_wdata= mem_rkd_value;
     //打包
-    assign mem_rf_wdata = mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
+    assign mem_rf_wdata = mem_read_counter ? mem_counter_result : 
+                          mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
     assign mem_to_id_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb & mem_valid};
     assign mem_to_wb_bus  = {mem_rf_we & mem_valid,     // 1 bit
                             mem_rf_waddr,               // 5 bit
                             mem_rf_wdata,               // 32 bit
                             mem_pc,                     // 32 bit
+                            mem_read_TID,               // 1 bit
                             mem_csr_re,                 // 1 bit
                             mem_csr_we,                 // 1 bit
                             mem_csr_num,                 // 14 bit

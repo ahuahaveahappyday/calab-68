@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [221:0]           id_to_ex_bus,
+    output wire [224:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -119,6 +119,9 @@ module IDreg(
     wire        inst_ertn;
     wire        inst_syscall;
     wire        inst_break;
+    wire        inst_rdcntvl_w;
+    wire        inst_rdcntvh_w;
+    wire        inst_rdcntid;
     wire        no_inst;
 
     wire        need_ui5;
@@ -160,6 +163,10 @@ module IDreg(
 
     wire        id_rf_we   ;
     wire [ 4:0] id_rf_waddr;
+
+    wire        id_read_counter;
+    wire        id_read_counter_low;
+    wire        id_read_TID;
 
     wire        id_csr_re;
     wire [13:0] id_csr_num;
@@ -224,6 +231,9 @@ module IDreg(
                            id_op_st_ld_h,       // 1 bit
                            id_op_st_ld_w,       // 1 bit
                            id_op_st_ld_u,       // 1 bit
+                           id_read_counter,     // 1 bit
+                           id_read_counter_low, // 1 bit
+                           id_read_TID,         // 1 bit
                            id_csr_re,           // 1 bit
                            id_csr_we,           // 1 bit
                            id_csr_num,           // 14 bit
@@ -310,11 +320,15 @@ module IDreg(
     assign inst_ertn   = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
     assign inst_syscall= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
     assign inst_break  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
+    assign inst_rdcntvl_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h18 & rj == 5'h00;
+    assign inst_rdcntvh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h19 & rj == 5'h00;
+    assign inst_rdcntid   = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h18 & rd == 5'h00;
     assign no_inst = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w | inst_srli_w | inst_srai_w  
                     | inst_addi_w | inst_ld_w | inst_st_w | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu
                     | inst_lu12i_w | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddul2i
                     | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_ld_b | inst_ld_h | inst_ld_bu
-                    | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break);          //指令不存在
+                    | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break
+                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid);          //指令不存在
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
@@ -426,7 +440,7 @@ module IDreg(
     assign dst_is_r1        = inst_bl;
     assign dest             = dst_is_r1 ? 5'd1 : rd;
     assign id_rf_we         = gr_we ; 
-    assign id_rf_waddr      = dest; 
+    assign id_rf_waddr      = id_read_TID ? rj : dest;              // rdcntid : write in rj
 
     //处理load、store指令的信号（向后面的流水级传递）
     assign id_res_from_mem  = (inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu) & id_valid;
@@ -480,6 +494,12 @@ module IDreg(
     assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0;
 
     assign id_ertn_flush = inst_ertn;
+
+// 计数器读和TID读
+    assign id_read_counter     = inst_rdcntvl_w | inst_rdcntvh_w;
+    assign id_read_counter_low = inst_rdcntvl_w;
+    assign id_read_TID         = inst_rdcntid; 
+
 // 系统调用,断点，指令不存在异常处理
     assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
     assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常

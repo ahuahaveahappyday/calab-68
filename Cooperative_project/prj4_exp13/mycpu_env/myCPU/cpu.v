@@ -46,6 +46,7 @@ module mycpu_top(
     wire            csr_re;
     wire [13:0]     csr_num;
     wire [31:0]     csr_rvalue;
+    wire [31:0]     csr_tid_rvalue;
     wire            csr_we;
     wire [31:0]     csr_wmask;
     wire [31:0]     csr_wvalue;
@@ -171,6 +172,7 @@ module mycpu_top(
         .csr_re(csr_re),
         .csr_num(csr_num),
         .csr_rvalue(csr_rvalue),
+        .csr_tid_rvalue(csr_tid_rvalue),
         .csr_we(csr_we),
         .csr_wmask(csr_wmask),
         .csr_wvalue(csr_wvalue),
@@ -190,6 +192,7 @@ module mycpu_top(
         .csr_re(csr_re),
         .csr_num(csr_num),
         .csr_rvalue(csr_rvalue),
+        .csr_tid_rvalue(csr_tid_rvalue),
         .csr_we(csr_we),
         .csr_wmask(csr_wmask),
         .csr_wvalue(csr_wvalue),
