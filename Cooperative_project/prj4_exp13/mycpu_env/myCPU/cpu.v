@@ -59,6 +59,8 @@ module mycpu_top(
     wire            ertn_flush;
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
+
+    wire [63:0]     counter;
     // exp12暂时设置为0
     assign hw_int_in = 8'b0;
     assign ipi_int_in = 1'b0;
@@ -123,7 +125,9 @@ module mycpu_top(
         .data_sram_addr(data_sram_addr),
         .data_sram_wdata(data_sram_wdata),
 
-        .flush(ertn_flush || wb_ex)
+        .flush(ertn_flush || wb_ex),
+
+        .counter(counter)
     );
 
     MEMreg my_memReg(
@@ -201,5 +205,12 @@ module mycpu_top(
         .hw_int_in(hw_int_in),
         .ipi_int_in(ipi_int_in)
 
+    );
+
+    Stable_Counter my_counter(
+        .clk(clk),
+        .resetn(resetn),
+
+        .counter(counter)
     );
 endmodule

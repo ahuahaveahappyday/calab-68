@@ -18,7 +18,9 @@ module EXEreg(
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
 
-    input  wire         flush
+    input  wire         flush,
+
+    input  wire [63:0]  counter
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
     reg         ex_valid;
