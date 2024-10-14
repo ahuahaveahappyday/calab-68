@@ -20,7 +20,6 @@ module WBreg(
     output wire        csr_re,
     output wire [13:0] csr_num,
     input  wire [31:0] csr_rvalue,
-    input  wire [31:0] csr_tid_rvalue,
     output wire        csr_we,
     output wire [31:0] csr_wmask,
     output wire [31:0] csr_wvalue,
@@ -90,7 +89,7 @@ module WBreg(
 
 //模块间通信
     assign final_rf_wdata = wb_csr_re   ? csr_rvalue : 
-                            wb_read_TID ? csr_tid_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
+                            wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
     assign wb_to_id_bus = {wb_rf_we & wb_valid, wb_rf_waddr, final_rf_wdata};
     assign wb_to_ex_bus = wb_excep_en & wb_valid;
     //debug信号

@@ -46,7 +46,6 @@ module CSRfile(
     input wire          csr_re,         // read_enable
     input wire  [13:0]  csr_num,        // num of csr, address
     output wire [31:0]  csr_rvalue,
-    output wire [31:0]  csr_tid_rvalue, // used for rdcntid.w
     // write port
     input wire          csr_we,
     input wire  [31:0]  csr_wmask,
@@ -293,6 +292,7 @@ wire [31:0] csr_save2_rvalue;
 wire [31:0] csr_save3_rvalue;
 wire [31:0] csr_ecfg_rvalue;
 wire [31:0] csr_badv_rvalue;
+wire [31:0] csr_tid_rvalue;
 wire [31:0] csr_tcfg_rvalue;
 wire [31:0] csr_tval_rvalue;
 wire [31:0] csr_ticlr_rvalue;

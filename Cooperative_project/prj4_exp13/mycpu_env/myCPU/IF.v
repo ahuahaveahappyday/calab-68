@@ -85,7 +85,7 @@ module IFreg(
     assign inst_sram_wdata  = 32'b0;
 
     assign {br_taken, br_target} = id_to_if_bus;
-    assign if_to_id_bus = {if_inst, if_pc, if_excep_en, if_excep_ADE};          //
+    assign if_to_id_bus = {if_inst, if_pc, if_excep_en, if_excep_ADEF};          //
     assign if_inst    = inst_sram_rdata;//来自存储器的inst
 
 //取指地址错异常处理
