@@ -491,7 +491,7 @@ module IDreg(
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 // CSR读写
-    assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg || inst_ertn;
+    assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg || inst_ertn || id_read_TID;
     assign id_csr_num = inst_ertn ?     14'h6           // CSR_ERA
                         :id_excep_en ?   14'hc           // CSR_EENTRY
                         :id_read_TID ?   14'h40          // CSR_TID
