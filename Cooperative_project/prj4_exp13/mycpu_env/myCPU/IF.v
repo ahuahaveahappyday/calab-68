@@ -12,10 +12,9 @@ module IFreg(
     input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
     output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
-    //if与wb交互接口
-    input wire  [31:0]  wb_to_if_bus,
     //etrn清空流水线
-    input  wire         flush
+    input  wire         flush,
+    input  wire [31:0]  excep_entry
 );
 //if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;//寄存if流水级是否有指令
@@ -49,7 +48,7 @@ module IFreg(
     wire [31:0]  wb_csr_rvalue;
 //----------------------------------------------------------------------------------------------------------------------------------------------
 // 指令ertn读取的era
-    assign wb_csr_rvalue         = wb_to_if_bus;
+    assign wb_csr_rvalue         = excep_entry;
 
 //流水线控制信号
     assign if_ready_go      = 1'b1;

@@ -440,12 +440,12 @@ module IDreg(
     //寄存器的写地址和写使能
     assign gr_we            =   ~inst_st_w & ~inst_st_b & ~inst_st_h 
                                 & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b 
-                                & ~inst_syscall & ~inst_ertn & ~inst_break
-                                & id_valid;    
+                                & ~inst_syscall & ~inst_ertn & ~inst_break;
+                                   
                                 
     assign dst_is_r1        = inst_bl;
     assign dest             = dst_is_r1 ? 5'd1 : rd;
-    assign id_rf_we         = gr_we ; 
+    assign id_rf_we         = gr_we  & id_valid & ~id_excep_en;
     assign id_rf_waddr      = id_read_TID ? rj : dest;              // rdcntid : write in rj
 
     //处理load、store指令的信号（向后面的流水级传递）
@@ -453,7 +453,7 @@ module IDreg(
     assign id_mem_we        = (inst_st_w | inst_st_b | inst_st_h) & id_valid;  
 
     assign id_op_st_ld_b      = inst_st_b | inst_ld_b |inst_ld_bu;
-    assign id_op_st_ld_h      = inst_st_h | inst_ld_h |inst_l;
+    assign id_op_st_ld_h      = inst_st_h | inst_ld_h |inst_ld_hu;
     assign id_op_st_ld_w      = inst_ld_w | inst_st_w;
     assign id_op_st_ld_u      = inst_ld_bu | inst_ld_hu;
 

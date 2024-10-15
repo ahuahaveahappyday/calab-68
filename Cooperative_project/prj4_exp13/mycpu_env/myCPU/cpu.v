@@ -39,9 +39,8 @@ module mycpu_top(
     wire [39:0]ex_to_id_bus;
     wire [38:0]mem_to_id_bus;
     wire [37:0]wb_to_id_bus;
-    wire       wb_to_ex_bus;
-    wire       mem_to_ex_bus;
-    wire [31:0]wb_to_if_bus;
+    wire [1:0] wb_to_ex_bus;
+    wire [1:0] mem_to_ex_bus;
 
     wire            csr_re;
     wire [13:0]     csr_num;
@@ -60,6 +59,7 @@ module mycpu_top(
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
     wire            has_int;
+    wire [31:0]     excep_entry;
 
     wire [63:0]     counter;
     // exp12暂时设置为0
@@ -80,9 +80,9 @@ module mycpu_top(
         .id_to_if_bus(id_to_if_bus),
         .if_to_id_valid(if_to_id_valid),
         .if_to_id_bus(if_to_id_bus),
-        .wb_to_if_bus(wb_to_if_bus),
 
-        .flush(ertn_flush || wb_ex)
+        .flush(ertn_flush || wb_ex),
+        .excep_entry(excep_entry)
     );
 
     IDreg my_idReg(
@@ -168,7 +168,6 @@ module mycpu_top(
 
         .wb_to_id_bus(wb_to_id_bus),
         .wb_to_ex_bus(wb_to_ex_bus),
-        .wb_to_if_bus(wb_to_if_bus),
 
         .csr_re(csr_re),
         .csr_num(csr_num),
@@ -206,7 +205,8 @@ module mycpu_top(
 
         .hw_int_in(hw_int_in),
         .ipi_int_in(ipi_int_in),
-        .has_int(has_int)
+        .has_int(has_int),
+        .excep_entry(excep_entry)
 
     );
 

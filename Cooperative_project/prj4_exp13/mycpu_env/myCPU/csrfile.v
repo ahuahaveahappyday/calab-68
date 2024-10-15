@@ -63,7 +63,8 @@ module CSRfile(
     // Sampling each interrupt source each clk
     input wire [7:0]    hw_int_in,
     input wire          ipi_int_in,      // Internuclear interrupt
-    output wire         has_int
+    output wire         has_int,
+    output wire [31:0]  excep_entry
     //TODO
 
 );
@@ -319,6 +320,10 @@ assign csr_tid_rvalue  =    csr_tid_tid;
 assign csr_tcfg_rvalue =    {csr_tcfg_initval,csr_tcfg_periodic,csr_tcfg_en};
 assign csr_tval_rvalue =    csr_tval;
 assign csr_ticlr_rvalue=    {31'b0,csr_ticlr_clr};
+
+
+assign excep_entry = wb_ex ? csr_eentry_rvalue     //PC在flush时候取指的地址
+                  /*ertn_flush*/:csr_era_pc;
 
 assign csr_rvalue =         {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
                             |{32{csr_num == `CSR_PRMD}} & csr_prmd_rvalue
