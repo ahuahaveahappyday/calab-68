@@ -9,7 +9,7 @@ module EXEreg(
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [206:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [238:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire [1:0]  mem_to_ex_bus,   // ex_en
     input  wire [1:0]  wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
@@ -70,6 +70,7 @@ module EXEreg(
     wire        wb_excep_en;
     wire        mem_ertn_flush;
     wire        wb_ertn_flush;
+    wire [31:0] ex_vaddr;
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete;//等待alu完成运算
@@ -161,7 +162,8 @@ module EXEreg(
                                 ex_excep_BRK,               // 1 bit
                                 ex_excep_INE,               // 1 bit
                                 ex_excep_INT,               //i bit
-                                ex_excep_esubcode           // 9 bit
+                                ex_excep_esubcode,          // 9 bit
+                                ex_vaddr                    //32bit
                                 };
 
 // 读计数器
@@ -170,5 +172,10 @@ module EXEreg(
 // 地址非对齐异常处理
     assign ex_excep_ALE = (ex_op_st_ld_h & ex_alu_result[0]) | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0]));     // 记录该条指令是否存在ALE异常
     assign ex_excep_en = ex_excep_ALE | id_excep_en;
+    
+    assign ex_vaddr = {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
+                      {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
+                      {32{~ex_read_counter}} & ex_alu_result;
+
 
 endmodule
