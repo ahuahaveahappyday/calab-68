@@ -63,7 +63,7 @@ module CSRfile(
     // Sampling each interrupt source each clk
     input wire [7:0]    hw_int_in,
     input wire          ipi_int_in,      // Internuclear interrupt
-    output              has_int
+    output wire         has_int
     //TODO
 
 );
@@ -150,11 +150,12 @@ always @(posedge clk)begin
         csr_prmd_pplv <=     csr_crmd_plv;
         csr_prmd_pie  <=     csr_crmd_ie;
     end
-    else if(csr_we && csr_num == `CSR_PRMD)     // inst access
+    else if(csr_we && csr_num == `CSR_PRMD)  begin   // inst access
         csr_prmd_pplv <=     csr_wmask[`CSR_PRMD_PPLV] & csr_wvalue[`CSR_PRMD_PPLV]
                             | ~csr_wmask[`CSR_PRMD_PPLV] & csr_prmd_pplv;
         csr_prmd_pie  <=     csr_wmask[`CSR_PRMD_PIE] & csr_wvalue[`CSR_PRMD_PIE]
-                            | ~csr_wmask[`CSR_PRMD_PIE] & csr_prmd_pie;  
+                            | ~csr_wmask[`CSR_PRMD_PIE] & csr_prmd_pie; 
+    end 
 end
 
 
@@ -328,7 +329,7 @@ assign csr_rvalue =         {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
                             |{32{csr_num == `CSR_SAVE1}} & csr_save1_rvalue
                             |{32{csr_num == `CSR_SAVE2}} & csr_save2_rvalue
                             |{32{csr_num == `CSR_SAVE3}} & csr_save3_rvalue
-                            |{32{csr_num == `CSR_ECFG}}  & csr_tcfg_rvalue
+                            |{32{csr_num == `CSR_ECFG}}  & csr_ecfg_rvalue
                             |{32{csr_num == `CSR_BADV}}  & csr_badv_rvalue
                             |{32{csr_num == `CSR_TID}}   & csr_tid_rvalue
                             |{32{csr_num == `CSR_TCFG}}  & csr_tcfg_rvalue

@@ -96,7 +96,7 @@ module WBreg(
     //debug信号
     assign debug_wb_pc = wb_pc;
     assign debug_wb_rf_wdata = final_rf_wdata;
-    assign debug_wb_rf_we = {4{wb_rf_we & wb_valid}};//注意，这里& wb_valid不能省略！必须保证wb流水级有指令才能进行trace比对
+    assign debug_wb_rf_we = {4{wb_rf_we & wb_valid & ~wb_excep_en}};//注意，这里& wb_valid不能省略！必须保证wb流水级有指令才能进行trace比对
     assign debug_wb_rf_wnum = wb_rf_waddr;
 //csr_file模块读写信号
     assign csr_re = wb_csr_re;
