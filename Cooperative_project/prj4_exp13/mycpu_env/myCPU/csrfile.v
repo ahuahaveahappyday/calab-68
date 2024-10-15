@@ -339,7 +339,6 @@ assign csr_rvalue =         {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
                             |{32{csr_num == `CSR_TID}}   & csr_tid_rvalue
                             |{32{csr_num == `CSR_TCFG}}  & csr_tcfg_rvalue
                             |{32{csr_num == `CSR_TVAL}}  & csr_tval_rvalue
-                            |{32{csr_num == `CSR_TICLR}} & csr_ticlr_rvalue
-                            |{32{csr_num == `CSR_BADV}}  & csr_badv_rvalue;   
+                            |{32{csr_num == `CSR_TICLR}} & csr_ticlr_rvalue;   
 
 endmodule

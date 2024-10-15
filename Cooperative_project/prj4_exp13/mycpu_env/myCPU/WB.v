@@ -26,6 +26,7 @@ module WBreg(
     output wire [5:0]  wb_ecode,
     output wire [8:0]  wb_esubcode,
     output wire [31:0] wb_ex_pc,
+    output reg  [31:0] wb_vaddr,
 
 
     output wire        ertn_flush
@@ -117,4 +118,5 @@ module WBreg(
                         6'h9;                           //ALE                           
     assign wb_esubcode= wb_excep_esubcode;
     assign wb_ex_pc =   wb_pc;
+    assign wb_vaddr =   ;
 endmodule

@@ -181,7 +181,8 @@ module mycpu_top(
         .wb_ex(wb_ex),
         .wb_ecode(wb_ecode),
         .wb_esubcode(wb_esubcode),
-        .wb_ex_pc(wb_pc)
+        .wb_ex_pc(wb_pc),
+        .wb_vaddr(wb_vaddr)
     );
 
     CSRfile my_csrfild(
