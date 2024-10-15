@@ -129,6 +129,77 @@ $\bullet$
 最后，在csrfile模块中创建了所有输入输出接口后，按照讲义上的内容，以每个CSR的各个域作为基本单位，
 依次实现各个控制寄存器初始化，被指令访问和修改，被硬件电路逻辑访问和修改。
 
+\item 增加控制寄存器ECFG, BADV, TID, TCFG, TVAL, TICLR
+
+补全ECFG和BADV寄存器。
+\begin{lstlisting}[language=verilog]
+/*---------------------------ECFG---------------------------------------------------*/
+always @(posedge clk)begin
+    if(~resetn)
+        csr_ecfg_lie <= 13'b0;
+    else if (csr_we && csr_num == `CSR_ECFG)            // csr_ecfg_lie[10] == 0 
+        csr_ecfg_lie <=     csr_wmask[`CSR_ECFG_LIE] & 13'h1bff & csr_wvalue[`CSR_ECFG_LIE]
+                            | ~csr_wmask[`CSR_ECFG_LIE] & 13'h1bff & csr_ecfg_lie;
+end
+/*---------------------------ERA---------------------------------------------------*/
+always @(posedge clk)begin
+    if(wb_ex)
+        csr_era_pc <=       wb_pc;
+    else if(csr_we && csr_num == `CSR_ERA)
+        csr_era_pc <=       csr_wmask[`CSR_ERA_PC]  & csr_wvalue[`CSR_ERA_PC]
+                            | ~csr_wmask[`CSR_ERA_PC]  & csr_era_pc;
+end
+\end{lstlisting}
+假设定时器位数为32位，从全f开始递减，补全TID, TCFG, TVAL, TICLR寄存器。
+\begin{lstlisting}[language=verilog]
+/*---------------------------TID-------------------------------------------------------*/           //add TID
+always @(posedge clk)begin
+    if(~resetn)
+        csr_tid_tid <= 32'b0;
+    else if(csr_we && csr_num == `CSR_TID)
+        csr_tid_tid <= csr_wmask[`CSR_TID_TID] & csr_wvalue[`CSR_TID_TID]
+                        | ~csr_wmask[`CSR_TID_TID] & csr_tid_tid;
+end
+
+/*---------------------------TCFG------------------------------------------------------*/           //add TCFG
+always @(posedge clk)begin
+    if(~resetn)
+        csr_tcfg_en <= 1'b0;
+    else if(csr_we && csr_num==`CSR_TCFG)
+        csr_tcfg_en <= csr_wmask[`CSR_TCFG_EN] & csr_wvalue[`CSR_TCFG_EN]
+                        | ~csr_wmask[`CSR_TCFG_EN] & csr_tcfg_en;
+    
+    if(csr_we && csr_num==`CSR_TCFG)begin
+        csr_tcfg_periodic <= csr_wmask[`CSR_TCFG_PERIOD] & csr_wvalue[`CSR_TCFG_PERIOD]
+                            | ~csr_wmask[`CSR_TCFG_PERIOD] & csr_tcfg_periodic;
+        csr_tcfg_initval  <= csr_wmask[`CSR_TCFG_INITV] & csr_wvalue[`CSR_TCFG_INITV]
+                            | ~csr_wmask[`CSR_TCFG_INITV] & csr_tcfg_initval;
+    end
+end
+
+/*---------------------------TVAL------------------------------------------------------*/           //add TVAL
+assign tcfg_next_value = csr_wmask[31:0] & csr_wvalue[31:0]
+                        | ~csr_wmask[31:0] & {csr_tcfg_initval,csr_tcfg_periodic,csr_tcfg_en};      //value of TCFG in the next clk
+
+always @(posedge clk)begin
+    if(~resetn)
+        timer_cnt <= 32'hffffffff;
+    else if(csr_we && csr_num==`CSR_TCFG && tcfg_next_value[`CSR_TCFG_EN])
+        timer_cnt <= {tcfg_next_value[`CSR_TCFG_INITV],2'b0};
+    else if(csr_tcfg_en && timer_cnt!=32'hffffffff) begin
+        if(timer_cnt[31:0]==32'b0 && csr_tcfg_periodic)
+            timer_cnt <= {csr_tcfg_initval,2'b0};
+        else
+            timer_cnt <= timer_cnt -1'b1;
+    end
+end
+
+assign csr_tval = timer_cnt[31:0];
+
+/*---------------------------TICLR------------------------------------------------------*/           //add TICLR
+assign csr_ticlr_clr = 1'b0;
+\end{lstlisting}
+
 \item 增加csrrd,csrwr,csrxchg指令
 
 在ID流水级模块中，通过译码操作，解析出\verb|csr_we, csr_re, csr_num, csr_wmask|信息，并创建从ID流水级到WB流水级的
@@ -136,7 +207,10 @@ $\bullet$
 信号。
 \begin{lstlisting}[language=verilog]
   assign id_csr_re  = inst_csrrd || inst_csrwr || inst_csxchg || inst_ertn;   // 控制寄存器读使能
-  assign id_csr_num = csr_num;  // 控制寄存器访问编号
+  assign id_csr_num = inst_ertn ?     14'h6           // CSR_ERA
+                        :id_excep_en ?   14'hc           // CSR_EENTRY
+                        :id_read_TID ?   14'h40          // CSR_TID
+                                        :csr_num;
   assign id_csr_we  = inst_csrwr || inst_csxchg;  // 控制寄存器写使能
   assign id_csr_wmask = inst_csxchg ? rj_value: ~32'b0; // 控制寄存器写掩码
 
@@ -154,9 +228,7 @@ $\bullet$
 
 \item 添加ertn和syscall指令
 
-在id级添加相应的译码逻辑，生成将当前指令是ertn指令的信号，以及异常使能信号，异常类型相关信号。并依附于流水级逐级传递，
-
-至写回级模块通过第一步定义的接口，与csrfile模块
+在id级添加相应的译码逻辑，生成将当前指令是ertn指令的信号，以及异常使能信号，异常类型相关信号。并依附于流水级逐级传递至写回级模块,通过第一步定义的接口，与csrfile模块
 中的对应接口相连接。
 \begin{lstlisting}[language=verilog]
   assign id_ertn_flush = inst_ertn;   // 当前指令是ertn
@@ -165,7 +237,7 @@ $\bullet$
   assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
   assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
   assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常
-  assign id_excep_en =        id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+  assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
 \end{lstlisting}
 
 并向每个流水级增加从wb发出的清空流水级的信号flush。
@@ -184,9 +256,68 @@ $\bullet$
                             : br_taken ? br_target 
                             : seq_pc;
 \end{lstlisting}
+
+\item  添加取指地址错（ADEF）、地址非对齐（ALE）、断点（BRK）和指令不存在（INE）异常的支持
+
+从每个例外对应的判断阶段开始，其和其之后的每个阶段都添加一个1位宽的用于记录该条指令是否发生该种例外的控制信号。\par
+ADEF在pre-IF级进行判断，当取值地址不为4字节对齐时，产生ADEF例外，并在WB阶段把错误地址传给BADV寄存器。
+\begin{lstlisting}[language=verilog]
+    assign pre_if_excep_ADEF   =     pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
+    assign pre_if_excep_en =        pre_if_excep_ADEF;
+\end{lstlisting}
+INE和BRK均在ID阶段判断，当发现是相应指令时产生例外。
+\begin{lstlisting}[language=verilog]
+// 中断,系统调用,断点，指令不存在异常处理
+    assign id_excep_INT     =   has_int;        // 记录中断信号
+    assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
+    assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
+    assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常
+    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+    assign id_excep_esubcode =  9'h0;
+\end{lstlisting}
+ALE在EX阶段判断，当取半字时地址最低位为1，或取字时地址最后两位不全为0，则产生ALE例外,并记录错误地址，等到WB阶段将其传给BADV寄存器。
+\begin{lstlisting}[language=verilog]
+// 地址非对齐异常处理
+    assign ex_excep_ALE = (ex_op_st_ld_h & ex_alu_result[0]) | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0]));     // 记录该条指令是否存在ALE异常
+    assign ex_excep_en = ex_excep_ALE | id_excep_en;
+    
+    assign ex_vaddr = {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
+                      {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
+                      {32{~ex_read_counter}} & ex_alu_result;
+\end{lstlisting}
+
+\item 计数器的添加
+
+添加counter.v文件，存放计数器Stable\_Counter，没经过一个时钟周期自增1。
+\begin{lstlisting}[language=verilog]
+always @(posedge clk)begin
+    if(~resetn)
+        time_counter <= 64'b0;
+    else
+        time_counter <= time_counter + 1'b1;
+end
+\end{lstlisting}
+
+\item 添加rdcntvl.w、rdcntvh.w和rdcntid指令
+
+添加控制信号id\_read\_counter, id\_read\_counter\_low, id\_read\_TID，分别用于记录指令是否需要读取计数器的值，是否要读取计数器的低32位，指令是否要读取计数器ID。
+\begin{lstlisting}[language=verilog]
+    assign id_read_counter     = inst_rdcntvl_w | inst_rdcntvh_w;
+    assign id_read_counter_low = inst_rdcntvl_w;
+    assign id_read_TID         = inst_rdcntid; 
+\end{lstlisting}
+计数器的值在EX阶段根据ex\_read\_counter\_low完成读入。
+\begin{lstlisting}
+// 读计数器
+    assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
+\end{lstlisting}
+TID的值在WB阶段完成读入。
+\begin{lstlisting}
+    assign final_rf_wdata = wb_csr_re   ? csr_rvalue : 
+                            wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
+\end{lstlisting}
+
 \end{enumerate}
-
-
 
 
 \vspace{1ex}
@@ -200,7 +331,7 @@ $\bullet$
 在清空流水线的设计时，将wb流水级在发出flush信号时的下一个clk时，也要将wb\_valid置为0，避免重复清空流水线。
 
 使得如果IF流水级的allowin由于读后写数据相关等原因为0时，不能及时把\verb|pre_pc = wb_csr_rvalue| 发送给\verb|inst_sram|，而随着下一个clk的wb\_valid拉低，
-使从wb传到if的wb_csr_rvalue信号也失效。
+使从wb传到if的wb\_csr\_rvalue信号也失效。
 
 在这种情况下，不能正确地进行跳转到异常处理地址。
 
