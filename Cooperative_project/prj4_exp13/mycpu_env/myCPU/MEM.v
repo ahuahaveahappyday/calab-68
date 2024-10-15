@@ -84,7 +84,7 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT,mem_excep_esubcode} <= 239'b0;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT,mem_excep_esubcode,mem_vaddr} <= 239'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
