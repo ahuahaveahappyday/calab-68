@@ -104,7 +104,7 @@ module EXEreg(
 //alu的实例化
     alu u_alu(
         .clk            (clk       ),
-        .resetn         (resetn    ),
+        .resetn         (resetn && ~wb_excep_en  && ~wb_ertn_flush  ),
         .alu_op         (ex_alu_op    ),
         .alu_src1       (ex_alu_src1  ),
         .alu_src2       (ex_alu_src2  ),
