@@ -95,7 +95,7 @@
 \section{逻辑电路结构与仿真波形的截图及说明}
 \noindent
 $\bullet$
-\textbf{添加系统调用异常支持}。
+\textbf{添加系统调用异常支持、指令和中断处理}。
 \begin{enumerate}
   \item 添加控制寄存器CRMD, PRMD, ESTAT, ERA, EENTRY, SAVE0-3
   
@@ -307,15 +307,76 @@ end
     assign id_read_TID         = inst_rdcntid; 
 \end{lstlisting}
 计数器的值在EX阶段根据ex\_read\_counter\_low完成读入。
-\begin{lstlisting}
+\begin{lstlisting}[language=verilog]
 // 读计数器
     assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
 \end{lstlisting}
 TID的值在WB阶段完成读入。
-\begin{lstlisting}
+\begin{lstlisting}[language=verilog]
     assign final_rf_wdata = wb_csr_re   ? csr_rvalue : 
                             wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
 \end{lstlisting}
+
+\item 添加中断处理
+
+ 实际上，中断处理可以看作一种特殊的异常，其主要的任务也与异常的处理一致
+ 首先在控制寄存器(csrfile.v)中设置中断处理信号：
+ \begin{lstlisting}[language=verilog]
+    assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0)&& (csr_crmd_ie == 1'b1);
+ \end{lstlisting}
+ 硬件中断通过设备或中断控制器将高电平有效的中断信号连接到 8 个输入引脚上，
+ESTAT 控制状态寄存器 IS的 9..2 这八位直接对中断输入引脚的信号采样。软件中断通过 CSR 写指令对ESTAT 状态控制寄存器 IS 域的 1..0 
+这两位写 1 或写 0 进行控制。定时器中断的状态记录在 ESTAT 控制状态寄存器 IS 域的第 11 位，其中这些寄存器一一对应着cpu外部的引脚，
+\begin{lstlisting}[language=verilog]
+    assign hw_int_in = 8'b0;//硬中断接口
+    assign ipi_int_in = 1'b0;//定时器中断接口
+    always @(posedge clk)begin
+    if(~resetn)
+        csr_estat_is[1:0] <= 2'b0;
+    else if(csr_we && csr_num == `CSR_ESTAT)
+        csr_estat_is[1:0] <= csr_wmask[`CSR_ESTAT_IS10]  & csr_wvalue[`CSR_ESTAT_IS10]
+                            | ~csr_wmask[`CSR_ESTAT_IS10]  & csr_estat_is[1:0];
+
+    csr_estat_is[9:2]   <= hw_int_in[7:0];          // come from hardware sampling
+    csr_estat_is[10]    <= 1'b0;                    // reserved
+
+    if(timer_cnt[31:0] == 32'b0)                     // time counter interrupt
+        csr_estat_is[11] <= 1'b1;
+    else if(csr_we && csr_num == `CSR_TICLR && csr_wmask[`CSR_TICLR_CLR] && csr_wvalue[`CSR_TICLR_CLR])
+        csr_estat_is[11] <= 1'b0;
+
+    csr_estat_is[12]    <= ipi_int_in;   
+
+end
+\end{lstlisting}
+然后中断处理信号在ID阶段生成，并且和其他异常一起组成excep_en信号流向后面的流水级
+\begin{lstlisting}[language=verilog]
+    // 中断,系统调用,断点，指令不存在异常处理
+    assign id_excep_INT     =   has_int;        // 记录中断信号
+    assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
+    assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
+    assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常
+    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+    assign id_excep_esubcode =  9'h0;
+\end{lstlisting}
+最后中断与其他所有的异常处理在WB阶段生成相应的ecode和wb_ex信号（控制流水线清空）
+\begin{lstlisting}[language=verilog]
+    assign wb_ecode =   wb_excep_INT     ? 6'h0 :       //INT 中断
+    wb_excep_ADEF    ? 6'h8 :       //ADEF
+    wb_excep_SYSCALL ? 6'hb :       //SYSCALL
+    wb_excep_BRK     ? 6'hc :       //BRK
+    wb_excep_INE     ? 6'hd :       //INE
+    6'h9;                           //ALE                           
+    assign wb_esubcode= wb_excep_esubcode;
+    assign wb_ex =      wb_excep_en & wb_valid;
+
+\end{lstlisting}
+wb_ex信号和ertn指令信号（ertn_flush）从WB流水级传到cpu顶部，指导各个流水级进行清空（flush）操作，也就是将
+相应流水及valid拉低
+\begin{lstlisting}[language=verilog]
+    .flush(ertn_flush || wb_ex),//IF为例
+\end{lstlisting}
+
 
 \end{enumerate}
 
@@ -343,14 +404,257 @@ $\bullet$
                               | flush;    // 添加上规则，立马将allowin拉高，在当前clk发送出pc
 \end{lstlisting}
 
+\noindent
+$\bullet$
+\textbf{指令译码定义太宽泛导致异常判断出错}。
 
+问题报错如下：
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=17cm]{fig/1.png}
+  \end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/2.png}
+  \end{figure}
+查看信号波形如上，按照错误信号定位，可以追溯到是slli.w指令（1c013e38:	0040818a 	slli.w	$r10,$r12,0x0
+），这条指令本不应该出现异常
+，但是错误的发生了异常信号ex_excep_en进一步追溯发现是由ex_op_st_ld_h信号导致的。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/5.png}
+  \end{figure}
 
+查看原来的代码发现，原来的信号定义的过于宽泛，导致出现了很多错误的拉高
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/3.png}
+  \end{figure}
+进行如下修改之后，通过该测试点。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/4.png}
+  \end{figure}
+
+  \noindent
+  $\bullet$
+  \textbf{控制寄存器写入逻辑出错}。
+
+  报错信息如下：
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/6.png}
+  \end{figure}
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/7.png}
+  \end{figure}
+  查看信号波形如上，按照错误信号定位，可以定位到指令（1c0081ac:	0400040c 	csrrd	\$r12,0x1）
+  出错，错误的原因是控制寄存器prmd存储的的值出错，向前寻找上一次写改变该值的指令（图中黄线），发现
+  在这个周期虽然没有写使能信号，但是寄存器的值发生了神秘的变化，仔细观察代码逻辑，发现原来的代码
+  忘记加begin和end导致寄存器赋值逻辑出错，修改后通过。
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/8.png}
+  \end{figure}
+
+  \noindent
+    $\bullet$
+    \textbf{控制寄存器读出逻辑出错}。
+
+    报错信息如下：
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=15cm]{fig/9.png}
+      \end{figure}
+      \begin{figure}[H]
+        \centering
+        \includegraphics[width=15cm]{fig/10.png}
+      \end{figure}
+    查看信号波形如上，按照错误信号定位，可以定位到指令（1c0722f8:	0400102c 	csrwr	\$r12,0x4）
+    出错，错误的原因是读控制寄存的读出值csr_rvalue出错，但是ecfg寄存器内部寄存的值是正确的，仔细观察赋值逻辑，发现一处笔误
+    错误的将csr_ecfg_rvalue写作csr_tcfg_rvalue，修改之后通过。
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=15cm]{fig/11.png}
+      \end{figure}
+
+      \noindent
+      $\bullet$
+      \textbf{trace比对提交的条件出错}。
+  
+      报错信息如下：
+      \begin{figure}[H]
+          \centering
+          \includegraphics[width=15cm]{fig/12.png}
+        \end{figure}
+      按照错误信号定位，可以定位到指令（1c074d94:	ffffffff 	0xffffffff）
+      出错，错误的原因是：这是一条错误的指令，cpu测出这是一种异常，但是trace比对写回值结果的时候
+      是以debug_wb_rf_we为使能信号的，在异常产生的时候，应该优先处理异常，拉低这个信号，因此在这个信号
+      内部\&~wb_excep_en信号表示没有出现异常的时候才进行比对，并且对wb_rf_we的前身gr_we进行了补充
+      \begin{figure}[H]
+          \centering
+          \includegraphics[width=15cm]{fig/13.png}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/14.png}
+          \end{figure}
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/15.png}
+          \end{figure}
+
+       \noindent
+        $\bullet$
+        \textbf{在EXE、MEM判断出ERTN后未拉低写使能信号        }。
+      
+          报错信息如下：
+          \begin{figure}[H]
+              \centering
+              \includegraphics[width=15cm]{fig/16.png}
+            \end{figure}
+            \begin{figure}[H]
+              \centering
+              \includegraphics[width=15cm]{fig/17.png}
+            \end{figure}
+          查看信号波形如上，按照错误信号定位，查看当前指令类型(1c008004:	288001ad 	ld.w	$r13,$r13,0)
+          load读数据出错说明错误的原因是上一次访存指令错误的写入数据，猜测前序写内存时有误，查看对应数据最近一次被写入的时机：
+          找到图中黄线的时刻,是一条st.w指令后面跟着ertn指令
+          \begin{lstlisting}
+            1c0751c8:	2980127b 	st.w	$r27,$r19,4(0x4)
+            1c0751cc:	06483800 	ertn
+          \end{lstlisting}
+          这下破案了，原因是ertn指令判断后，没有取消内存写使能的信号，导致错误的数据被写入
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/18.png}
+          \end{figure}
+          \begin{lstlisting}
+            assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid && ~mem_excep_en && ~wb_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_excep_ALE;
+          \end{lstlisting}
+          按照书上的要求进行修改,在内存片选信号上面添加对ertn的检查信号之后，通过该测试点。
+
+          \noindent
+          $\bullet$
+          \textbf{异常处理写入的PC值入口出错}。
+        
+          报错信息如下：
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/19.png}
+          \end{figure}
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/20.png}
+          \end{figure}
+          查看信号波形如上，按照PC错误跳转信号定位，可以定位到指令（1c0753a8:	28a1148e 	ld.w	$r14,$r4,-1979(0x845)）
+          这条指令出现了ALE异常，将flush信号拉高，因此清空流水线并且prePC进行取指令，错误的原因是
+          异常处理的pc地址出错。追根溯源，可以发现是错误的不加区分的直接使用了csr的读出值csr_rvalue作为了PC。
+          正确的方式应该是根据是ertn还是异常采用区分era或者eenery的值
+           \begin{lstlisting}[language=verilog]
+            assign excep_entry = wb_ex ? csr_eentry_rvalue     //PC在flush时候取指的地址
+                  /*ertn_flush*/:csr_era_pc;
+          \end{lstlisting}
+          修改之后，通过测试点。
+
+          \noindent
+          $\bullet$
+          \textbf{控制寄存器写入使能信号出错}。
+        
+          报错信息如下：
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/21.png}
+          \end{figure}
+          根据错误出现的位置，可以发现指令为（1c0753ac:	5c02673e 	bne	\$r25,\$r30,612(0x264) 1c075610 <inst_error>
+          ）指令发生了错误的跳转导致出错，原因是通用寄存器的值被前面的指令错误的修改了，定位到上次这个寄存器被修改的位置：
+
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/22.png}
+          \end{figure}
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/23.png}
+          \end{figure}
+          查看信号波形如上，这里的指令是产生了flush信号，按理来说应该将通用寄存器的写使能拉低，但是这里
+          并没有，这就导致了寄存器值的改变。
+           \begin{lstlisting}[language=verilog]
+            assign wb_to_id_bus = {wb_rf_we & wb_valid & ~wb_ex & ~ertn_flush, wb_rf_waddr, final_rf_wdata};
+          \end{lstlisting}
+          在写使能处加上了\& ~ertn_flush即可，通过测试点。
+
+          \noindent
+          $\bullet$
+          \textbf{控制寄存器信号悬空}。
+        
+          报错信息如下：
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/24.png}
+          \end{figure}
+
+          这里发生错误的指令是(1c0753c4:	04001c0c 	csrrd	\$r12,0x7)，错误的原因是
+          07控制寄存器CSR_BADV的值出现高阻态导致无法读出。
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/25.png}
+          \end{figure}
+
+          \begin{lstlisting}[language=verilog]
+        always @(posedge clk)begin
+         if(wb_ex && wb_ex_addr_err)
+            csr_badv_vaddr <=       (wb_ecode == `ECODE_ADE && wb_esubcode == `ESUBCODE_ADEF) ?
+                                wb_pc           //  inst fecth error
+                                :wb_vaddr;      // mem access error and so on
+            end
+          \end{lstlisting}
+          查看信号波形如上，通过代码这里可以看出是因为wb_vaddr信号悬空没有赋值（实际上通路也没有打通）导致
+          出现高阻态。
+           \begin{lstlisting}[language=verilog]
+            assign ex_vaddr = {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
+            {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
+            {32{~ex_read_counter}} & ex_alu_result;
+          \end{lstlisting}
+         实现信号并且打通通路之后，错误解除。
+          
+         \noindent
+          $\bullet$
+          \textbf{中断未复位ALU}。
+        
+          报错信息如下：
+          \begin{figure}[H]
+            \centering
+            \includegraphics[width=15cm]{fig/26.png}
+          \end{figure}
+          这是一条除法指令( 1c0754f8:	0020418c 	div.w	\$r12,\$r12,\$r16)
+          查看信号波形发现恰好该div指令在wb阶段判断出异常：
+          异常发生时alu中乘法和除法器的计数器未被复位，导致后续操作出错。应该令alu的resetn信号
+          与上~wb_excep_en和~wb_ertn_flush。
+           \begin{lstlisting}[language=verilog]
+            //alu的实例化
+    alu u_alu(
+        .clk            (clk       ),
+        .resetn         (resetn && ~wb_excep_en  && ~wb_ertn_flush  ),
+        .alu_op         (ex_alu_op    ),
+        .alu_src1       (ex_alu_src1  ),
+        .alu_src2       (ex_alu_src2  ),
+        .alu_result     (ex_alu_result),
+        .complete       (alu_complete)
+    );
+          \end{lstlisting}
+          修改之后，测试PASS！
+
+         
+
+      
 \vspace{1ex}
 
 \section{小组成员分工合作情况}
-王敬华负责
+王敬华负责exp13的中断处理和整体的debug工作
 
-李霄宇负责
+李霄宇负责exp13的异常处理和计时器指令的实现
 
 艾华春负责exp12：添加系统调用异常支持
 

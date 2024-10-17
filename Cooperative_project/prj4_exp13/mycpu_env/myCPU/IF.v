@@ -44,11 +44,8 @@ module IFreg(
     reg         if_excep_en;
     reg         if_excep_ADEF;
 
-// 指令ertn读取的era
-    wire [31:0]  wb_csr_rvalue;
+
 //----------------------------------------------------------------------------------------------------------------------------------------------
-// 指令ertn读取的era
-    assign wb_csr_rvalue         = excep_entry;
 
 //流水线控制信号
     assign if_ready_go      = 1'b1;
@@ -59,7 +56,7 @@ module IFreg(
 
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           = if_pc + 3'h4;  
-    assign pre_pc           =   flush ? wb_csr_rvalue
+    assign pre_pc           =   flush ? excep_entry;
                                 : br_taken ? br_target 
                                 : seq_pc;
 
