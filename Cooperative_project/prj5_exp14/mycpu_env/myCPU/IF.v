@@ -27,8 +27,9 @@ module IFreg(
 
     reg         pre_if_valid;
 //if流水级需要的寄存器，根据clk不断更新
-    reg         if_valid;//寄存if流水级是否有指令
-    reg  [31:0] if_pc;//寄存if流水级的pc值
+    reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
+    reg         if_inst_valid;  //if流水级是否已经接受到有效指令 
+    reg  [31:0] if_pc;
 
     wire [31:0] if_inst;//wire信号，在ID被寄存
 
@@ -64,12 +65,21 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             if_valid <= 1'b0;
+        else if(pre_if_readygo & if_allowin)
+            if_valid <= 1'b1;
         else if(if_ready_go && id_allowin)
             if_valid <= 1'b0;
-        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid)
-            if_valid <= 1'b1;
     end
-    assign if_ready_go      =   if_valid
+    always @(posedge clk)begin
+        if(~resetn)
+            if_inst_valid <= 1'b0;
+        else if(if_ready_go && id_allowin)
+            if_inst_valid <= 1'b0;
+        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid)
+            if_inst_valid <= 1'b1;       
+    
+    end
+    assign if_ready_go      =   if_inst_valid
                                 |inst_sram_data_ok
                                 |if_allowin & pre_if_ir_valid;  
     assign if_to_id_valid   =   if_ready_go;
@@ -107,7 +117,11 @@ module IFreg(
     assign inst_sram_size   = 2'h2;
     assign inst_sram_wdata  = 32'b0;
 
-    assign inst_sram_req    = resetn & ~pre_if_valid;
+    assign inst_sram_req    = resetn & ~pre_if_valid            // pre if 没有已经发出请求的指令 
+                            & ( inst_sram_data_ok  // 上一个请求恰好返回  
+                                | if_inst_valid         // 上一个请求已经返回，且未进入id级
+                                | if_allowin);     // 上一个请求已经返回，且已经进入id级
+
     assign inst_sram_addr   = pre_pc;
 
 // 指令暂存
@@ -115,13 +129,13 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir <= 32'b0;
-        else if(inst_sram_data_ok & if_valid & pre_if_readygo)                  // 在pre if级就接受到指令，但是if阻塞
+        else if(inst_sram_data_ok & if_inst_valid & pre_if_readygo)        // 在pre if级就接受到指令，但是if已有指令，且阻塞
             pre_if_ir <= inst_sram_rdata;
     end
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir_valid <= 1'b0;
-        else if(inst_sram_data_ok & if_valid & pre_if_readygo)
+        else if(inst_sram_data_ok & if_inst_valid & pre_if_readygo)
             pre_if_ir_valid <= 1'b1;
         else if(if_allowin & pre_if_ir_valid)
             pre_if_ir_valid <= 1'b0;
@@ -131,14 +145,14 @@ module IFreg(
     always @(posedge clk)begin
         if(~resetn)
             if_ir <= 32'b0;
-        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_valid)       // 接受到有效指令，但不能进入id级
+        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_inst_valid)       // 接受到有效指令，但不能进入id级
             if_ir <= inst_sram_data_ok ? inst_sram_rdata
                     :pre_if_ir;
     end
     always @(posedge clk)begin
         if(~resetn)
             if_ir_valid <= 1'b0;
-        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_valid)
+        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_inst_valid)
             if_ir_valid <= 1'b1;
         else if(if_ready_go & if_allowin)
             if_ir_valid <= 1'b0;
