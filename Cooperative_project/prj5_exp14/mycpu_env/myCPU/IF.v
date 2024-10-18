@@ -51,6 +51,11 @@ module IFreg(
     wire [ 31:0] br_target;
     reg          br_taken_reg;
     reg  [ 31:0] br_target_reg;
+
+    reg          flush_reg;
+    reg  [ 31:0] excep_entry_reg;
+
+    reg          inst_cancel;
     
 
 // 异常相关
@@ -103,7 +108,8 @@ module IFreg(
 
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           =   if_pc + 3'h4;  
-    assign pre_pc           =   flush ? excep_entry
+    assign pre_pc           =   flush_reg ? excep_entry_reg
+                                : flush ? excep_entry
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
                                 :seq_pc;
@@ -127,6 +133,22 @@ module IFreg(
             br_target_reg <= 32'b0;
         else if((~inst_sram_req | ~inst_sram_addr_ok) & br_taken)
             br_target_reg <= br_target;
+    end
+
+    always @(posedge clk) begin
+        if(~resetn)
+            flush_reg <= 1'b0;
+        else if((~inst_sram_req | ~inst_sram_addr_ok) & flush)
+            flush_reg <= 1'b1;
+        else if(inst_sram_req & inst_sram_addr_ok)
+            flush_reg <= 1'b0;
+    end
+
+    always @(posedge clk) begin
+        if(~resetn)
+            excep_entry_reg <= 32'b0;
+        else if((~inst_sram_req | ~inst_sram_addr_ok) & flush)
+            excep_entry_reg <= excep_entry;
     end
 
 //取指令
