@@ -116,18 +116,17 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             br_taken_reg <= 1'b0;
-        // else if(br_taken)
-        //     br_taken_reg <= 1'b1;
-        else if(br_taken & ~(inst_sram_addr_ok & inst_sram_req) )   // id级为跳转，但当前clk不能发出请求
+        else if((~inst_sram_req | ~inst_sram_addr_ok) & br_taken)// id级为跳转，但当前clk不能发出请求
             br_taken_reg <= 1'b1;
-        else if(inst_sram_addr_ok)               // 跳转pc请求已经发出
-            br_taken_reg <= 1'b0;   
+        else if(inst_sram_req & inst_sram_addr_ok)
+            br_taken_reg <= 1'b0;
     end
+    
     always @(posedge clk) begin
         if(~resetn)
             br_target_reg <= 32'b0;
-        else if(br_taken & ~inst_sram_addr_ok)
-            br_taken_reg <= br_target;
+        else if((~inst_sram_req | ~inst_sram_addr_ok) & br_taken)
+            br_target_reg <= br_target;
     end
 
 //取指令
@@ -136,7 +135,7 @@ module IFreg(
     assign inst_sram_size   = 2'h2;
     assign inst_sram_wdata  = 32'b0;
 
-    assign inst_sram_req    = resetn & ~pre_if_reqed            // pre if 没有已经发出请求的指令 
+    assign inst_sram_req    = resetn & ~pre_if_reqed        // pre if 没有已经发出请求的指令 
                             & ( inst_sram_data_ok  // 上一个请求恰好返回  
                                 | if_inst_valid         // 上一个请求已经返回，且未进入id级
                                 | if_allowin);     // 上一个请求已经返回，且已经进入id级
