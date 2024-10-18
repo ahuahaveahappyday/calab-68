@@ -80,16 +80,18 @@ module IFreg(
     always @(posedge clk)begin
         if(~resetn)
             if_inst_valid <= 1'b0;
+        else if(flush)
+            if_inst_valid <= 1'b0;
         else if(if_ready_go && id_allowin)
             if_inst_valid <= 1'b0;
-        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid)
+        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid & ~inst_cancel)
             if_inst_valid <= 1'b1;       
     
     end
-    assign if_ready_go      =   if_inst_valid
+    assign if_ready_go      =    if_inst_valid
                                 |inst_sram_data_ok
                                 |if_allowin & pre_if_ir_valid;  
-    assign if_to_id_valid   =   if_ready_go;
+    assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 
     // 与pre-if级的握手信号
     always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
@@ -198,6 +200,17 @@ module IFreg(
             if_ir_valid <= 1'b0;
     end
 
+//清空流水线时，第一个指令需要丢弃
+    always @(posedge clk) begin
+        if(~resetn)
+            inst_cancel <= 1'b0;
+        else if ((pre_if_readygo  // pre if已经发出请求，且没有进入if
+                |if_valid & ~if_inst_valid  // if正在等待指令返回
+                ) & flush)
+            inst_cancel <= 1'b1;
+        else if(inst_sram_data_ok)
+            inst_cancel <= 1'b0;
+    end
 
 //与id交互
     assign {br_taken, br_target} =  id_to_if_bus;
