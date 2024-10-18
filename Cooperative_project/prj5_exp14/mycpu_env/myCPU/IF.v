@@ -14,7 +14,7 @@ module IFreg(
     input wire  [31:0]  inst_sram_rdata,
     //if模块与id模块交互接口
     input  wire         id_allowin,
-    input  wire [32:0]  id_to_if_bus,//{br_taken, br_target}
+    input  wire [33:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
     output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
     //etrn清空流水线
@@ -49,6 +49,8 @@ module IFreg(
 //branch类指令的信号和目标地址，来自ID模块
     wire         br_taken;
     wire [ 31:0] br_target;
+    wire         br_stall;
+
     reg          br_taken_reg;
     reg  [ 31:0] br_target_reg;
 
@@ -162,7 +164,8 @@ module IFreg(
     assign inst_sram_req    = resetn & ~pre_if_reqed        // pre if 没有已经发出请求的指令 
                             & ( inst_sram_data_ok  // 上一个请求恰好返回  
                                 | if_inst_valid         // 上一个请求已经返回，且未进入id级
-                                | if_allowin);     // 上一个请求已经返回，且已经进入id级
+                                | if_allowin)     // 上一个请求已经返回，且已经进入id级
+                            & ~br_stall;        // 转移计算未完成
 
     assign inst_sram_addr   = pre_pc;
 
@@ -213,7 +216,7 @@ module IFreg(
     end
 
 //与id交互
-    assign {br_taken, br_target} =  id_to_if_bus;
+    assign {br_taken, br_target, br_stall} =  id_to_if_bus;
     assign if_to_id_bus =           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          
     assign if_inst    =             if_ir_valid ?  if_ir
                                     :inst_sram_rdata;

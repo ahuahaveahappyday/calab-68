@@ -4,7 +4,7 @@ module IDreg(
     //if模块与id模块交互接口
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
-    output wire [32:0]            id_to_if_bus,//{br_taken, br_target}
+    output wire [33:0]            id_to_if_bus,//{br_taken, br_target}
     input  wire [65:0]            if_to_id_bus,//{if_inst, if_pc}
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
@@ -134,6 +134,7 @@ module IDreg(
 
     wire        br_taken;
     wire [31:0] br_target;
+    wire        br_stall;
 
     wire [ 4:0] rf_raddr1;
     wire [31:0] rf_rdata1;
@@ -217,7 +218,7 @@ module IDreg(
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
     assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb} = mem_to_id_bus;
     assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
-    assign id_to_if_bus = {br_taken, br_target}; 
+    assign id_to_if_bus = {br_taken, br_target, br_stall}; 
 
     assign id_rkd_value = rkd_value; 
     assign id_to_ex_bus = {id_alu_op,          //19 bit
@@ -389,6 +390,7 @@ module IDreg(
                     ) && id_valid;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bltu || inst_bge || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
                                                    /*inst_jirl*/ (rj_value + jirl_offs);        //添加blt等指令的跳转地址：与bne,beq相同
+    assign br_stall =  br_taken & stuck;        // 转移计算未完成
 
     assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                                 {{14{i16[15]}}, i16[15:0], 2'b0} ;
