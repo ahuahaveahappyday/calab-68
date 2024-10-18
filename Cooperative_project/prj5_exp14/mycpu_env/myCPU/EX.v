@@ -13,11 +13,14 @@ module EXEreg(
     input  wire [1:0]  mem_to_ex_bus,   // ex_en
     input  wire [1:0]  wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
-    output wire        data_sram_en,
-    output wire [ 3:0] data_sram_we,
-    output wire [31:0] data_sram_addr,
-    output wire [31:0] data_sram_wdata,
-
+    output wire         data_sram_req,
+    output wire         data_sram_wr,
+    output wire [1:0]   data_sram_size,
+    output wire [3:0]   data_sram_wstrb,
+    output wire [31:0]  data_sram_addr,
+    output wire [31:0]  data_sram_wdata,
+    input wire          data_sram_addr_ok,
+    
     input  wire         flush,
 
     input  wire [63:0]  counter

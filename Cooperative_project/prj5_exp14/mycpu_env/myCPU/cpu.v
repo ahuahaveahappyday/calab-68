@@ -143,8 +143,6 @@ module mycpu_top(
         .data_sram_addr   (data_sram_addr   ),
         .data_sram_wdata  (data_sram_wdata  ),
         .data_sram_addr_ok(data_sram_addr_ok),
-        .data_sram_data_ok(data_sram_data_ok),
-        .data_sram_rdata  (data_sram_rdata  ),
 
         .flush(ertn_flush || wb_ex),
 
@@ -166,7 +164,8 @@ module mycpu_top(
         .mem_to_id_bus(mem_to_id_bus),
         .mem_to_ex_bus(mem_to_ex_bus),
 
-        .data_sram_rdata(data_sram_rdata),
+        .data_sram_data_ok(data_sram_data_ok),
+        .data_sram_rdata  (data_sram_rdata  ),
 
         .flush(ertn_flush || wb_ex)
 

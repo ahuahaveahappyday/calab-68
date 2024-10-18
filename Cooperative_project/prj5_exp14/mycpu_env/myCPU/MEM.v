@@ -14,7 +14,8 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire  [1:0] mem_to_ex_bus,   // ex
     //mem与dram交互接口
-    input  wire [31:0] data_sram_rdata,
+    input wire          data_sram_data_ok,
+    input wire  [31:0]  data_sram_rdata,
 
     input  wire         flush
 
