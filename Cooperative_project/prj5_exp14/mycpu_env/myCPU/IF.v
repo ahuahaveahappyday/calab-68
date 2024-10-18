@@ -64,10 +64,10 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             if_valid <= 1'b0;
-        else if(inst_sram_data_ok | if_allowin & pre_if_ir_valid)
-            if_valid <= 1'b1;
         else if(if_ready_go && id_allowin)
             if_valid <= 1'b0;
+        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid)
+            if_valid <= 1'b1;
     end
     assign if_ready_go      =   if_valid
                                 |inst_sram_data_ok
@@ -97,7 +97,7 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             if_pc <= 32'h1bfffffc;
-        else if(if_allowin)
+        else if(if_allowin & pre_if_readygo)
             if_pc <= pre_pc;
     end
 
@@ -115,22 +115,40 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir <= 32'b0;
-        else if(pre_if_readygo && ~if_allowin)
+        else if(inst_sram_data_ok & if_valid & pre_if_readygo)                  // 在pre if级就接受到指令，但是if阻塞
             pre_if_ir <= inst_sram_rdata;
     end
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir_valid <= 1'b0;
-        else if(pre_if_readygo && ~if_allowin)
+        else if(inst_sram_data_ok & if_valid & pre_if_readygo)
             pre_if_ir_valid <= 1'b1;
-        else if(if_allowin && pre_if_ir_valid)
+        else if(if_allowin & pre_if_ir_valid)
             pre_if_ir_valid <= 1'b0;
     end
 
+    // if
+    always @(posedge clk)begin
+        if(~resetn)
+            if_ir <= 32'b0;
+        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_valid)       // 接受到有效指令，但不能进入id级
+            if_ir <= inst_sram_data_ok ? inst_sram_rdata
+                    :pre_if_ir;
+    end
+    always @(posedge clk)begin
+        if(~resetn)
+            if_ir_valid <= 1'b0;
+        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_valid)
+            if_ir_valid <= 1'b1;
+        else if(if_ready_go & if_allowin)
+            if_ir_valid <= 1'b0;
+    end
+
+
 //与id交互
     assign {br_taken, br_target} =  id_to_if_bus;
-    assign if_to_id_bus =           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          //
-    assign if_inst    =             pre_if_ir_valid ?  pre_if_ir
+    assign if_to_id_bus =           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          
+    assign if_inst    =             if_ir_valid ?  if_ir
                                     :inst_sram_rdata;
 
 //取指地址错异常处理
