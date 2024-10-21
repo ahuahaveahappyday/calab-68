@@ -209,11 +209,11 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             inst_cancel <= 1'b0;
-        else if ((pre_if_readygo  // pre if已经发出请求，且没有进入if
-                |if_valid & ~if_inst_valid  // if正在等待指令返回
-                ) & flush)
+        else if ((pre_if_readygo  & ~inst_sram_addr_ok // pre if已经发出请求，且没有进入if，且不是发出的异常处理的地址
+                |if_valid & ~if_inst_valid & ~inst_sram_data_ok)  // if正在等待指令返回，且当前clk不能返回
+                & (flush | br_taken) )
             inst_cancel <= 1'b1;
-        else if(inst_sram_data_ok)
+        else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
             inst_cancel <= 1'b0;
     end
 

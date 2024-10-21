@@ -193,7 +193,9 @@ module IDreg(
 
 // 流水线控制信号
     assign id_ready_go      = ~stuck;//流水线阻塞的时候，id_ready_go值为零
-    assign id_allowin       = ~id_valid | id_ready_go & ex_allowin; 
+    assign id_allowin       =   ~id_valid 
+                                | id_ready_go & ex_allowin 
+                                | br_taken;             // 消耗if级错误指令缓存 
     assign id_to_ex_valid   = id_valid & id_ready_go;
 
 
