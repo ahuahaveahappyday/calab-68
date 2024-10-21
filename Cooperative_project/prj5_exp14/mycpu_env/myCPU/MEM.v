@@ -124,7 +124,7 @@ module MEMreg(
     wire   [31:0]data_sram_rdata_final;
     assign data_sram_rdata_final ={32{data_buf_valid}} & mem_data_buf | {32{~data_buf_valid}} & data_sram_rdata;
     assign mem_word_result =    data_sram_rdata_final;
-    assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
+    assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata_final[31:16]
                                 : data_sram_rdata_final[15:0];
     assign mem_byte_result =    ({8{mem_data_sram_addr[1:0] == 2'd0}} & data_sram_rdata_final[7:0])
                                 |({8{mem_data_sram_addr[1:0] == 2'd1}} & data_sram_rdata_final[15:8])
