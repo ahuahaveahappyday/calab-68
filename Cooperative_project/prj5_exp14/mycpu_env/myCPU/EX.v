@@ -9,7 +9,7 @@ module EXEreg(
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [238:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [239:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire [1:0]  mem_to_ex_bus,   // ex_en
     input  wire [1:0]  wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
@@ -172,9 +172,10 @@ module EXEreg(
                                 ex_excep_ALE,               // 1 bit
                                 ex_excep_BRK,               // 1 bit
                                 ex_excep_INE,               // 1 bit
-                                ex_excep_INT,               //i bit
+                                ex_excep_INT,               //1 bit
                                 ex_excep_esubcode,          // 9 bit
-                                ex_vaddr                    //32bit
+                                ex_vaddr,                     //32bit
+                                ex_mem_req                  //1 bit 
                                 };
 
 // 读计数器

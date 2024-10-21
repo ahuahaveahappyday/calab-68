@@ -4,7 +4,7 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [238:0]ex_to_mem_bus, 
+    input  wire [239:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
@@ -83,8 +83,8 @@ module MEMreg(
             mem_valid <= 1'b0;
         else if(flush)
             mem_valid <= 1'b0;
-        else
-            mem_valid <= ex_to_mem_valid & mem_allowin; 
+        else if(mem_allowin)
+            mem_valid <= ex_to_mem_valid; 
     end
 
     //寄存器暂存数据，valid信号表示数据是否有效
@@ -107,21 +107,21 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT,mem_excep_esubcode,mem_vaddr} <= 239'b0;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT,mem_excep_esubcode,mem_vaddr,mem_wait_data_ok_reg} <= 240'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT, mem_excep_esubcode,mem_vaddr} <= ex_to_mem_bus;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT, mem_excep_esubcode,mem_vaddr,mem_wait_data_ok_reg} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
     assign mem_res_from_wb  = mem_csr_re;
 //模块间通信
     //与内存交互接口定义
-    wire   data_sram_rdata_final;
+    wire   [31:0]data_sram_rdata_final;
     assign data_sram_rdata_final ={32{data_buf_valid}} & mem_data_buf | {32{~data_buf_valid}} & data_sram_rdata;
     assign mem_word_result =    data_sram_rdata_final;
     assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
