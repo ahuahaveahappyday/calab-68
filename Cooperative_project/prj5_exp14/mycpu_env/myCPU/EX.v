@@ -65,6 +65,8 @@ module EXEreg(
     wire        alu_complete;
     wire [3:0]  ex_sram_we;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
+    wire        ex_cancel;
+    wire        ex_mem_req;
 
     wire [31:0] ex_counter_result;
 
@@ -76,7 +78,7 @@ module EXEreg(
     wire [31:0] ex_vaddr;
 
 //流水线控制信号
-    assign ex_ready_go      = alu_complete;//等待alu完成运算
+    assign ex_ready_go      = alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
     assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
     assign ex_to_mem_valid  = ex_valid & ex_ready_go;
 
@@ -122,18 +124,24 @@ module EXEreg(
 // 寄存器写回数据来自wb级
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
+
     //与内存交互接口定义
-    assign data_sram_en     = (ex_res_from_mem || ex_mem_we) && ex_valid && ~mem_excep_en && ~wb_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_excep_ALE;//load 或者 store 指令有效的时候，启动sram片选信号
-    assign data_sram_we     = {4{ex_mem_we & ex_valid}} & ex_sram_we;//store 指令有效，内存写使能启动
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
     assign data_sram_wdata  =   ex_op_st_ld_b ? {4{ex_rkd_value[7:0]}}:
                                 ex_op_st_ld_h ? {2{ex_rkd_value[15:0]}}:
                                                 ex_rkd_value[31:0];
+    assign data_sram_req    = ex_mem_req & ex_valid & mem_allowin;
+    assign data_sram_wr     = (|data_sram_wstrb) && ex_valid && ~mem_excep_en && ~wb_excep_en && ~ex_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_ertn_flush;
+    assign data_sram_wstrb  =  ex_sram_we;
+    assign data_sram_size   = {2{ex_op_st_ld_b}} & 2'b0 | {2{ex_op_st_ld_h}} & 2'b1 | {2{ex_op_st_ld_w}} & 2'd2;
     
     assign ex_sram_we       =   ex_op_st_ld_b ? (4'b0001 << ex_data_sram_addr[1:0]) :           // st.b
                                 ex_op_st_ld_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
-                                                4'b1111;                                    // st.w
-    assign ex_data_sram_addr   =   ex_alu_result[1:0];
+                                                4'b1111;                                        // st.w
+    assign ex_data_sram_addr= ex_alu_result[1:0];
+    assign ex_mem_req       = (ex_res_from_mem | (|ex_sram_we));
+    assign ex_cancel        = wb_excep_en & wb_ertn_flush;
+
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 

@@ -232,7 +232,6 @@ module mycpu_top(
     Stable_Counter my_counter(
         .clk(clk),
         .resetn(resetn),
-
         .counter(counter)
     );
 endmodule
