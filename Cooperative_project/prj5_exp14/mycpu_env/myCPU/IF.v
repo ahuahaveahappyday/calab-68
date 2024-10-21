@@ -75,7 +75,7 @@ module IFreg(
         if(~resetn)
             if_valid <= 1'b0;
         else if(pre_if_readygo & if_allowin)
-            if_valid <= 1'b1;
+            if_valid <= to_if_valid;
         else if(if_ready_go && id_allowin)
             if_valid <= 1'b0;
     end
@@ -84,15 +84,17 @@ module IFreg(
             if_inst_valid <= 1'b0;
         else if(flush)
             if_inst_valid <= 1'b0;
+        else if(if_allowin & pre_if_readygo & pre_if_ir_valid & ~inst_cancel)
+            if_inst_valid <= 1'b1;
         else if(if_ready_go && id_allowin)
             if_inst_valid <= 1'b0;
-        else if(inst_sram_data_ok | if_allowin & pre_if_readygo & pre_if_ir_valid & ~inst_cancel)
+        else if(inst_sram_data_ok)
             if_inst_valid <= 1'b1;       
     
     end
     assign if_ready_go      =    if_inst_valid
-                                |inst_sram_data_ok
-                                |if_allowin & pre_if_ir_valid;  
+                                |inst_sram_data_ok;
+                                //|if_allowin & pre_if_ir_valid;  
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 
     // 与pre-if级的握手信号
@@ -109,7 +111,7 @@ module IFreg(
     assign if_allowin       =   ~if_valid 
                                 | if_ready_go & id_allowin 
                                 | flush;   
-
+    assign to_if_valid      =    resetn;  
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           =   if_pc + 3'h4;  
     assign pre_pc           =   flush_reg ? excep_entry_reg
