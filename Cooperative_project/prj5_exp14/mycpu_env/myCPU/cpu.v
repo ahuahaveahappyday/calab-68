@@ -41,7 +41,7 @@ module mycpu_top(
     wire mem_to_wb_valid;
 
     wire [65:0]if_to_id_bus;
-    wire [225:0]id_to_ex_bus;
+    wire [228:0]id_to_ex_bus;
     wire [239:0]ex_to_mem_bus;
     wire [199:0]mem_to_wb_bus;
 

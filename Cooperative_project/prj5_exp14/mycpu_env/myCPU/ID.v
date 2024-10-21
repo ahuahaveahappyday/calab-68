@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [225:0]           id_to_ex_bus,
+    output wire [228:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -250,7 +250,10 @@ module IDreg(
                            id_excep_BRK,         // 1 bit
                            id_excep_INE,         // 1 bit
                            id_excep_INT,         //1 bit
-                           id_excep_esubcode     // 9 bit
+                           id_excep_esubcode,     // 9 bit
+                           inst_st_b,               //1 bit
+                           inst_st_h,               //1 bit
+                           inst_st_w                //1 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
