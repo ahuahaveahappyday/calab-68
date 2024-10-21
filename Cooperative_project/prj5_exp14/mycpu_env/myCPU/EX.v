@@ -140,7 +140,7 @@ module EXEreg(
                                                 4'b1111;                                        // st.w
     assign ex_data_sram_addr= ex_alu_result[1:0];
     assign ex_mem_req       = (ex_res_from_mem | (|ex_sram_we));
-    assign ex_cancel        = wb_excep_en & wb_ertn_flush;
+    assign ex_cancel        = wb_excep_en | wb_ertn_flush;
 
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
