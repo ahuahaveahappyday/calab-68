@@ -137,7 +137,8 @@ module EXEreg(
     
     assign ex_sram_we       =   ex_op_st_ld_b ? (4'b0001 << ex_data_sram_addr[1:0]) :           // st.b
                                 ex_op_st_ld_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
-                                                4'b1111;                                        // st.w
+                                ex_op_st_ld_w ? 4'b1111:// st.w
+                                4'b0000;                                        
     assign ex_data_sram_addr= ex_alu_result[1:0];
     assign ex_mem_req       = (ex_res_from_mem | (|ex_sram_we));
     assign ex_cancel        = wb_excep_en | wb_ertn_flush;
