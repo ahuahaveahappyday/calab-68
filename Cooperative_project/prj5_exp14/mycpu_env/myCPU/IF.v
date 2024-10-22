@@ -84,7 +84,7 @@ module IFreg(
             if_inst_valid <= 1'b0;
         else if(flush)
             if_inst_valid <= 1'b0;
-        else if(if_allowin & pre_if_readygo & pre_if_ir_valid & ~inst_cancel)
+        else if(if_allowin & pre_if_readygo & pre_if_ir_valid)// & ~inst_cancel)
             if_inst_valid <= 1'b1;
         else if(if_ready_go && id_allowin)
             if_inst_valid <= 1'b0;
@@ -110,8 +110,7 @@ module IFreg(
                                 | inst_sram_req & inst_sram_addr_ok
                                 | pre_if_ir_valid;
     assign if_allowin       =   ~if_valid 
-                                | if_ready_go & id_allowin 
-                                | flush;   
+                                | if_ready_go & id_allowin ;   
     assign to_if_valid      =    resetn;  
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           =   if_pc + 3'h4;  
