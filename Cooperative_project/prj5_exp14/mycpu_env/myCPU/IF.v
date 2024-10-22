@@ -22,13 +22,13 @@ module IFreg(
     input  wire [31:0]  excep_entry
 );
 //pre-if需要的寄存器
-    reg  [31:0] pre_if_ir;      // inst_reg
-    reg         pre_if_ir_valid;
+    // reg  [31:0] pre_if_ir;      // inst_reg
+    // reg         pre_if_ir_valid;
 
     reg         pre_if_reqed;
 //if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
-    reg         if_inst_valid;  //if流水级是否已经接受到有效指令 
+
     reg  [31:0] if_pc;
 
     wire [31:0] if_inst;//wire信号，在ID被寄存
@@ -79,20 +79,7 @@ module IFreg(
         else if(if_ready_go && id_allowin)
             if_valid <= 1'b0;
     end
-    always @(posedge clk)begin
-        if(~resetn)
-            if_inst_valid <= 1'b0;
-        else if(flush)
-            if_inst_valid <= 1'b0;
-        else if(if_allowin & pre_if_readygo & pre_if_ir_valid)// & ~inst_cancel)
-            if_inst_valid <= 1'b1;
-        else if(if_ready_go && id_allowin)
-            if_inst_valid <= 1'b0;
-        else if(inst_sram_data_ok)
-            if_inst_valid <= 1'b1;       
-    
-    end
-    assign if_ready_go      =    if_inst_valid
+    assign if_ready_go      =    if_ir_valid
                                 |inst_sram_data_ok;
                                 //|if_allowin & pre_if_ir_valid;  
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
@@ -106,9 +93,9 @@ module IFreg(
         else if(inst_sram_req && inst_sram_addr_ok)
             pre_if_reqed <= 1'b1;
     end
-    assign pre_if_readygo   =   pre_if_reqed
-                                | inst_sram_req & inst_sram_addr_ok
-                                | pre_if_ir_valid;
+    assign pre_if_readygo   =   //pre_if_reqed
+                                 inst_sram_req & inst_sram_addr_ok;
+                                //| pre_if_ir_valid;
     assign if_allowin       =   ~if_valid 
                                 | if_ready_go & id_allowin ;   
     assign to_if_valid      =    resetn;  
@@ -174,33 +161,34 @@ module IFreg(
 
 // 指令暂存
     // pre-if
-    always @(posedge clk) begin
-        if(~resetn)
-            pre_if_ir <= 32'b0;
-        else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)        // 在pre if级就接受到指令，但是if已有指令，且阻塞
-            pre_if_ir <= inst_sram_rdata;
-    end
-    always @(posedge clk) begin
-        if(~resetn)
-            pre_if_ir_valid <= 1'b0;
-        else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)
-            pre_if_ir_valid <= 1'b1;
-        else if(if_allowin & pre_if_ir_valid)
-            pre_if_ir_valid <= 1'b0;
-    end
+    // always @(posedge clk) begin
+    //     if(~resetn)
+    //         pre_if_ir <= 32'b0;
+    //     else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)        // 在pre if级就接受到指令，但是if已有指令，且阻塞
+    //         pre_if_ir <= inst_sram_rdata;
+    // end
+    // always @(posedge clk) begin
+    //     if(~resetn)
+    //         pre_if_ir_valid <= 1'b0;
+    //     else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)
+    //         pre_if_ir_valid <= 1'b1;
+    //     else if(if_allowin & pre_if_ir_valid)
+    //         pre_if_ir_valid <= 1'b0;
+    // end
 
     // if
     always @(posedge clk)begin
         if(~resetn)
             if_ir <= 32'b0;
-        else if(((inst_sram_data_ok & ~id_allowin & ~if_inst_valid)| pre_if_readygo & if_allowin & pre_if_ir_valid))    // 接受到有效指令，但不能进入id级
-            if_ir <= inst_sram_data_ok ? inst_sram_rdata
-                    :pre_if_ir;
+        else if(inst_sram_data_ok & ~id_allowin & ~inst_cancel)// & ~if_ir_valid)//| pre_if_readygo & if_allowin & pre_if_ir_valid))    // 接受到有效指令，但不能进入id级
+            if_ir <= inst_sram_rdata;
+                    //inst_sram_data_ok ? inst_sram_rdata
+                    //:pre_if_ir;
     end
     always @(posedge clk)begin
         if(~resetn)
             if_ir_valid <= 1'b0;
-        else if(((inst_sram_data_ok & ~id_allowin & ~if_inst_valid )| pre_if_readygo & if_allowin & pre_if_ir_valid))
+        else if(inst_sram_data_ok & ~id_allowin & ~inst_cancel)// & ~if_inst_valid )| pre_if_readygo & if_allowin & pre_if_ir_valid))
             if_ir_valid <= 1'b1;
         else if(if_ready_go & if_allowin)
             if_ir_valid <= 1'b0;
@@ -210,9 +198,8 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             inst_cancel <= 1'b0;
-        else if ((pre_if_readygo  & ~inst_sram_addr_ok // pre if已经发出请求，且没有进入if，且不是发出的异常处理的地址
-                |if_valid & ~if_inst_valid & ~inst_sram_data_ok)  // if正在等待指令返回，且当前clk不能返回
-                & (flush | br_taken) )
+        else if ((if_valid & ~if_ir_valid & ~inst_sram_data_ok)  // if正在等待指令返回
+                & (flush | br_taken))
             inst_cancel <= 1'b1;
         else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
             inst_cancel <= 1'b0;
