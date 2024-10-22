@@ -220,5 +220,13 @@ module Wallace_Mul (
         .C(level_6[0]),
         .S(level_6[1])
     );
-    assign result = (level_6[0] + level_6[1]) & {64{resetn}};
+
+    reg  [63:0] level_6_r [1:0];
+    always @(posedge mul_clk) begin
+        if(~resetn)
+            {level_6_r[0],level_6_r[1]} <= {2{64'b0}};
+        else
+            {level_6_r[0],level_6_r[1]} <= {level_6[0],level_6[1]};
+    end
+    assign result = (level_6_r[0] + level_6_r[1]);
 endmodule

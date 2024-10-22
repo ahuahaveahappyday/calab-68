@@ -160,5 +160,6 @@ assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_mul       }} & mul_result[31:0])
                   | ({32{op_mulh|op_mulhu}} & mul_result[63:32]);
 
-assign complete = ~resetn | div_complete & div_en | mul_complete & mul_en | ~div_en & ~mul_en;
+assign complete = (~|alu_op[18:12]) | div_complete & div_en | mul_complete & mul_en | ~div_en & ~mul_en;
+
 endmodule
