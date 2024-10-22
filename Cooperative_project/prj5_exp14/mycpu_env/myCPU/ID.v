@@ -392,10 +392,10 @@ module IDreg(
                     || inst_jirl
                     || inst_bl
                     || inst_b
-                    ) && id_valid;
+                    ) && id_valid && ~stuck;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bltu || inst_bge || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
                                                    /*inst_jirl*/ (rj_value + jirl_offs);        //添加blt等指令的跳转地址：与bne,beq相同
-    assign br_stall =  br_taken & stuck;        // 转移计算未完成
+    assign br_stall =   (inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu| inst_bgeu| inst_jirl| inst_bl| inst_b) & stuck;        // 转移计算未完成
 
     assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                                 {{14{i16[15]}}, i16[15:0], 2'b0} ;
