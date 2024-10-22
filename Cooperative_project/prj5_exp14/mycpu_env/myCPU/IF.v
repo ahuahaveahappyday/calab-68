@@ -192,14 +192,14 @@ module IFreg(
     always @(posedge clk)begin
         if(~resetn)
             if_ir <= 32'b0;
-        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_inst_valid)       // 接受到有效指令，但不能进入id级
+        else if(((inst_sram_data_ok & ~id_allowin & ~if_inst_valid)| pre_if_readygo & if_allowin & pre_if_ir_valid))    // 接受到有效指令，但不能进入id级
             if_ir <= inst_sram_data_ok ? inst_sram_rdata
                     :pre_if_ir;
     end
     always @(posedge clk)begin
         if(~resetn)
             if_ir_valid <= 1'b0;
-        else if((inst_sram_data_ok| pre_if_readygo & if_allowin & pre_if_ir_valid) & ~id_allowin & ~if_inst_valid)
+        else if(((inst_sram_data_ok & ~id_allowin & ~if_inst_valid )| pre_if_readygo & if_allowin & pre_if_ir_valid))
             if_ir_valid <= 1'b1;
         else if(if_ready_go & if_allowin)
             if_ir_valid <= 1'b0;
