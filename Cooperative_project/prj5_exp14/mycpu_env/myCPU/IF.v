@@ -107,7 +107,8 @@ module IFreg(
             pre_if_reqed <= 1'b1;
     end
     assign pre_if_readygo   =   pre_if_reqed
-                                | inst_sram_req & inst_sram_addr_ok;
+                                | inst_sram_req & inst_sram_addr_ok
+                                | pre_if_ir_valid;
     assign if_allowin       =   ~if_valid 
                                 | if_ready_go & id_allowin 
                                 | flush;   
@@ -164,9 +165,10 @@ module IFreg(
     assign inst_sram_wdata  = 32'b0;
 
     assign inst_sram_req    = resetn & ~pre_if_reqed        // pre if 没有已经发出请求的指令 
-                            & ( inst_sram_data_ok  // 上一个请求恰好返回  
-                                | if_inst_valid         // 上一个请求已经返回，且未进入id级
-                                | if_allowin)     // 上一个请求已经返回，且已经进入id级
+                            // & ( inst_sram_data_ok  // 上一个请求恰好返回  
+                            //     | if_inst_valid         // 上一个请求已经返回，且未进入id级
+                            //     | if_allowin)     // 上一个请求已经返回，且已经进入id级
+                            & if_allowin
                             & ~br_stall;        // 转移计算未完成
 
     assign inst_sram_addr   = pre_pc;
@@ -176,13 +178,13 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir <= 32'b0;
-        else if(inst_sram_data_ok & if_inst_valid & pre_if_readygo)        // 在pre if级就接受到指令，但是if已有指令，且阻塞
+        else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)        // 在pre if级就接受到指令，但是if已有指令，且阻塞
             pre_if_ir <= inst_sram_rdata;
     end
     always @(posedge clk) begin
         if(~resetn)
             pre_if_ir_valid <= 1'b0;
-        else if(inst_sram_data_ok & if_inst_valid & pre_if_readygo)
+        else if(inst_sram_data_ok & if_ir_valid & pre_if_readygo & ~if_allowin)
             pre_if_ir_valid <= 1'b1;
         else if(if_allowin & pre_if_ir_valid)
             pre_if_ir_valid <= 1'b0;
