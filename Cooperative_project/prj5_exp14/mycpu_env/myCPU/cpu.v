@@ -69,7 +69,7 @@ module mycpu_top(
     wire [7:0]      hw_int_in;
     wire            ipi_int_in;
     wire            has_int;
-    wire [31:0]     excep_entry;
+    wire [31:0]     wb_csr_rvalue;
 
     wire [63:0]     counter;
     // exp12暂时设置为0
@@ -96,7 +96,7 @@ module mycpu_top(
         .if_to_id_bus(if_to_id_bus),
 
         .flush(ertn_flush || wb_ex),
-        .excep_entry(excep_entry)
+        .wb_csr_rvalue(wb_csr_rvalue)
     );
 
     IDreg my_idReg(
@@ -200,7 +200,9 @@ module mycpu_top(
         .wb_ecode(wb_ecode),
         .wb_esubcode(wb_esubcode),
         .wb_ex_pc(wb_pc),
-        .wb_vaddr(wb_vaddr)
+        .wb_vaddr(wb_vaddr),
+
+        .wb_csr_rvalue(wb_csr_rvalue)
     );
 
     CSRfile my_csrfild(
@@ -224,8 +226,8 @@ module mycpu_top(
 
         .hw_int_in(hw_int_in),
         .ipi_int_in(ipi_int_in),
-        .has_int(has_int),
-        .excep_entry(excep_entry)
+        .has_int(has_int)
+        //.excep_entry(excep_entry)
 
     );
 

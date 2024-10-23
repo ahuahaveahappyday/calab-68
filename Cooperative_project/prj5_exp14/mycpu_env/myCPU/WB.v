@@ -27,7 +27,8 @@ module WBreg(
     output wire [8:0]  wb_esubcode,
     output wire [31:0] wb_ex_pc,
     output reg  [31:0] wb_vaddr,
-
+    //  传给if级的跳转地址
+    output wire [31:0] wb_csr_rvalue,
 
     output wire        ertn_flush
 );
@@ -92,14 +93,16 @@ module WBreg(
                             wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
     assign wb_to_id_bus = {wb_rf_we & wb_valid & ~wb_ex & ~ertn_flush, wb_rf_waddr, final_rf_wdata};
     assign wb_to_ex_bus = {wb_excep_en & wb_valid,wb_ertn_flush};
+    assign wb_csr_rvalue = csr_rvalue;
     //debug信号
     assign debug_wb_pc = wb_pc;
     assign debug_wb_rf_wdata = final_rf_wdata;
     assign debug_wb_rf_we = {4{wb_rf_we & wb_valid & ~wb_excep_en}};//注意，这里& wb_valid不能省略！必须保证wb流水级有指令才能进行trace比对
     assign debug_wb_rf_wnum = wb_rf_waddr;
 //csr_file模块读写信号
-    assign csr_re = wb_csr_re;
-    assign csr_num = wb_csr_num;
+    assign csr_re =     wb_csr_re | wb_ex;
+    assign csr_num =    wb_ex ? 14'hc
+                        : wb_csr_num;
 
     assign csr_we = wb_csr_we & wb_valid;
     assign csr_wmask = wb_csr_wmask;

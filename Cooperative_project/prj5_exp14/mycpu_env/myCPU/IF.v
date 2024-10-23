@@ -19,7 +19,7 @@ module IFreg(
     output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
     //etrn清空流水线
     input  wire         flush,
-    input  wire [31:0]  excep_entry
+    input  wire [31:0]  wb_csr_rvalue
 );
 //pre-if需要的寄存器
     // reg  [31:0] pre_if_ir;      // inst_reg
@@ -102,7 +102,7 @@ module IFreg(
 //pre_IF阶段提前生成下一条指令的PC
     assign seq_pc           =   if_pc + 3'h4;  
     assign pre_pc           =   flush_reg ? excep_entry_reg
-                                : flush ? excep_entry
+                                : flush ? wb_csr_rvalue
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
                                 : seq_pc;
@@ -141,7 +141,7 @@ module IFreg(
         if(~resetn)
             excep_entry_reg <= 32'b0;
         else if((~inst_sram_req | ~inst_sram_addr_ok) & flush)
-            excep_entry_reg <= excep_entry;
+            excep_entry_reg <= wb_csr_rvalue;
     end
 
 //取指令
