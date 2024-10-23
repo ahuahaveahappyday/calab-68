@@ -11,7 +11,7 @@ module EXEreg(
     output wire        ex_to_mem_valid,
     output wire [239:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire [1:0]  mem_to_ex_bus,   // ex_en
-    input  wire [1:0]  wb_to_ex_bus,    // ex_en
+    // input  wire [1:0]  wb_to_ex_bus,    // ex_en
     //ex模块与数据存储器交互
     output wire         data_sram_req,
     output wire         data_sram_wr,
@@ -71,9 +71,9 @@ module EXEreg(
 
     wire        ex_res_from_wb;
     wire        mem_excep_en;
-    wire        wb_excep_en;
+    //wire        wb_excep_en;
     wire        mem_ertn_flush;
-    wire        wb_ertn_flush;
+    //wire        wb_ertn_flush;
     wire [31:0] ex_vaddr;
     // reg        ex_inst_st_b;               
     // reg        ex_inst_st_h;               
@@ -123,8 +123,8 @@ module EXEreg(
 // 来自mem和wb的异常数据
     assign mem_excep_en = mem_to_ex_bus[1];
     assign mem_ertn_flush=mem_to_ex_bus[0];
-    assign wb_excep_en  = wb_to_ex_bus[1];
-    assign wb_ertn_flush= wb_to_ex_bus[0];
+    // assign wb_excep_en  = wb_to_ex_bus[1];
+    // assign wb_ertn_flush= wb_to_ex_bus[0];
 // 寄存器写回数据来自wb级
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
@@ -134,7 +134,7 @@ module EXEreg(
     assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
                                 |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
                                 |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
-    assign data_sram_req    =   ex_mem_req & ex_valid & mem_allowin;
+    assign data_sram_req    =   ex_mem_req & mem_allowin;
     assign data_sram_wr     =   ex_mem_we;
     assign data_sram_size   =     {2{ex_op_st_ld_b}} & 2'b0 
                                 | {2{ex_op_st_ld_h}} & 2'b1 
@@ -146,8 +146,9 @@ module EXEreg(
 
     assign ex_data_sram_addr= ex_alu_result[1:0];
     assign ex_mem_req       =   (ex_res_from_mem | ex_mem_we) & ex_valid 
-                                & ~mem_excep_en & ~wb_excep_en & ~ex_excep_en 
-                                & ~mem_ertn_flush & ~wb_ertn_flush & ~ex_ertn_flush;
+                                & ~mem_excep_en & ~mem_ertn_flush         // mem级有异常
+                                & ~ex_excep_en  & ~ex_ertn_flush          // ex级有异常
+                                & ~flush;                                 // wb级报出异常
 
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 

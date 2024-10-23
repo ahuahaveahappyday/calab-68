@@ -49,7 +49,7 @@ module mycpu_top(
     wire [39:0]ex_to_id_bus;
     wire [38:0]mem_to_id_bus;
     wire [37:0]wb_to_id_bus;
-    wire [1:0] wb_to_ex_bus;
+    // wire [1:0] wb_to_ex_bus;
     wire [1:0] mem_to_ex_bus;
 
     wire            csr_re;
@@ -133,7 +133,7 @@ module mycpu_top(
         .ex_to_mem_valid(ex_to_mem_valid),
         .ex_to_mem_bus(ex_to_mem_bus),
 
-        .wb_to_ex_bus(wb_to_ex_bus),
+        // .wb_to_ex_bus(wb_to_ex_bus),
         .mem_to_ex_bus(mem_to_ex_bus),
         
         .data_sram_req    (data_sram_req    ),
@@ -185,7 +185,7 @@ module mycpu_top(
         .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
         .wb_to_id_bus(wb_to_id_bus),
-        .wb_to_ex_bus(wb_to_ex_bus),
+        // .wb_to_ex_bus(wb_to_ex_bus),
 
         .csr_re(csr_re),
         .csr_num(csr_num),
