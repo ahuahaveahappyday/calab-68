@@ -4,7 +4,7 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [228:0] id_to_ex_bus,
+    input wire [225:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -63,7 +63,6 @@ module EXEreg(
     wire        ex_ready_go;
     wire [31:0] ex_alu_result;
     wire        alu_complete;
-    wire [3:0]  ex_sram_we;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
     wire        ex_cancel;
     wire        ex_mem_req;
@@ -76,9 +75,9 @@ module EXEreg(
     wire        mem_ertn_flush;
     wire        wb_ertn_flush;
     wire [31:0] ex_vaddr;
-    reg        ex_inst_st_b;               
-    reg        ex_inst_st_h;               
-    reg        ex_inst_st_w;                
+    // reg        ex_inst_st_b;               
+    // reg        ex_inst_st_h;               
+    // reg        ex_inst_st_w;                
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
@@ -100,15 +99,15 @@ module EXEreg(
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode,
-              ex_inst_st_b,ex_inst_st_h,ex_inst_st_w}       <= {229{1'b0}};
+              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode
+              }       <= {226{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode,
-             ex_inst_st_b,ex_inst_st_h,ex_inst_st_w}     <= id_to_ex_bus;    
+             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode
+             }     <= id_to_ex_bus;    
     end
 
 //alu的实例化
@@ -132,20 +131,21 @@ module EXEreg(
 
     //与内存交互接口定义
     assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
-    assign data_sram_wdata  =   ex_inst_st_b ? {4{ex_rkd_value[7:0]}}:
-                                ex_inst_st_h ? {2{ex_rkd_value[15:0]}}:
-                                                ex_rkd_value[31:0];
+    assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
+                                |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
+                                |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
     assign data_sram_req    = ex_mem_req & ex_valid & mem_allowin;
-    assign data_sram_wr     = (|data_sram_wstrb) && ex_valid && ~mem_excep_en && ~wb_excep_en && ~ex_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_ertn_flush;
-    assign data_sram_wstrb  =  ex_sram_we;
-    assign data_sram_size   = {2{ex_inst_st_b}} & 2'b0 | {2{ex_inst_st_h}} & 2'b1 | {2{ex_inst_st_w}} & 2'd2;
+    assign data_sram_wr     = (ex_mem_we) && ex_valid && ~mem_excep_en && ~wb_excep_en && ~ex_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_ertn_flush;
+    assign data_sram_size   =     {2{ex_op_st_ld_b}} & 2'b0 
+                                | {2{ex_op_st_ld_h}} & 2'b1 
+                                | {2{ex_op_st_ld_w}} & 2'd2;
     
-    assign ex_sram_we       =   ex_inst_st_b ? (4'b0001 << ex_data_sram_addr[1:0]) :           // st.b
-                                ex_inst_st_h ? (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011) :    // st.h
-                                ex_inst_st_w ? 4'b1111:// st.w
-                                4'b0000;                                        
+    assign data_sram_wstrb       =   {4{ex_op_st_ld_b}} & (4'b0001 << ex_data_sram_addr[1:0])          // st.b
+                                    |{4{ex_op_st_ld_h}} & (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011)    // st.h
+                                    |{4{ex_op_st_ld_w}} & 4'b1111;// st.w
+
     assign ex_data_sram_addr= ex_alu_result[1:0];
-    assign ex_mem_req       = (ex_res_from_mem | (|ex_sram_we));
+    assign ex_mem_req       = ex_res_from_mem | ex_mem_we;
 
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
