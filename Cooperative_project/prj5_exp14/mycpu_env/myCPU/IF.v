@@ -25,7 +25,7 @@ module IFreg(
     // reg  [31:0] pre_if_ir;      // inst_reg
     // reg         pre_if_ir_valid;
 
-    reg         pre_if_reqed;
+    //reg         pre_if_reqed;
 //if流水级需要的寄存器，根据clk不断更新
     reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
 
@@ -85,14 +85,14 @@ module IFreg(
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 
     // 与pre-if级的握手信号
-    always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
-        if(~resetn)
-            pre_if_reqed <= 1'b0;
-        else if(pre_if_readygo && if_allowin)
-            pre_if_reqed <= 1'b0;
-        else if(inst_sram_req && inst_sram_addr_ok)
-            pre_if_reqed <= 1'b1;
-    end
+    // always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
+    //     if(~resetn)
+    //         pre_if_reqed <= 1'b0;
+    //     else if(pre_if_readygo && if_allowin)
+    //         pre_if_reqed <= 1'b0;
+    //     else if(inst_sram_req && inst_sram_addr_ok)
+    //         pre_if_reqed <= 1'b1;
+    // end
     assign pre_if_readygo   =   //pre_if_reqed
                                  inst_sram_req & inst_sram_addr_ok;
                                 //| pre_if_ir_valid;
@@ -105,7 +105,7 @@ module IFreg(
                                 : flush ? excep_entry
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
-                                :seq_pc;
+                                : seq_pc;
     always @(posedge clk) begin
         if(~resetn)
             if_pc <= 32'h1bfffffc;
@@ -150,7 +150,7 @@ module IFreg(
     assign inst_sram_size   = 2'h2;
     assign inst_sram_wdata  = 32'b0;
 
-    assign inst_sram_req    = resetn & ~pre_if_reqed        // pre if 没有已经发出请求的指令 
+    assign inst_sram_req    = resetn //& ~pre_if_reqed        // pre if 没有已经发出请求的指令 
                             // & ( inst_sram_data_ok  // 上一个请求恰好返回  
                             //     | if_inst_valid         // 上一个请求已经返回，且未进入id级
                             //     | if_allowin)     // 上一个请求已经返回，且已经进入id级
