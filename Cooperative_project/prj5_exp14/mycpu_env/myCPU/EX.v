@@ -113,7 +113,7 @@ module EXEreg(
 //alu的实例化
     alu u_alu(
         .clk            (clk       ),
-        .resetn         (resetn & ~flush & ~(id_to_ex_valid & ex_allowin)  ),
+        .resetn         (resetn & ~flush & ~(id_to_ex_valid & ex_allowin)),
         .alu_op         (ex_alu_op    ),
         .alu_src1       (ex_alu_src1  ),
         .alu_src2       (ex_alu_src2  ),
@@ -130,12 +130,12 @@ module EXEreg(
 //模块间通信
 
     //与内存交互接口定义
-    assign data_sram_addr   = ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
+    assign data_sram_addr   =   ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
     assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
                                 |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
                                 |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
-    assign data_sram_req    = ex_mem_req & ex_valid & mem_allowin;
-    assign data_sram_wr     = (ex_mem_we) && ex_valid && ~mem_excep_en && ~wb_excep_en && ~ex_excep_en &&~mem_ertn_flush&& ~wb_ertn_flush && ~ex_ertn_flush;
+    assign data_sram_req    =   ex_mem_req & ex_valid & mem_allowin;
+    assign data_sram_wr     =   ex_mem_we;
     assign data_sram_size   =     {2{ex_op_st_ld_b}} & 2'b0 
                                 | {2{ex_op_st_ld_h}} & 2'b1 
                                 | {2{ex_op_st_ld_w}} & 2'd2;
@@ -145,7 +145,9 @@ module EXEreg(
                                     |{4{ex_op_st_ld_w}} & 4'b1111;// st.w
 
     assign ex_data_sram_addr= ex_alu_result[1:0];
-    assign ex_mem_req       = ex_res_from_mem | ex_mem_we;
+    assign ex_mem_req       =   (ex_res_from_mem | ex_mem_we) & ex_valid 
+                                & ~mem_excep_en & ~wb_excep_en & ~ex_excep_en 
+                                & ~mem_ertn_flush & ~wb_ertn_flush & ~ex_ertn_flush;
 
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 

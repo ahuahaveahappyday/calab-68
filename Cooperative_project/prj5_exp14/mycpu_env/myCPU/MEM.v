@@ -64,16 +64,17 @@ module MEMreg(
     wire [31:0] mem_csr_wvalue;
     wire        mem_res_from_wb;
 
-    wire        mem_wait_data_ok;
-    reg         mem_wait_data_ok_reg;
-    reg  [31:0] mem_data_buf;
-    reg         data_buf_valid;  // 判断缓存是否有效
+    //wire        mem_wait_data_ok;
+    reg         mem_sram_requed;
+    //reg  [31:0] mem_data_buf;
+    //reg         data_buf_valid;  // 判断缓存是否有效
 // CSR 写数据
     assign mem_csr_wvalue = mem_rkd_value;
 
 //流水线控制信号
-    assign mem_wait_data_ok  = mem_wait_data_ok_reg & mem_valid & ~flush;
-    assign mem_ready_go      = ~mem_wait_data_ok | mem_wait_data_ok & data_sram_data_ok;
+    // assign mem_wait_data_ok  = mem_wait_data_ok_reg & mem_valid & ~flush;
+    assign mem_ready_go      =  ~mem_sram_requed 
+                                | mem_sram_requed & data_sram_data_ok;
     assign mem_allowin       = ~mem_valid | mem_ready_go & wb_allowin;     
     assign mem_to_wb_valid   = mem_valid & mem_ready_go;
 
@@ -88,48 +89,52 @@ module MEMreg(
     end
 
     //寄存器暂存数据，valid信号表示数据是否有效
-    always @(posedge clk) begin
-        if(~resetn) begin
-            mem_data_buf <= 32'b0;
-            data_buf_valid <= 1'b0;
-        end
-        else if(mem_to_wb_valid & wb_allowin)   // 缓存流向下一流水级
-            data_buf_valid <= 1'b0;
-        else if(~data_buf_valid & data_sram_data_ok & mem_valid) begin
-            mem_data_buf <= data_sram_rdata;
-            data_buf_valid <= 1'b1;
-        end
+    // always @(posedge clk) begin
+    //     if(~resetn) begin
+    //         mem_data_buf <= 32'b0;
+    //         data_buf_valid <= 1'b0;
+    //     end
+    //     else if(mem_to_wb_valid & wb_allowin)   // 缓存流向下一流水级
+    //         data_buf_valid <= 1'b0;
+    //     else if(~data_buf_valid & data_sram_data_ok & mem_valid) begin
+    //         mem_data_buf <= data_sram_rdata;
+    //         data_buf_valid <= 1'b1;
+    //     end
 
-    end
+    // end
     always @(posedge clk) begin
         if(~resetn) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT,mem_excep_esubcode,mem_vaddr,mem_wait_data_ok_reg} <= 240'b0;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
+             ,mem_excep_esubcode,mem_vaddr,mem_sram_requed} <= 240'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT, mem_excep_esubcode,mem_vaddr,mem_wait_data_ok_reg} <= ex_to_mem_bus;
+             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT
+             , mem_excep_esubcode,mem_vaddr,mem_sram_requed} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
     assign mem_res_from_wb  = mem_csr_re;
 //模块间通信
     //与内存交互接口定义
-    wire   [31:0]data_sram_rdata_final;
-    assign data_sram_rdata_final ={32{data_buf_valid}} & mem_data_buf | {32{~data_buf_valid}} & data_sram_rdata;
-    assign mem_word_result =    data_sram_rdata_final;
-    assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata_final[31:16]
-                                : data_sram_rdata_final[15:0];
-    assign mem_byte_result =    ({8{mem_data_sram_addr[1:0] == 2'd0}} & data_sram_rdata_final[7:0])
-                                |({8{mem_data_sram_addr[1:0] == 2'd1}} & data_sram_rdata_final[15:8])
-                                |({8{mem_data_sram_addr[1:0] == 2'd2}} & data_sram_rdata_final[23:16])
-                                |({8{mem_data_sram_addr[1:0] == 2'd3}} & data_sram_rdata_final[31:24]);
+    //wire   [31:0]data_sram_rdata_final;
+    //assign data_sram_rdata_final ={32{data_buf_valid}} & mem_data_buf | {32{~data_buf_valid}} & data_sram_rdata;
+    
+    
+    assign mem_word_result =    data_sram_rdata;
+    assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
+                                : data_sram_rdata[15:0];
+    assign mem_byte_result =    ({8{mem_data_sram_addr[1:0] == 2'd0}} & data_sram_rdata[7:0])
+                                |({8{mem_data_sram_addr[1:0] == 2'd1}} & data_sram_rdata[15:8])
+                                |({8{mem_data_sram_addr[1:0] == 2'd2}} & data_sram_rdata[23:16])
+                                |({8{mem_data_sram_addr[1:0] == 2'd3}} & data_sram_rdata[31:24]);
 
     assign mem_result =         mem_op_st_ld_b ? ({{24{~mem_op_st_ld_u & mem_byte_result[7]}}, mem_byte_result[7:0]}):       // mem_ld_st_type[3] identify if signed externed
                                 mem_op_st_ld_h ? ({{16{~mem_op_st_ld_u & mem_half_result[15]}}, mem_half_result[15:0]}) :
