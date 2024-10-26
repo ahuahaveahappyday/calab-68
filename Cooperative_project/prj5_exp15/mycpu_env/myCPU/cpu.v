@@ -1,28 +1,47 @@
 module mycpu_top(
-    input  wire        clk,
-    input  wire        resetn,
-//cpu与指令存储器交互的接口
-    output wire         inst_sram_req,
-    output wire         inst_sram_wr,
-    output wire [1:0]   inst_sram_size,
-    output wire [3:0]   inst_sram_wstrb,
-    output wire [31:0]  inst_sram_addr,
-    output wire [31:0]  inst_sram_wdata,
-    
-    input wire          inst_sram_addr_ok,
-    input wire          inst_sram_data_ok,
-    input wire  [31:0]  inst_sram_rdata,
-//cpu与数据存储器交互的接口
-    output wire         data_sram_req,
-    output wire         data_sram_wr,
-    output wire [1:0]   data_sram_size,
-    output wire [3:0]   data_sram_wstrb,
-    output wire [31:0]  data_sram_addr,
-    output wire [31:0]  data_sram_wdata,
-    
-    input wire          data_sram_addr_ok,
-    input wire          data_sram_data_ok,
-    input wire  [31:0]  data_sram_rdata,
+    input  wire        aclk,
+    input  wire        aresetn,
+    // read request
+    output wire  [3:0]          arid      ,
+    output wire  [31:0]         araddr    ,
+    output wire  [7:0]          arlen     ,
+    output wire  [2:0]          arsize    ,
+    output wire  [1:0]          arburst   ,
+    output wire  [1:0]          arlock    ,
+    output wire  [3:0]          arcache   ,
+    output wire  [2:0]          arprot    ,
+    output wire                 arvalid   ,
+    input wire                  arready   ,
+    // read respond
+    input wire  [3:0]           rid       ,
+    input wire  [31:0]          rdata     ,
+    input wire  [1:0]           rresp     ,
+    input wire                  rlast     ,
+    input wire                  rvalid    ,
+    output wire                 rready    ,
+    // write request
+    output wire [3:0]           awid      ,
+    output wire [31:0]          awaddr    ,
+    output wire [7:0]           awlen     ,
+    output wire [2:0]           awsize    ,
+    output wire [1:0]           awburst   ,
+    output wire [1:0]           awlock    ,
+    output wire [3:0]           awcache   ,
+    output wire [2:0]           awprot    ,
+    output wire                 awvalid   ,
+    input wire                  awready   ,
+    // write data
+    output wire [3:0]           wid       ,
+    output wire [31:0]          wdata     ,
+    output wire [3:0]           wstrb     ,
+    output wire                 wlast     ,
+    output wire                 wvalid    ,
+    input wire                  wready    ,
+    // write respond
+    input wire                  bid       ,
+    input wire                  bresp     ,
+    input wire                  bvalid    ,
+    output wire                 bready    ,
 //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -236,4 +255,73 @@ module mycpu_top(
         .resetn(resetn),
         .counter(counter)
     );
+
+    sram_axi_bridge my_sram_axi_bridge(
+        .clk(clk),
+        .resetn(resetn),
+
+        .inst_sram_req    (inst_sram_req    ),
+        .inst_sram_wr     (inst_sram_wr     ),
+        .inst_sram_size   (inst_sram_size   ),
+        .inst_sram_wstrb  (inst_sram_wstrb  ),
+        .inst_sram_addr   (inst_sram_addr   ),
+        .inst_sram_wdata  (inst_sram_wdata  ),
+        .inst_sram_addr_ok(inst_sram_addr_ok),
+        .inst_sram_data_ok(inst_sram_data_ok),
+        .inst_sram_rdata  (inst_sram_rdata  ),
+
+        .data_sram_req    (data_sram_req    ),
+        .data_sram_wr     (data_sram_wr     ),
+        .data_sram_size   (data_sram_size   ),
+        .data_sram_wstrb  (data_sram_wstrb  ),
+        .data_sram_addr   (data_sram_addr   ),
+        .data_sram_wdata  (data_sram_wdata  ),
+        .data_sram_addr_ok(data_sram_addr_ok),
+
+        .data_sram_data_ok(data_sram_data_ok),
+        .data_sram_rdata  (data_sram_rdata  ),
+
+        .arid      (cpu_arid      ),
+        .araddr    (cpu_araddr    ),
+        .arlen     (cpu_arlen     ),
+        .arsize    (cpu_arsize    ),
+        .arburst   (cpu_arburst   ),
+        .arlock    (cpu_arlock    ),
+        .arcache   (cpu_arcache   ),
+        .arprot    (cpu_arprot    ),
+        .arvalid   (cpu_arvalid   ),
+        .arready   (cpu_arready   ),
+
+        .rid       (cpu_rid       ),
+        .rdata     (cpu_rdata     ),
+        .rresp     (cpu_rresp     ),
+        .rlast     (cpu_rlast     ),
+        .rvalid    (cpu_rvalid    ),
+        .rready    (cpu_rready    ),
+
+        .awid      (cpu_awid      ),
+        .awaddr    (cpu_awaddr    ),
+        .awlen     (cpu_awlen     ),
+        .awsize    (cpu_awsize    ),
+        .awburst   (cpu_awburst   ),
+        .awlock    (cpu_awlock    ),
+        .awcache   (cpu_awcache   ),
+        .awprot    (cpu_awprot    ),
+        .awvalid   (cpu_awvalid   ),
+        .awready   (cpu_awready   ),
+
+        .wid       (cpu_wid       ),
+        .wdata     (cpu_wdata     ),
+        .wstrb     (cpu_wstrb     ),
+        .wlast     (cpu_wlast     ),
+        .wvalid    (cpu_wvalid    ),
+        .wready    (cpu_wready    ),
+
+        .bid       (cpu_bid       ),
+        .bresp     (cpu_bresp     ),
+        .bvalid    (cpu_bvalid    ),
+        .bready    (cpu_bready    )
+
+    );
+
 endmodule
