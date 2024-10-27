@@ -12,7 +12,7 @@ module IDreg(
     output wire [225:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
-    input  wire [38:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    input  wire [39:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     input  wire [39:0]            ex_to_id_bus,  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 
     input  wire                   flush,
@@ -162,6 +162,7 @@ module IDreg(
     wire        ex_res_from_mem;
     wire        ex_res_from_wb;
     wire        mem_res_from_wb;
+    wire        mem_res_from_mem;
 
     wire        id_rf_we   ;
     wire [ 4:0] id_rf_waddr;
@@ -192,7 +193,7 @@ module IDreg(
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
 // 流水线控制信号
-    assign id_ready_go      = ~stuck;//流水线阻塞的时候，id_ready_go值为零
+    assign id_ready_go      =   ~stuck;//流水线阻塞的时候，id_ready_go值为零
     assign id_allowin       =   ~id_valid 
                                 | id_ready_go & ex_allowin 
                                 | br_taken | flush;             // 消耗if级错误指令缓存 
@@ -218,7 +219,7 @@ module IDreg(
 
 //模块间通信
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
-    assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb} = mem_to_id_bus;
+    assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb, mem_res_from_mem} = mem_to_id_bus;
     assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
     assign id_to_if_bus = {br_taken, br_target, br_stall}; 
 
@@ -484,6 +485,7 @@ module IDreg(
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
     assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex)
+                            |mem_res_from_mem & (conflict_r1_mem|conflict_r2_mem)
                             |ex_res_from_wb & (conflict_r1_ex|conflict_r2_ex)
                             |mem_res_from_wb & (conflict_r1_mem|conflict_r2_mem);    
 

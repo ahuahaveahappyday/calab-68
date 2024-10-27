@@ -10,7 +10,7 @@ module MEMreg(
     output wire        mem_to_wb_valid,
     output wire [199:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
-    output wire [38:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
+    output wire [39:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与ex模块交互接口
     output wire  [1:0] mem_to_ex_bus,   // ex
     //mem与dram交互接口
@@ -144,7 +144,12 @@ module MEMreg(
     //打包
     assign mem_rf_wdata = mem_read_counter ? mem_counter_result : 
                           mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
-    assign mem_to_id_bus  = {mem_rf_we & mem_valid, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb & mem_valid};
+    assign mem_to_id_bus  = {mem_rf_we & mem_valid, 
+                            mem_rf_waddr, 
+                            mem_rf_wdata,
+                            mem_res_from_wb & mem_valid,
+                            mem_res_from_mem & mem_valid
+                            };
     assign mem_to_wb_bus  = {mem_rf_we & mem_valid,     // 1 bit
                             mem_rf_waddr,               // 5 bit
                             mem_rf_wdata,               // 32 bit

@@ -11,7 +11,7 @@ module EXEreg(
     output wire        ex_to_mem_valid,
     output wire [239:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire [1:0]  mem_to_ex_bus,   // ex_en
-    // input  wire [1:0]  wb_to_ex_bus,    // ex_en
+
     //ex模块与数据存储器交互
     output wire         data_sram_req,
     output wire         data_sram_wr,
