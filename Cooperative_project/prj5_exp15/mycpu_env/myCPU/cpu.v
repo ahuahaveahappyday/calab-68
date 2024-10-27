@@ -1,6 +1,6 @@
 module mycpu_top(
-    input  wire        aclk,
-    input  wire        aresetn,
+    input  wire                 aclk,
+    input  wire                 aresetn,
     // read request
     output wire  [3:0]          arid      ,
     output wire  [31:0]         araddr    ,
@@ -117,8 +117,8 @@ module mycpu_top(
     wire  [31:0]  data_sram_rdata;
     
     IFreg my_ifReg(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .inst_sram_req      (inst_sram_req    ),
         .inst_sram_wr       (inst_sram_wr     ),
@@ -140,8 +140,8 @@ module mycpu_top(
     );
 
     IDreg my_idReg(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .if_to_id_valid     (if_to_id_valid),
         .id_allowin         (id_allowin),
@@ -161,8 +161,8 @@ module mycpu_top(
     );
 
     EXEreg my_exeReg(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
         
         .ex_allowin         (ex_allowin),
         .id_to_ex_valid     (id_to_ex_valid),
@@ -190,8 +190,8 @@ module mycpu_top(
     );
 
     MEMreg my_memReg(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .mem_allowin        (mem_allowin),
         .ex_to_mem_valid    (ex_to_mem_valid),
@@ -212,8 +212,8 @@ module mycpu_top(
     ) ;
 
     WBreg my_wbReg(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .wb_allowin         (wb_allowin),
         .mem_to_wb_valid    (mem_to_wb_valid),
@@ -245,8 +245,8 @@ module mycpu_top(
     );
 
     CSRfile my_csrfild(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .csr_re             (csr_re),
         .csr_num            (csr_num),
@@ -271,14 +271,14 @@ module mycpu_top(
     );
 
     Stable_Counter my_counter(
-        .clk                (clk),
-        .resetn             (resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
         .counter            (counter)
     );
 
     sram_axi_bridge my_sram_axi_bridge(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (aclk),
+        .resetn             (aresetn),
 
         .inst_sram_req      (inst_sram_req    ),
         .inst_sram_wr       (inst_sram_wr     ),

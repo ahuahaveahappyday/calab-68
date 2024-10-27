@@ -145,7 +145,7 @@ assign data_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW
 assign arlen =      8'b0;
 assign arburst =    2'b01;
 assign arlock =     2'b0;
-assign arache =     4'b0;
+assign arcache =    4'b0;
 assign arprot =     3'b0;
 assign arsize =     3'b010; // 32 bit per time
 // arid
