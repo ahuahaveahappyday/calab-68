@@ -94,233 +94,253 @@ module mycpu_top(
     // exp12暂时设置为0
     assign hw_int_in = 8'b0;
     assign ipi_int_in = 1'b0;
+
+    wire         inst_sram_req;
+    wire         inst_sram_wr;
+    wire [1:0]   inst_sram_size;
+    wire [3:0]   inst_sram_wstrb;
+    wire [31:0]  inst_sram_addr;
+    wire [31:0]  inst_sram_wdata;
+    wire          inst_sram_addr_ok;
+    wire          inst_sram_data_ok;
+    wire  [31:0]  inst_sram_rdata;
+
+    wire         data_sram_req;
+    wire         data_sram_wr;
+    wire [1:0]   data_sram_size;
+    wire [3:0]   data_sram_wstrb;
+    wire [31:0]  data_sram_addr;
+    wire [31:0]  data_sram_wdata;
+    wire          data_sram_addr_ok;
+
+    wire          data_sram_data_ok;
+    wire  [31:0]  data_sram_rdata;
     
     IFreg my_ifReg(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
 
-        .inst_sram_req    (inst_sram_req    ),
-        .inst_sram_wr     (inst_sram_wr     ),
-        .inst_sram_size   (inst_sram_size   ),
-        .inst_sram_wstrb  (inst_sram_wstrb  ),
-        .inst_sram_addr   (inst_sram_addr   ),
-        .inst_sram_wdata  (inst_sram_wdata  ),
-        .inst_sram_addr_ok(inst_sram_addr_ok),
-        .inst_sram_data_ok(inst_sram_data_ok),
-        .inst_sram_rdata  (inst_sram_rdata  ),
+        .inst_sram_req      (inst_sram_req    ),
+        .inst_sram_wr       (inst_sram_wr     ),
+        .inst_sram_size     (inst_sram_size   ),
+        .inst_sram_wstrb    (inst_sram_wstrb  ),
+        .inst_sram_addr     (inst_sram_addr   ),
+        .inst_sram_wdata    (inst_sram_wdata  ),
+        .inst_sram_addr_ok  (inst_sram_addr_ok),
+        .inst_sram_data_ok  (inst_sram_data_ok),
+        .inst_sram_rdata    (inst_sram_rdata  ),
         
-        .id_allowin(id_allowin),
-        .id_to_if_bus(id_to_if_bus),
-        .if_to_id_valid(if_to_id_valid),
-        .if_to_id_bus(if_to_id_bus),
+        .id_allowin         (id_allowin),
+        .id_to_if_bus       (id_to_if_bus),
+        .if_to_id_valid     (if_to_id_valid),
+        .if_to_id_bus       (if_to_id_bus),
 
-        .flush(ertn_flush || wb_ex),
-        .wb_csr_rvalue(wb_csr_rvalue)
+        .flush              (ertn_flush || wb_ex),
+        .wb_csr_rvalue      (wb_csr_rvalue)
     );
 
     IDreg my_idReg(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
 
-        .if_to_id_valid(if_to_id_valid),
-        .id_allowin(id_allowin),
-        .id_to_if_bus(id_to_if_bus),
-        .if_to_id_bus(if_to_id_bus),
+        .if_to_id_valid     (if_to_id_valid),
+        .id_allowin         (id_allowin),
+        .id_to_if_bus       (id_to_if_bus),
+        .if_to_id_bus       (if_to_id_bus),
 
-        .ex_allowin(ex_allowin),
-        .id_to_ex_valid(id_to_ex_valid),
-        .id_to_ex_bus(id_to_ex_bus),
+        .ex_allowin         (ex_allowin),
+        .id_to_ex_valid     (id_to_ex_valid),
+        .id_to_ex_bus       (id_to_ex_bus),
 
-        .wb_to_id_bus(wb_to_id_bus),
-        .mem_to_id_bus(mem_to_id_bus),
-        .ex_to_id_bus(ex_to_id_bus),
+        .wb_to_id_bus       (wb_to_id_bus),
+        .mem_to_id_bus      (mem_to_id_bus),
+        .ex_to_id_bus       (ex_to_id_bus),
 
-        .flush(ertn_flush || wb_ex),
-        .has_int(has_int)
+        .flush              (ertn_flush || wb_ex),
+        .has_int            (has_int)
     );
 
     EXEreg my_exeReg(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
         
-        .ex_allowin(ex_allowin),
-        .id_to_ex_valid(id_to_ex_valid),
-        .id_to_ex_bus(id_to_ex_bus),
-        .ex_to_id_bus(ex_to_id_bus),
+        .ex_allowin         (ex_allowin),
+        .id_to_ex_valid     (id_to_ex_valid),
+        .id_to_ex_bus       (id_to_ex_bus),
+        .ex_to_id_bus       (ex_to_id_bus),
 
-        .mem_allowin(mem_allowin),
-        .ex_to_mem_valid(ex_to_mem_valid),
-        .ex_to_mem_bus(ex_to_mem_bus),
+        .mem_allowin        (mem_allowin),
+        .ex_to_mem_valid    (ex_to_mem_valid),
+        .ex_to_mem_bus      (ex_to_mem_bus),
 
         // .wb_to_ex_bus(wb_to_ex_bus),
-        .mem_to_ex_bus(mem_to_ex_bus),
+        .mem_to_ex_bus      (mem_to_ex_bus),
         
-        .data_sram_req    (data_sram_req    ),
-        .data_sram_wr     (data_sram_wr     ),
-        .data_sram_size   (data_sram_size   ),
-        .data_sram_wstrb  (data_sram_wstrb  ),
-        .data_sram_addr   (data_sram_addr   ),
-        .data_sram_wdata  (data_sram_wdata  ),
-        .data_sram_addr_ok(data_sram_addr_ok),
+        .data_sram_req      (data_sram_req    ),
+        .data_sram_wr       (data_sram_wr     ),
+        .data_sram_size     (data_sram_size   ),
+        .data_sram_wstrb    (data_sram_wstrb  ),
+        .data_sram_addr     (data_sram_addr   ),
+        .data_sram_wdata    (data_sram_wdata  ),
+        .data_sram_addr_ok  (data_sram_addr_ok),
 
-        .flush(ertn_flush || wb_ex),
+        .flush              (ertn_flush || wb_ex),
 
-        .counter(counter)
+        .counter            (counter)
     );
 
     MEMreg my_memReg(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
 
-        .mem_allowin(mem_allowin),
-        .ex_to_mem_valid(ex_to_mem_valid),
-        .ex_to_mem_bus(ex_to_mem_bus),
+        .mem_allowin        (mem_allowin),
+        .ex_to_mem_valid    (ex_to_mem_valid),
+        .ex_to_mem_bus      (ex_to_mem_bus),
 
-        .wb_allowin(wb_allowin),
-        .mem_to_wb_valid(mem_to_wb_valid),
-        .mem_to_wb_bus(mem_to_wb_bus),
+        .wb_allowin         (wb_allowin),
+        .mem_to_wb_valid    (mem_to_wb_valid),
+        .mem_to_wb_bus      (mem_to_wb_bus),
 
-        .mem_to_id_bus(mem_to_id_bus),
-        .mem_to_ex_bus(mem_to_ex_bus),
+        .mem_to_id_bus      (mem_to_id_bus),
+        .mem_to_ex_bus      (mem_to_ex_bus),
 
-        .data_sram_data_ok(data_sram_data_ok),
-        .data_sram_rdata  (data_sram_rdata  ),
+        .data_sram_data_ok  (data_sram_data_ok),
+        .data_sram_rdata    (data_sram_rdata  ),
 
-        .flush(ertn_flush || wb_ex)
+        .flush              (ertn_flush || wb_ex)
 
     ) ;
 
     WBreg my_wbReg(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
 
-        .wb_allowin(wb_allowin),
-        .mem_to_wb_valid(mem_to_wb_valid),
-        .mem_to_wb_bus(mem_to_wb_bus),
+        .wb_allowin         (wb_allowin),
+        .mem_to_wb_valid    (mem_to_wb_valid),
+        .mem_to_wb_bus      (mem_to_wb_bus),
 
-        .debug_wb_pc(debug_wb_pc),
-        .debug_wb_rf_we(debug_wb_rf_we),
-        .debug_wb_rf_wnum(debug_wb_rf_wnum),
-        .debug_wb_rf_wdata(debug_wb_rf_wdata),
+        .debug_wb_pc        (debug_wb_pc),
+        .debug_wb_rf_we     (debug_wb_rf_we),
+        .debug_wb_rf_wnum   (debug_wb_rf_wnum),
+        .debug_wb_rf_wdata  (debug_wb_rf_wdata),
 
-        .wb_to_id_bus(wb_to_id_bus),
-        // .wb_to_ex_bus(wb_to_ex_bus),
+        .wb_to_id_bus       (wb_to_id_bus),
 
-        .csr_re(csr_re),
-        .csr_num(csr_num),
-        .csr_rvalue(csr_rvalue),
-        .csr_we(csr_we),
-        .csr_wmask(csr_wmask),
-        .csr_wvalue(csr_wvalue),
+        .csr_re             (csr_re),
+        .csr_num            (csr_num),
+        .csr_rvalue         (csr_rvalue),
+        .csr_we             (csr_we),
+        .csr_wmask          (csr_wmask),
+        .csr_wvalue         (csr_wvalue),
 
-        .ertn_flush(ertn_flush),
+        .ertn_flush         (ertn_flush),
 
-        .wb_ex(wb_ex),
-        .wb_ecode(wb_ecode),
-        .wb_esubcode(wb_esubcode),
-        .wb_ex_pc(wb_pc),
-        .wb_vaddr(wb_vaddr),
+        .wb_ex              (wb_ex),
+        .wb_ecode           (wb_ecode),
+        .wb_esubcode        (wb_esubcode),
+        .wb_ex_pc           (wb_pc),
+        .wb_vaddr           (wb_vaddr),
 
-        .wb_csr_rvalue(wb_csr_rvalue)
+        .wb_csr_rvalue      (wb_csr_rvalue)
     );
 
     CSRfile my_csrfild(
-        .clk(clk),
-        .resetn(resetn),
+        .clk                (clk),
+        .resetn             (resetn),
 
-        .csr_re(csr_re),
-        .csr_num(csr_num),
-        .csr_rvalue(csr_rvalue),
-        .csr_we(csr_we),
-        .csr_wmask(csr_wmask),
-        .csr_wvalue(csr_wvalue),
+        .csr_re             (csr_re),
+        .csr_num            (csr_num),
+        .csr_rvalue         (csr_rvalue),
+        .csr_we             (csr_we),
+        .csr_wmask          (csr_wmask),
+        .csr_wvalue         (csr_wvalue),
 
-        .wb_ex(wb_ex),
-        .wb_ecode(wb_ecode),
-        .wb_esubcode(wb_esubcode),
-        .wb_pc(wb_pc),
-        .wb_vaddr(wb_vaddr),
+        .wb_ex              (wb_ex),
+        .wb_ecode           (wb_ecode),
+        .wb_esubcode        (wb_esubcode),
+        .wb_pc              (wb_pc),
+        .wb_vaddr           (wb_vaddr),
 
-        .ertn_flush(ertn_flush),
+        .ertn_flush         (ertn_flush),
 
-        .hw_int_in(hw_int_in),
-        .ipi_int_in(ipi_int_in),
-        .has_int(has_int)
+        .hw_int_in          (hw_int_in),
+        .ipi_int_in         (ipi_int_in),
+        .has_int            (has_int)
         //.excep_entry(excep_entry)
 
     );
 
     Stable_Counter my_counter(
-        .clk(clk),
-        .resetn(resetn),
-        .counter(counter)
+        .clk                (clk),
+        .resetn             (resetn),
+        .counter            (counter)
     );
 
     sram_axi_bridge my_sram_axi_bridge(
         .clk(clk),
         .resetn(resetn),
 
-        .inst_sram_req    (inst_sram_req    ),
-        .inst_sram_wr     (inst_sram_wr     ),
-        .inst_sram_size   (inst_sram_size   ),
-        .inst_sram_wstrb  (inst_sram_wstrb  ),
-        .inst_sram_addr   (inst_sram_addr   ),
-        .inst_sram_wdata  (inst_sram_wdata  ),
-        .inst_sram_addr_ok(inst_sram_addr_ok),
-        .inst_sram_data_ok(inst_sram_data_ok),
-        .inst_sram_rdata  (inst_sram_rdata  ),
+        .inst_sram_req      (inst_sram_req    ),
+        .inst_sram_wr       (inst_sram_wr     ),
+        .inst_sram_size     (inst_sram_size   ),
+        .inst_sram_wstrb    (inst_sram_wstrb  ),
+        .inst_sram_addr     (inst_sram_addr   ),
+        .inst_sram_wdata    (inst_sram_wdata  ),
+        .inst_sram_addr_ok  (inst_sram_addr_ok),
+        .inst_sram_data_ok  (inst_sram_data_ok),
+        .inst_sram_rdata    (inst_sram_rdata  ),
 
-        .data_sram_req    (data_sram_req    ),
-        .data_sram_wr     (data_sram_wr     ),
-        .data_sram_size   (data_sram_size   ),
-        .data_sram_wstrb  (data_sram_wstrb  ),
-        .data_sram_addr   (data_sram_addr   ),
-        .data_sram_wdata  (data_sram_wdata  ),
-        .data_sram_addr_ok(data_sram_addr_ok),
+        .data_sram_req      (data_sram_req    ),
+        .data_sram_wr       (data_sram_wr     ),
+        .data_sram_size     (data_sram_size   ),
+        .data_sram_wstrb    (data_sram_wstrb  ),
+        .data_sram_addr     (data_sram_addr   ),
+        .data_sram_wdata    (data_sram_wdata  ),
+        .data_sram_addr_ok  (data_sram_addr_ok),
 
-        .data_sram_data_ok(data_sram_data_ok),
-        .data_sram_rdata  (data_sram_rdata  ),
+        .data_sram_data_ok  (data_sram_data_ok),
+        .data_sram_rdata    (data_sram_rdata  ),
 
-        .arid      (cpu_arid      ),
-        .araddr    (cpu_araddr    ),
-        .arlen     (cpu_arlen     ),
-        .arsize    (cpu_arsize    ),
-        .arburst   (cpu_arburst   ),
-        .arlock    (cpu_arlock    ),
-        .arcache   (cpu_arcache   ),
-        .arprot    (cpu_arprot    ),
-        .arvalid   (cpu_arvalid   ),
-        .arready   (cpu_arready   ),
+        .arid               (arid      ),
+        .araddr             (araddr    ),
+        .arlen              (arlen     ),
+        .arsize             (arsize    ),
+        .arburst            (arburst   ),
+        .arlock             (arlock    ),
+        .arcache            (arcache   ),
+        .arprot             (arprot    ),
+        .arvalid            (arvalid   ),
+        .arready            (arready   ),
 
-        .rid       (cpu_rid       ),
-        .rdata     (cpu_rdata     ),
-        .rresp     (cpu_rresp     ),
-        .rlast     (cpu_rlast     ),
-        .rvalid    (cpu_rvalid    ),
-        .rready    (cpu_rready    ),
+        .rid                (rid       ),
+        .rdata              (rdata     ),
+        .rresp              (rresp     ),
+        .rlast              (rlast     ),
+        .rvalid             (rvalid    ),
+        .rready             (rready    ),
 
-        .awid      (cpu_awid      ),
-        .awaddr    (cpu_awaddr    ),
-        .awlen     (cpu_awlen     ),
-        .awsize    (cpu_awsize    ),
-        .awburst   (cpu_awburst   ),
-        .awlock    (cpu_awlock    ),
-        .awcache   (cpu_awcache   ),
-        .awprot    (cpu_awprot    ),
-        .awvalid   (cpu_awvalid   ),
-        .awready   (cpu_awready   ),
+        .awid               (awid      ),
+        .awaddr             (awaddr    ),
+        .awlen              (awlen     ),
+        .awsize             (awsize    ),
+        .awburst            (awburst   ),
+        .awlock             (awlock    ),
+        .awcache            (awcache   ),
+        .awprot             (awprot    ),
+        .awvalid            (awvalid   ),
+        .awready            (awready   ),
 
-        .wid       (cpu_wid       ),
-        .wdata     (cpu_wdata     ),
-        .wstrb     (cpu_wstrb     ),
-        .wlast     (cpu_wlast     ),
-        .wvalid    (cpu_wvalid    ),
-        .wready    (cpu_wready    ),
+        .wid                (wid       ),
+        .wdata              (wdata     ),
+        .wstrb              (wstrb     ),
+        .wlast              (wlast     ),
+        .wvalid             (wvalid    ),
+        .wready             (wready    ),
 
-        .bid       (cpu_bid       ),
-        .bresp     (cpu_bresp     ),
-        .bvalid    (cpu_bvalid    ),
-        .bready    (cpu_bready    )
+        .bid                (bid       ),
+        .bresp              (bresp     ),
+        .bvalid             (bvalid    ),
+        .bready             (bready    )
 
     );
 
