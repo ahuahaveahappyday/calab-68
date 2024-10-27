@@ -299,7 +299,8 @@ assign wid =    4'b1;
 assign wstrb = wstrb_reg;
 // wdata
 assign wdata = wdata_reg;
-
+// wvalid
+assign wvalid = aw_current_state == AW_SEND_DATA;
 /*----------------------------------------------------write respond chanel----------------------------------------*/
 always @(posedge clk)begin
     if(~resetn)
