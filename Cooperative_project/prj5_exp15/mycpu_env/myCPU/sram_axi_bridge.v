@@ -44,21 +44,21 @@ module sram_axi_bridge(
     input wire                  rvalid    ,
     output wire                 rready    ,
     // write request
-    output wire [3:0]           awid      ,
+    output wire [3:0]           awid      , // 1
     output wire [31:0]          awaddr    ,
-    output wire [7:0]           awlen     ,
-    output wire [2:0]           awsize    ,
-    output wire [1:0]           awburst   ,
-    output wire [1:0]           awlock    ,
-    output wire [3:0]           awcache   ,
-    output wire [2:0]           awprot    ,
+    output wire [7:0]           awlen     , // 0
+    output wire [2:0]           awsize    , // 1
+    output wire [1:0]           awburst   , // 0
+    output wire [1:0]           awlock    , // 0
+    output wire [3:0]           awcache   , // 0
+    output wire [2:0]           awprot    , // 0
     output wire                 awvalid   ,
     input wire                  awready   ,
     // write data
-    output wire [3:0]           wid       ,
+    output wire [3:0]           wid       , // 1
     output wire [31:0]          wdata     ,
     output wire [3:0]           wstrb     ,
-    output wire                 wlast     ,
+    output wire                 wlast     , // 1
     output wire                 wvalid    ,
     input wire                  wready    ,
     // write respond
@@ -68,30 +68,32 @@ module sram_axi_bridge(
     output wire                 bready    
 );
 
+//  ----------------one hot encoding: read request
+localparam      AR_WAIT =       3'b001,
+                AR_INST_SEND=   3'b010,
+                AR_DATA_SEND =  3'b100;
+
+reg [2:0]       ar_current_state;
+reg [2:0]       ar_next_state;
+// ----------------one hot encoding: write request and data
+localparam      AW_WAIT =       3'b001,
+                AW_SEND_ADDR =   3'b010,
+                AW_SEND_DATA =   3'b100;
+
+reg [2:0]       aw_current_state;
+reg [2:0]       aw_next_state;
+
+
 
 /*--------------------------------------read request chanel---------------------------------------------------*/
-assign arlen =      8'b0;
-assign arburst =    2'b01;
-assign arlock =     2'b0;
-assign arache =     4'b0;
-assign arprot =     3'b0;
-assign arsize =     3'b010; // 32 bit per time
-
 reg [3:0]       arid_reg;
 reg [31:0]      araddr_reg;
 reg [2:0]       arsize_reg;
 reg             arvalid_reg;
 
-
 reg             ar_inst_addr_valid;
 reg [31:0]      ar_inst_addr_reg;
-//  ----------------one hot encoding
-localparam      AR_WAIT =       3'b001,
-                AR_INST_SEND=   3'b010,
-                AR_DATA_SEND =  3'b100;
 
-reg [2:0]   ar_current_state;
-reg [2:0]   ar_next_state;
 always @(posedge clk)begin
     if(~resetn)
         ar_current_state <= AR_WAIT;
@@ -102,9 +104,9 @@ end
 always @( * )begin
     case (ar_current_state)
         AR_WAIT:begin
-            if(data_sram_req & ~data_sram_wr)// data fetch, higher priority
+            if(data_sram_req & data_sram_addr_ok & ~data_sram_wr)// data fetch, higher priority
                 ar_next_state =         AR_DATA_SEND;
-            else if( inst_sram_req & ~inst_sram_wr)      // inst fetch
+            else if( inst_sram_req & inst_sram_addr_ok & ~inst_sram_wr)      // inst fetch
                 ar_next_state   =       AR_INST_SEND;
             else 
                 ar_next_state =         AR_WAIT;
@@ -127,9 +129,15 @@ always @( * )begin
 end
 
 //---------------------------sram_like slave 
-assign inst_sram_addr_ok = ar_current_state == AR_WAIT;
-assign data_sram_addr_ok = ar_current_state == AR_WAIT;
+assign inst_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
+assign data_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
 // --------------------------axi master
+assign arlen =      8'b0;
+assign arburst =    2'b01;
+assign arlock =     2'b0;
+assign arache =     4'b0;
+assign arprot =     3'b0;
+assign arsize =     3'b010; // 32 bit per time
 // arid
 assign arid = {2'b0,{ar_current_state == AR_DATA_SEND}};
 // arvalid
@@ -140,8 +148,8 @@ always @(posedge clk)begin
         ar_inst_addr_reg<= 32'b0;
         ar_inst_addr_valid <= 1'b0;
     end
-    else if(ar_current_state == AR_WAIT && inst_sram_req && ~inst_sram_wr
-                                        && data_sram_req && ~data_sram_wr )     // Inst fetch and data fetch request at the same time
+    else if(ar_current_state == AR_WAIT && inst_sram_req && inst_sram_addr_ok && ~inst_sram_wr
+                                        && data_sram_req && data_sram_addr_ok && ~data_sram_wr )     // Inst fetch and data fetch request at the same time
     begin
         ar_inst_addr_reg<= inst_sram_addr;
         ar_inst_addr_valid <= 1'b1;
@@ -154,9 +162,9 @@ end
 always @(posedge clk)begin
     if(~resetn)
         araddr_reg <= 32'b0;
-    else if(ar_current_state == AR_WAIT && data_sram_req && ~data_sram_wr)
+    else if(ar_current_state == AR_WAIT && data_sram_req && data_sram_addr_ok && ~data_sram_wr)
         araddr_reg <= data_sram_addr;
-    else if(ar_current_state == AR_WAIT && inst_sram_req && ~inst_sram_wr)   // Inst fetch
+    else if(ar_current_state == AR_WAIT && inst_sram_req && inst_sram_addr_ok && ~inst_sram_wr)   // Inst fetch
         araddr_reg <= inst_sram_addr;
     else if(ar_current_state == AR_DATA_SEND && arready && ar_inst_addr_valid)
         araddr_reg <= ar_inst_addr_reg;
@@ -213,19 +221,14 @@ end
 assign inst_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b0);
 assign inst_sram_rdata = rdata_reg;
 // data_sram
-assign data_sram_addr_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b1);
+assign data_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b1)
+                           ;
 assign data_sram_rdata = rdata_reg;
 
 /*----------------------------------------------------write data and request chanel----------------------------------------*/
-reg [2:0]       aw_current_state;
-reg [2:0]       aw_next_state;
-
-// -------------------------------one hot encoding state
-localparam      AW_WAIT =       3'b001,
-                AW_SEND_ADDR =   3'b010,
-                AW_SEND_DATA =   3'b100;
-
-
+reg [31:0]      awaddr_reg;
+reg [3:0]       wstrb_reg;
+reg [31:0]      wdata_reg;
 always @(posedge clk)begin
     if(~resetn)
         aw_current_state <= AW_WAIT;
@@ -236,7 +239,7 @@ end
 always @(*)begin
     case(aw_current_state)
         AW_WAIT:begin
-            if(data_sram_wr && data_sram_req)   // data write request
+            if(data_sram_wr && data_sram_req && data_sram_addr_ok)   // data write request
                 aw_next_state = AW_SEND_ADDR;
             else 
                 aw_next_state = AW_WAIT;
@@ -255,11 +258,45 @@ always @(*)begin
         end
     endcase
 end
+/*----------------------------------write request chanel------------------------*/
 // ---------------------------sram_like slave
-assign data_sram_addr_ok = aw_current_state == AW_WAIT;
+// data_sram_addr_ok is defined in read req chanel
+always @(posedge clk)begin
+    if(~resetn)begin
+        awaddr_reg <= 32'b0;
+        wstrb_reg <= 4'b0;
+        wdata_reg <= 32'b0;
+    end
+    else if(aw_current_state == AW_WAIT && data_sram_addr_ok && data_sram_req && data_sram_wr)begin
+        awaddr_reg <= data_sram_addr;
+        wstrb_reg <= data_sram_wstrb;
+        wdata_reg <= data_sram_wdata;
+    end
+end
+// ---------------------------axi master
+assign awlen =      8'b0;
+assign awsize =     3'b010; // 32 bit per time
+assign awburst =    2'b01;
+assign awlock =     2'b0;
+assign awcache =    4'b0;
+assign awprot =     3'b0;
+// awid 
+assign awid =       4'b1;
+// awaddr
+assign awaddr = awaddr_reg;
+// awvalid
+assign awvalid = aw_current_state == AW_SEND_ADDR;
+/*----------------------------------write data chanel------------------------*/
+// -----------------------------axi master
+assign wlast =  1'b1;
+// wid
+assign wid =    4'b1;
+// wstrb
+assign wstrb = wstrb_reg;
+// wdata
+assign wdata = wdata_reg;
 
-
-
+/*----------------------------------------------------write respond chanel----------------------------------------*/
 
 
 
