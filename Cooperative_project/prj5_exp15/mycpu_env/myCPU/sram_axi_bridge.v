@@ -62,8 +62,8 @@ module sram_axi_bridge(
     output wire                 wvalid    ,
     input wire                  wready    ,
     // write respond
-    input wire                  bid       ,
-    input wire                  bresp     ,
+    input wire                  bid       , // ignore
+    input wire                  bresp     , // ignore
     input wire                  bvalid    ,
     output wire                 bready    
 );
@@ -75,6 +75,12 @@ localparam      AR_WAIT =       3'b001,
 
 reg [2:0]       ar_current_state;
 reg [2:0]       ar_next_state;
+// ----------------one hot encoding: read respond
+localparam      R_WAIT =        2'b00,
+                R_RECIEVE =     2'b10;
+
+reg [1:0]                r_current_state;
+reg [1:0]               r_next_state;
 // ----------------one hot encoding: write request and data
 localparam      AW_WAIT =       3'b001,
                 AW_SEND_ADDR =   3'b010,
@@ -83,7 +89,11 @@ localparam      AW_WAIT =       3'b001,
 reg [2:0]       aw_current_state;
 reg [2:0]       aw_next_state;
 
-
+// ----------------one hot encoding: write respond
+localparam      B_WAIT =    2'b01,
+                B_REC =     2'b10;
+reg [2:0]       b_current_state;
+reg [2:0]       b_next_state;
 
 /*--------------------------------------read request chanel---------------------------------------------------*/
 reg [3:0]       arid_reg;
@@ -171,14 +181,8 @@ always @(posedge clk)begin
 end
 assign araddr = araddr_reg;
 /*-------------------------------------------------read respond chanel------------------------------------------------------*/
-reg [1:0]                r_current_state;
-reg [1:0]               r_next_state;
-
 reg [31:0]          rdata_reg;
 reg                 rid_reg;
-// ---------------------one hot encoding state
-localparam      R_WAIT =        2'b00,
-                R_RECIEVE =     2'b10;
 
 always @(posedge clk)begin
     if(~resetn)
@@ -222,7 +226,7 @@ assign inst_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b0);
 assign inst_sram_rdata = rdata_reg;
 // data_sram
 assign data_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b1)
-                           ;
+                           |(b_current_state == B_REC);
 assign data_sram_rdata = rdata_reg;
 
 /*----------------------------------------------------write data and request chanel----------------------------------------*/
@@ -297,17 +301,33 @@ assign wstrb = wstrb_reg;
 assign wdata = wdata_reg;
 
 /*----------------------------------------------------write respond chanel----------------------------------------*/
+always @(posedge clk)begin
+    if(~resetn)
+        b_current_state <= B_WAIT;
+    else 
+        b_current_state <= b_next_state;
+end
+// ------------------next_state generate
+always @(*)begin
+    case (b_current_state)
+        B_WAIT:begin
+            if(bvalid)
+                b_next_state = B_REC;
+            else 
+                b_next_state <= B_WAIT;
+        end
+        B_REC:begin
+            b_next_state = B_WAIT;
+        end
+    endcase
 
+end
 
-
-
-
-
-
-
-
-
-
+// -------------------------------sram_like slave
+// data_sram_data_ok is defined in read respond chanel
+// -------------------------------axi master
+// bready
+assign bready = (b_current_state == B_WAIT);
 
 
 
