@@ -197,7 +197,7 @@ module IDreg(
     assign id_allowin       =   ~id_valid 
                                 | id_ready_go & ex_allowin 
                                 | br_taken | flush;             // 消耗if级错误指令缓存 
-    assign id_to_ex_valid   = id_valid & id_ready_go;
+    assign id_to_ex_valid   =   id_valid & id_ready_go;
 
 
 //更新id模块中的寄存器

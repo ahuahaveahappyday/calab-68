@@ -96,7 +96,6 @@ reg [2:0]       b_current_state;
 reg [2:0]       b_next_state;
 
 /*--------------------------------------read request chanel---------------------------------------------------*/
-reg [3:0]       arid_reg;
 reg [31:0]      araddr_reg;
 reg [2:0]       arsize_reg;
 reg             arvalid_reg;
@@ -122,7 +121,7 @@ always @( * )begin
                 ar_next_state =         AR_WAIT;
         end
         AR_DATA_SEND: begin
-            if  (arready & ar_inst_addr_reg)
+            if  (arready & ar_inst_addr_valid)
                 ar_next_state = AR_INST_SEND;
             else if (arready)
                 ar_next_state = AR_WAIT;
@@ -154,7 +153,7 @@ assign arid = {2'b0,{ar_current_state == AR_DATA_SEND}};
 assign arvalid = (ar_current_state == AR_DATA_SEND) || (ar_current_state == AR_INST_SEND);
 // araddr
 always @(posedge clk)begin
-    if(resetn) begin
+    if(~resetn) begin
         ar_inst_addr_reg<= 32'b0;
         ar_inst_addr_valid <= 1'b0;
     end
