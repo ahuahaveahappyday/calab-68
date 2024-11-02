@@ -63,16 +63,12 @@ module MEMreg(
 
     wire [31:0] mem_csr_wvalue;
     wire        mem_res_from_wb;
-
-    //wire        mem_wait_data_ok;
     reg         mem_sram_requed;
-    //reg  [31:0] mem_data_buf;
-    //reg         data_buf_valid;  // 判断缓存是否有效
+
 // CSR 写数据
     assign mem_csr_wvalue = mem_rkd_value;
 
 //流水线控制信号
-    // assign mem_wait_data_ok  = mem_wait_data_ok_reg & mem_valid & ~flush;
     assign mem_ready_go      =  ~mem_sram_requed 
                                 | mem_sram_requed & data_sram_data_ok;
     assign mem_allowin       = ~mem_valid | mem_ready_go & wb_allowin;     
@@ -88,20 +84,6 @@ module MEMreg(
             mem_valid <= ex_to_mem_valid; 
     end
 
-    //寄存器暂存数据，valid信号表示数据是否有效
-    // always @(posedge clk) begin
-    //     if(~resetn) begin
-    //         mem_data_buf <= 32'b0;
-    //         data_buf_valid <= 1'b0;
-    //     end
-    //     else if(mem_to_wb_valid & wb_allowin)   // 缓存流向下一流水级
-    //         data_buf_valid <= 1'b0;
-    //     else if(~data_buf_valid & data_sram_data_ok & mem_valid) begin
-    //         mem_data_buf <= data_sram_rdata;
-    //         data_buf_valid <= 1'b1;
-    //     end
-
-    // end
     always @(posedge clk) begin
         if(~resetn) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
@@ -124,10 +106,6 @@ module MEMreg(
     assign mem_res_from_wb  = mem_csr_re;
 //模块间通信
     //与内存交互接口定义
-    //wire   [31:0]data_sram_rdata_final;
-    //assign data_sram_rdata_final ={32{data_buf_valid}} & mem_data_buf | {32{~data_buf_valid}} & data_sram_rdata;
-    
-    
     assign mem_word_result =    data_sram_rdata;
     assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
                                 : data_sram_rdata[15:0];

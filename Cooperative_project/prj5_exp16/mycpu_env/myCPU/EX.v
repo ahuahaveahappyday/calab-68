@@ -71,13 +71,8 @@ module EXEreg(
 
     wire        ex_res_from_wb;
     wire        mem_excep_en;
-    //wire        wb_excep_en;
     wire        mem_ertn_flush;
-    //wire        wb_ertn_flush;
-    wire [31:0] ex_vaddr;
-    // reg        ex_inst_st_b;               
-    // reg        ex_inst_st_h;               
-    // reg        ex_inst_st_w;                
+    wire [31:0] ex_vaddr;            
 
 //流水线控制信号
     assign ex_ready_go      = alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
@@ -123,8 +118,6 @@ module EXEreg(
 // 来自mem和wb的异常数据
     assign mem_excep_en = mem_to_ex_bus[1];
     assign mem_ertn_flush=mem_to_ex_bus[0];
-    // assign wb_excep_en  = wb_to_ex_bus[1];
-    // assign wb_ertn_flush= wb_to_ex_bus[0];
 // 寄存器写回数据来自wb级
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信
