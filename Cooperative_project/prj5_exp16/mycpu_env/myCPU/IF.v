@@ -82,8 +82,17 @@ module IFreg(
     /* 与id的数据和控制信号交互 */
     assign {br_taken, br_target, br_stall} =        id_to_if_bus;
     assign if_to_id_bus =                           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          
-    assign if_inst    =                             if_ir_valid ?  if_ir
-                                                    :inst_sram_rdata;
+
+    /* 清空流水线时，第一个指令需要丢弃*/
+    always @(posedge clk) begin
+        if(~resetn)
+            inst_cancel <= 1'b0;
+        else if ((if_valid & ~if_ir_valid & ~inst_sram_data_ok)  // if正在等待指令返回
+                & (flush | br_taken))
+            inst_cancel <= 1'b1;
+        else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
+            inst_cancel <= 1'b0;
+    end
 
 
 //=================================================pre_IF阶段发出指令请求
@@ -167,13 +176,16 @@ module IFreg(
         end
     end
 // ===============================================IF 阶段等待指令返回
-
+    /* pc register */
     always @(posedge clk) begin
         if(~resetn)
             if_pc <= 32'h1bfffffc;
         else if(if_allowin & pre_if_readygo)
             if_pc <= pre_pc;
     end
+    /* inst to id */
+    assign if_inst    =     if_ir_valid ?  if_ir
+                            :inst_sram_rdata;
     // if 级指令缓存
     always @(posedge clk)begin
         if(~resetn) begin 
@@ -190,17 +202,6 @@ module IFreg(
         end
         else if(if_ready_go & id_allowin)
             if_ir_valid <= 1'b0;
-    end
-
-//清空流水线时，第一个指令需要丢弃
-    always @(posedge clk) begin
-        if(~resetn)
-            inst_cancel <= 1'b0;
-        else if ((if_valid & ~if_ir_valid & ~inst_sram_data_ok)  // if正在等待指令返回
-                & (flush | br_taken))
-            inst_cancel <= 1'b1;
-        else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
-            inst_cancel <= 1'b0;
     end
 
 //====================================================取指地址错异常处理
