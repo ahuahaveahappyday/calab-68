@@ -73,24 +73,24 @@ module IFreg(
     end
     assign if_ready_go      =    if_ir_valid
                                 |inst_sram_data_ok;
-                                //|if_allowin & pre_if_ir_valid;  
+                                // |if_allowin & pre_if_readygo & pre_if_ir_valid;  
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
+
+    assign if_allowin       =   ~if_valid 
+                                | if_ready_go & id_allowin ;   
 
     /* 与id的数据和控制信号交互 */
     assign {br_taken, br_target, br_stall} =        id_to_if_bus;
     assign if_to_id_bus =                           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          
     assign if_inst    =                             if_ir_valid ?  if_ir
-                                                    :inst_sram_addr_ok ?  inst_sram_rdata
-                                                    :pre_if_ir;
+                                                    :inst_sram_rdata;
 
 
 //=================================================pre_IF阶段发出指令请求
     // 与pre-if级的握手信号
-    assign pre_if_readygo   =   //pre_if_reqed
-                                 inst_sram_req & inst_sram_addr_ok;
+    assign pre_if_readygo   =   pre_if_reqed_reg
+                                |inst_sram_req & inst_sram_addr_ok;
                                 //| pre_if_ir_valid;
-    assign if_allowin       =   ~if_valid 
-                                | if_ready_go & id_allowin ;   
     assign to_if_valid      =    resetn;  
     
     /* 与指令sram交互信号 */
@@ -141,16 +141,14 @@ module IFreg(
     end
     
     always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
-        if(~resetn)
+        if(~resetn)                 // 同时可以表明，当前inst_sram返回的指令是属于pre_if级的，而不是if级的
             pre_if_reqed_reg <= 1'b0;
         else if(pre_if_readygo && if_allowin)   // move forward to if
             pre_if_reqed_reg <= 1'b0;
         else if(inst_sram_req && inst_sram_addr_ok)
             pre_if_reqed_reg <= 1'b1;
     end
-    wire    pre_if_reqed;
-    assign pre_if_reqed  =      inst_sram_addr_ok
-                                | pre_if_reqed_reg;
+
 // pre-if级的指令暂存
     always @(posedge clk) begin
         if(~resetn)begin
@@ -182,10 +180,10 @@ module IFreg(
             if_ir_valid <=  1'b0;
             if_ir <=        32'b0;
         end
-        else if(    ~inst_cancel 
-                    & (inst_sram_data_ok | pre_if_readygo & if_allowin & pre_if_ir_valid)             // 接受到有效指令
-                    & ~id_allowin                                                                     // 但不能进入id级
-                    ) begin// & ~if_ir_valid)//| pre_if_readygo & if_allowin & pre_if_ir_valid)) 
+        else if(    ~inst_cancel &
+                    (inst_sram_data_ok & ~pre_if_reqed_reg & ~if_ir_valid & ~id_allowin        // if级当前返回的指令不能进入id级   
+                    | pre_if_readygo & if_allowin & (pre_if_ir_valid        // pre_if缓存的指令必须先进入if级的缓存，不能直接进入id级
+                                                | inst_sram_data_ok & pre_if_reqed_reg)) ) begin// pre_if返回的指令必须先进入if级的缓存，不能直接进入id级
             if_ir_valid <=  1'b1;
             if_ir <=        inst_sram_data_ok ? inst_sram_rdata
                                             :pre_if_ir;
