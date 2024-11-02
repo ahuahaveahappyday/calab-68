@@ -61,18 +61,16 @@ module MEMreg(
     wire [15:0] mem_half_result;
     wire [8:0] mem_byte_result;
 
-    wire [31:0] mem_csr_wvalue;
     wire        mem_res_from_wb;
     reg         mem_sram_requed;
 
-// CSR 写数据
-    assign mem_csr_wvalue = mem_rkd_value;
 
 //流水线控制信号
-    assign mem_ready_go      =  ~mem_sram_requed 
-                                | mem_sram_requed & data_sram_data_ok;
-    assign mem_allowin       = ~mem_valid | mem_ready_go & wb_allowin;     
-    assign mem_to_wb_valid   = mem_valid & mem_ready_go;
+    assign mem_ready_go      =      ~mem_sram_requed 
+                                    | mem_sram_requed & data_sram_data_ok;
+    assign mem_allowin       =      ~mem_valid 
+                                    | mem_ready_go & wb_allowin;     
+    assign mem_to_wb_valid   =      mem_valid & mem_ready_go;
 
 //MEM流水级需要的寄存器，根据clk不断更新
     always @(posedge clk) begin
@@ -137,7 +135,7 @@ module MEMreg(
                             mem_csr_we,                 // 1 bit
                             mem_csr_num,                 // 14 bit
                             mem_csr_wmask,               // 32 bit
-                            mem_csr_wvalue,               // 32 bit
+                            mem_rkd_value,               // 32 bit
                             mem_ertn_flush,              // 1 bit
                             mem_excep_en,               // 1 bit
                             mem_excep_ADEF,             // 1 bit
