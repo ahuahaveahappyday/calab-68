@@ -95,11 +95,129 @@
 \section{逻辑电路结构与仿真波形的截图及说明}
 \noindent
 $\bullet$
-\textbf{添加系统调用异常支持、指令和中断处理}。
+\textbf{取值模块添加sram总线支持}。
+
+\begin{enumerate}
+  \item 在pre\_if级发送访存请求
+  
+  相比于之前的设计，调整发送请求的时机 。在类sram总线上连续读时，为了控制已发送请求但未响应的事务累积以简化设计，主方在上一个请求未响应之前，拉低req信号
+  来暂停发送新事物的请求。
+  \begin{lstlisting}[language=verilog]
+    assign inst_sram_req    =   resetn & ~pre_if_reqed_reg        // pre if 没有已经发出请求的指令 
+                                & ( inst_sram_data_ok  // 上一个请求恰好返回  
+                                    | if_ir_valid         // 上一个请求已经返回，且未进入id级
+                                    | if_allowin)     // 上一个请求已经返回，且已经进入id级
+                                & ~br_stall;        // 转移计算已经完成
+  \end{lstlisting}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=15cm]{fig/fig1.png}
+\end{figure}
+如时序图中所示，在发送第一个请求后（第一个红色方框），主动拉低 req 信号，等到数据相应握手成功后，立即拉高 req 请求信号，
+准备发送新事务的请求。
+
+\item pre\_if级与if级的握手信号
+
+\begin{lstlisting}[language=verilog]
+  assign if_allowin       =   ~if_valid 
+                            | if_ready_go & id_allowin ;    // if与id级握手成功 
+ assign pre_if_readygo   =   pre_if_reqed_reg               // pre_if级已经与sram握手成功
+                            |inst_sram_req & inst_sram_addr_ok; // pre_if级刚好与sram握手成功
+ assign to_if_valid      =    resetn;  
+\end{lstlisting}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=15cm]{fig/fig2.png}
+\end{figure}
+如时序图所示，在if级与id级完成握手后，立即拉高if的alloin信号。
+
+pre\_if级 的req信号与 \verb|inst_sram_addr_ok|完成握手后，立即拉高pre\_if级的readygo信号。
+
+pre\_if级与if级完成握手后，数据由pre\_if级传递给if级，相应的握手信号在下一个clk双双拉低。
+
+\item 在pre\_if就返回请求的指令，（此时if_allowin = 0）
+
+在pre\_if级设置一个指令缓存，保存这个已经取回但无法进入if级的指令码。
+
+
+\begin{lstlisting}[language=verilog]
+  always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
+  if(~resetn)                 // 同时可以表明，当前inst_sram返回的指令是属于pre_if级的，而不是if级的
+      pre_if_reqed_reg <= 1'b0;
+  else if(pre_if_readygo && if_allowin)   // move forward to if
+      pre_if_reqed_reg <= 1'b0;
+  else if(inst_sram_req && inst_sram_addr_ok) // 握手成功，且不能进入if级
+      pre_if_reqed_reg <= 1'b1;
+end
+always @(posedge clk) begin
+  if(~resetn)begin
+      pre_if_ir_valid <= 1'b0;
+      pre_if_ir <= 32'b0;
+  end
+  else if(    inst_sram_data_ok    // 指令返回
+              & pre_if_reqed_reg  // pre if 已经发出请求，且没有进入if级
+              & ~if_allowin       // 不能进入if级
+              & ~inst_cancel)     begin   
+      pre_if_ir_valid <= 1'b1;
+      pre_if_ir <= inst_sram_rdata;
+  end
+  else if(if_allowin & pre_if_readygo)begin
+      pre_if_ir_valid <= 1'b0;
+  end
+end
+\end{lstlisting}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=15cm]{fig/fig3.png}
+\end{figure}
+如图，在pre if 与 sram 地址握手成功后，但是if\_allowin = 0， 不能进入if级，则在下一个clk拉高pre\_if\_reqed\_reg信号，表示
+pre if 级当前已经发送了一条请求，且如果此时返回指令，则是对应pre if 级的pc，而不是if级的。
+
+当if级的allowin拉高以后，pre\_if级的指令缓存则传递给if级的指令缓存。
+
+
+\item if级接受到指令，但是id级还不让进入
+
+与上一个问题一样，在if级同样设置一个指令缓存，来暂存返回的指令。
+
+\item 异常清空流水线
+
+当需要清空流水线时，或者跳转有效时，首先将if和pre\_if级的指令缓存的valid信号置低。
+
+新增一个触发器inst\_cancel，
+如果if级或者pre\_if级有已经发出请求，但是没有返回的事务，则将该触发器拉高，等到请求返回后，把他拉低。
+
+并且使用该信号拉低vaild信号。达到丢弃该返回的指令的目的。
+\begin{lstlisting}[language=verilog]
+  /* 清空流水线时，第一个指令需要丢弃*/
+always @(posedge clk) begin
+  if(~resetn)
+      inst_cancel <= 1'b0;
+  else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok  // if正在等待指令返回
+              |pre_if_reqed_reg & ~inst_sram_data_ok)
+          & (flush | br_taken))
+      inst_cancel <= 1'b1;
+  else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
+      inst_cancel <= 1'b0;
+end
+
+assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
+\end{lstlisting}
+\end{enumerate}
 
 
 
+\noindent
+$\bullet$
+\textbf{添加AXI总线支持}。
 \vspace{1ex}
+\begin{enumerate}
+  \item 
+\end{enumerate}
+
+
+
+
 
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
 
