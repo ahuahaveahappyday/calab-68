@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999996 (TeX Live 2024) (preloaded format=xelatex 2024.8.29)  3 NOV 2024 11:34
+This is XeTeX, Version 3.141592653-2.6-0.999996 (TeX Live 2024) (preloaded format=xelatex 2024.8.29)  3 NOV 2024 16:48
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1267,19 +1267,25 @@ File: fig/fig2.png Graphic file (type bmp)
 ]
 File: fig/fig3.png Graphic file (type bmp)
 <fig/fig3.png>
- [2] [3] (./main.aux)
+ [2]
+File: fig/fig4.jpg Graphic file (type bmp)
+<fig/fig4.jpg>
+ [3]
+File: fig/fig5.jpg Graphic file (type bmp)
+<fig/fig5.jpg>
+ [4] [5] [6] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2022/08/05>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 46107 strings out of 474773
- 1148491 string characters out of 5761289
+ 46141 strings out of 474773
+ 1149031 string characters out of 5761289
  2020533 words of memory out of 5000000
- 67595 multiletter control sequences out of 15000+600000
+ 67626 multiletter control sequences out of 15000+600000
  564942 words of font info for 93 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 108i,6n,115p,470b,1572s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 108i,6n,115p,470b,1788s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on main.pdf (3 pages).
+Output written on main.pdf (6 pages).

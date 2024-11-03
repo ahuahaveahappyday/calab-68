@@ -212,7 +212,69 @@ $\bullet$
 \textbf{添加AXI总线支持}。
 \vspace{1ex}
 \begin{enumerate}
-  \item 
+  \item 读请求和读响应
+  
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{fig/fig4.jpg}
+  \end{figure}
+  分别用两个独立的状态机来控制读请求和读响应通道的行为。
+  \begin{enumerate}
+    \item 读请求通道
+    
+    当读请求和写请求状态机都处于wait状态时，拉高两个类SRAM从方的addr\_ok信号，表示可以接受读请求和写请求。
+
+    \begin{lstlisting}
+assign inst_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
+assign data_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
+    \end{lstlisting}
+
+
+    如果在AR_WAIT中同时接受到数据读请求和指令读请求，则将指令读请求的地址暂存起来。在AR\_DATA\_SEND阶段将数据读请求的地址握手完成后，再进入AR\_INST\_SEND阶段
+    发送指令读请求的地址。
+
+    保证数据端发过来的读请求的优先级固定高于取值端发来的读请求。
+  \item 读响应通道
+  在R\_WAIT阶段拉高rready，表示可以接受从AXI从端发送的读数据。
+  \begin{lstlisting}[language=verilog]
+  assign rready = r_current_state == R_WAIT;
+  \end{lstlisting}
+  当AXI从方将rvalid置为有效，则在下一个clk跳转到R_RECIEVE，将读数据缓存，并根据ID值发给对应的类SRAM主方。
+\end{enumerate}
+\item 写请求和写响应通道
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=10cm]{fig/fig5.jpg}
+\end{figure}
+分别用两个独立的状态机来控制写请求和写响应通道的行为。
+\begin{enumerate}
+  \item 写请求和写数据通道
+
+  在wait阶段接受到写请求后，状态机跳转到SEND\_ADDR阶段发送访存的地址。
+  
+  在地址发送握手成功后，状态机跳转到SEND\_DATA阶段发送写数据。
+
+  \item 写响应
+  
+  在wait阶段接受到AXI从方发送的写响应后，状态机跳转到B\_REC状态，向类SRAM总线主方发送\verb|data_sram_data_ok|有效信号
+
+  \begin{lstlisting}[language=verilog]
+always @(*)begin
+    case (b_current_state)
+        B_WAIT:begin
+            if(bvalid)
+                b_next_state = B_REC;
+            else 
+                b_next_state <= B_WAIT;
+        end
+        B_REC:begin
+            b_next_state = B_WAIT;
+        end
+    endcase
+end
+  \end{lstlisting}
+\end{enumerate}
+
 \end{enumerate}
 
 
@@ -223,23 +285,44 @@ $\bullet$
 
 \noindent
 $\bullet$
-\textbf{wb流水级的flush有效信号只持续一个clk}。
+\textbf{清空流水线或跳转指令将指令缓存置无效bug}。
 
-在清空流水线的设计时，将wb流水级在发出flush信号时的下一个clk时，也要将wb\_valid置为0，避免重复清空流水线。
+当flush或者br\_taken有效时，如果直接在指令缓存更新的代码中，添加在下一排将指令缓存valid置0的代码后，
+会出现错误的丢弃跳转后取得第一条指令。
 
-使得如果IF流水级的allowin由于读后写数据相关等原因为0时，不能及时把\verb|pre_pc = wb_csr_rvalue| 发送给\verb|inst_sram|，而随着下一个clk的wb\_valid拉低，
-使从wb传到if的wb\_csr\_rvalue信号也失效。
-
-在这种情况下，不能正确地进行跳转到异常处理地址。
-
-在分析波形图后，确定上述bug后，为if\_allowin添加上规则，使得接收到清空流水线时，立马将allowin拉高，在当前clk发送出pc
+对照波形图排查后发现，是因为在inst\_cancel更新得逻辑中，上述操作只是将指令缓存\verb|if_ir_valid|置为无效，而不将if流水级得有效信号\verb|if_valid|
+置低，会导致该逻辑判断if级有已经发送请求但还没有返回指令的事务，则会丢弃接下来接收到的第一条指令。
 
 \begin{lstlisting}[language=verilog]
-  assign if_allowin       =   ~if_valid               // valid是reg类型，接受flush后最快下一个clk才能拉低
-                              | if_ready_go & id_allowin    // id_allowin可能由于读后写阻塞，拉低
-                              | flush;    // 添加上规则，立马将allowin拉高，在当前clk发送出pc
+  /* 清空流水线时，第一个指令需要丢弃*/
+  always @(posedge clk) begin
+      if(~resetn)
+          inst_cancel <= 1'b0;
+      else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok  // if正在等待指令返回
+                  |pre_if_reqed_reg & ~inst_sram_data_ok)     // pre if 正在等待指令返回
+              & (flush | br_taken))
+          inst_cancel <= 1'b1;
+      else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
+          inst_cancel <= 1'b0;
+  end
 \end{lstlisting}
 
+最后，当flush或者br\_taken有效时，不改变\verb|if_ir_valid|的值，而是将id级的allowin拉高，并且将id级的下一排的valid置0，如果if级有指令缓存，
+则会在下一个clk传递给id级而消耗掉。
+\begin{lstlisting}[language=verilog]
+  assign id_allowin       =   ~id_valid 
+  | id_ready_go & ex_allowin 
+  | br_taken | flush;             // 消耗if级错误指令缓存 
+  
+  always @(posedge clk) begin
+  if(~resetn)
+  id_valid <= 1'b0;
+  else if(br_taken || flush)  // 发生异常或者跳转时，下一排将id级valid置0
+  id_valid <= 1'b0;
+  else if(id_allowin)
+  id_valid <= if_to_id_valid;
+  end
+\end{lstlisting}
 \noindent
 $\bullet$
 \textbf{指令译码定义太宽泛导致异常判断出错}。
