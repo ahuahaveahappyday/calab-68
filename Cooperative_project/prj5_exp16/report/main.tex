@@ -206,6 +206,66 @@ assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 \end{enumerate}
 
 
+\noindent
+$\bullet$
+\textbf{访存模块添加sram总线支持}。
+\vspace{1ex}
+\begin{enumerate}
+  \item req信号的实现
+  
+  req信号的实现使用的不是类似于if阶段的缓存技术，这里是通过阻塞的方式实现的：
+  只有当mem流水级允许进入的时候才会触发req信号发出，这样可以有效的避免一些很麻烦的问题（虽然会
+  对流水级的效率产生一点点的影响）。\\
+  此外，在流水线中有“异常”出现的时候，此时由于要清空流水线，也不能忘记将req信号置为0，否则将会导致发送错误的
+  读写信号。
+  \begin{lstlisting}[language=verilog]
+    assign data_sram_req    =   ex_mem_req & mem_allowin;
+
+    assign ex_mem_req       =   (ex_res_from_mem | ex_mem_we) & ex_valid 
+    & ~mem_excep_en & ~mem_ertn_flush         // mem级有异常
+    & ~ex_excep_en  & ~ex_ertn_flush          // ex级有异常
+    & ~flush;                                 // wb级报出异常
+  \end{lstlisting}
+  \item 其他信号的实现
+  
+  addr、wstrb和wdata基本上可以继承之前的信号，此处不再赘述\\
+  data_sram_wr信号使用译码级流水级生成的写使能信号，有写使能时为1，写使能，没有的时候直接置为0，作为读信号\\
+  data_sram_size信号只需要配合不同的访存指令进行选择即可。
+  \begin{lstlisting}[language=verilog]
+    assign data_sram_addr   =   ex_alu_result;//
+    assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
+                                |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
+                                |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
+    assign data_sram_wr     =   ex_mem_we;
+    assign data_sram_size   =     {2{ex_op_st_ld_b}} & 2'b0 
+                                | {2{ex_op_st_ld_h}} & 2'b1 
+                                | {2{ex_op_st_ld_w}} & 2'd2;
+    
+    assign data_sram_wstrb       =   {4{ex_op_st_ld_b}} & (4'b0001 << ex_data_sram_addr[1:0])          // st.b
+                                    |{4{ex_op_st_ld_h}} & (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011)    // st.h
+                                    |{4{ex_op_st_ld_w}} & 4'b1111;// st.w
+
+  \end{lstlisting}
+  \item readygo的调整
+
+  引入了握手信号后，EX阶段的ready_go信号不再仅仅与ALU是否完成当前计算的
+  alu_complete 有关，暂不考虑需要使用ALU类的指令的情况，可分为如下两种情况
+  讨论：\\
+  当前无访存需求时ready_go 可放心置为1；\\
+  当前有访存请求时，需要握手成功后才允许流向下一流水级。\\
+  故将ready_go信号调整如下 ：
+  \begin{lstlisting}[language=verilog]
+    assign ex_ready_go      = alu_complete & 
+    (~data_sram_req | data_sram_req & data_sram_addr_ok);
+  \end{lstlisting}
+  同理，mem级流水级的readygo信号也需要进行类似的调整:\\
+  当没有访存需求的时候，可以置为1；\\
+  当有访存请求的时候，需要等待data_sram_data_ok信号才能保证mem流水级的任务完成。
+  \begin{lstlisting}[language=verilog]
+    assign mem_ready_go      =      ~mem_sram_requed 
+    | mem_sram_requed & data_sram_data_ok;
+  \end{lstlisting}
+\end{enumerate}
 
 \noindent
 $\bullet$
@@ -334,7 +394,7 @@ $\bullet$
 \vspace{1ex}
 
 \section{小组成员分工合作情况}
-王敬华负责exp13的中断处理和整体的debug工作
+王敬华负责ex级访存添加类sram总线支持。（qwq这次实验事情比较多写的太少了，下次我来写otz）
 
 李霄宇负责exp13的异常处理和计时器指令的实现
 
