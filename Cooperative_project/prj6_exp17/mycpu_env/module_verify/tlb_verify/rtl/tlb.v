@@ -68,6 +68,25 @@ module tlb (
     wire r_d1,
     output wire r_v1
 );
+    reg [`TLBNUM-1:0] tlb_e;
+    reg [`TLBNUM-1:0] tlb_ps4MB; //pagesize 1:4MB, 0:4KB
+
+    reg [18:0] tlb_vppn [`TLBNUM-1:0];
+    reg [ 9:0] tlb_asid [`TLBNUM-1:0];
+    reg        tlb_g    [`TLBNUM-1:0];
+
+    reg [19:0] tlb_ppn0 [`TLBNUM-1:0];
+    reg [ 1:0] tlb_plv0 [`TLBNUM-1:0];
+    reg [ 1:0] tlb_mat0 [`TLBNUM-1:0];
+    reg        tlb_d0   [`TLBNUM-1:0];
+    reg        tlb_v0   [`TLBNUM-1:0];
+
+    reg [19:0] tlb_ppn1 [`TLBNUM-1:0];
+    reg [ 1:0] tlb_plv1 [`TLBNUM-1:0];
+    reg [ 1:0] tlb_mat1 [`TLBNUM-1:0];
+    reg        tlb_d1   [`TLBNUM-1:0];
+    reg        tlb_v1   [`TLBNUM-1:0];
+
 
 
 endmodule
