@@ -94,6 +94,11 @@ module tlb (
     wire [`TLBNUM-1:0] match1;
     wire               s0_port;
     wire               s1_port;
+    wire [`TLBNUM-1:0] cond1;
+    wire [`TLBNUM-1:0] cond2;
+    wire [`TLBNUM-1:0] cond3;
+    wire [`TLBNUM-1:0] cond4;
+    wire [`TLBNUM-1:0] inv_match;
 
  //查找实现
 
@@ -147,7 +152,7 @@ assign s1_ps = tlb_ps4MB[s1_index] ? 6'b010110 : 6'b001100;
 
 assign s0_port = tlb_ps4MB[s0_index] ? s0_vppn[9] : s0_va_bit12;
 assign s1_port = tlb_ps4MB[s1_index] ? s1_vppn[9] : s1_va_bit12;
-//选择第23位或者13位作为判断,虚页号的最低位不需要存放在 TLB 中,查找 TLB 时在根据被查找虚页号的最低位决定是选择奇数号页还是偶数号页的物理转换信息
+//选择�?23位或�?13位作为判�?,虚页号的�?低位不需要存放在 TLB �?,查找 TLB 时在根据被查找虚页号的最低位决定是�?�择奇数号页还是偶数号页的物理转换信�?
 
 assign s0_ppn = s0_port ? tlb_ppn1[s0_index] : tlb_ppn0[s0_index];
 assign s1_ppn = s1_port ? tlb_ppn1[s1_index] : tlb_ppn0[s1_index];
@@ -161,7 +166,7 @@ assign s0_v = s0_port ? tlb_v1[s0_index] : tlb_v0[s0_index];
 assign s1_v = s1_port ? tlb_v1[s1_index] : tlb_v0[s1_index];
 
 
-//读实现
+//读实�?
 
 assign r_e    = tlb_e    [r_index];
 assign r_vppn = tlb_vppn [r_index];
@@ -180,7 +185,7 @@ assign r_d1   = tlb_d1   [r_index];
 assign r_v0   = tlb_v0   [r_index];
 assign r_v1   = tlb_v1   [r_index];
 
-//写实现
+//写实�?
 always @(posedge clk)
     begin
         if(we)
@@ -208,11 +213,7 @@ always @(posedge clk)
             end
     end
 
-    wire [`TLBNUM-1:0] cond1;
-    wire [`TLBNUM-1:0] cond2;
-    wire [`TLBNUM-1:0] cond3;
-    wire [`TLBNUM-1:0] cond4;
-    wire [`TLBNUM-1:0] inv_match;
+
 
 generate
     for (i = 0; i < `TLBNUM; i = i + 1) begin
