@@ -2,7 +2,7 @@
 verilog xil_defaultlib  --include "../../../../loongson.ip_user_files/ipstatic" \
 "../../../../../../rtl/xilinx_ip/clk_pll_clk_wiz.v" \
 "../../../../../../rtl/xilinx_ip/clk_pll.v" \
-"../../../../../../rtl/tlb.v" \
+"../../../../../../../../myCPU/tlb.v" \
 "../../../../../../rtl/tlb_top.v" \
 "../../../../../../testbench/testbench.v" \
 
