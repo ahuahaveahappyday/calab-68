@@ -1,12 +1,13 @@
 `define TLBNUM 16
 
 module tlb (
+    input wire clk,
     // search port 0 (for fetch)
     input wire [ 18:0] s0_vppn,
     input wire s0_va_bit12,
     input wire [ 9:0] s0_asid,
     output wire s0_found,
-    output wire [$clog2(TLBNUM)-1:0] s0_index,
+    output wire [$clog2(`TLBNUM)-1:0] s0_index,
     output wire [ 19:0] s0_ppn,
     output wire [ 5:0] s0_ps,
     output wire [ 1:0] s0_plv,
@@ -19,7 +20,7 @@ module tlb (
     input wire s1_va_bit12,
     input wire [ 9:0] s1_asid,
     output wire s1_found,
-    output wire [$clog2(TLBNUM)-1:0] s1_index,
+    output wire [$clog2(`TLBNUM)-1:0] s1_index,
     output wire [ 19:0] s1_ppn,
     output wire [ 5:0] s1_ps,
     output wire [ 1:0] s1_plv,
@@ -33,7 +34,7 @@ module tlb (
 
     // write port
     input wire we, //w(rite) e(nable)
-    input wire [$clog2(TLBNUM)-1:0] w_index,
+    input wire [$clog2(`TLBNUM)-1:0] w_index,
     input wire w_e,
     input wire [ 18:0] w_vppn,
     input wire [ 5:0] w_ps,
@@ -51,7 +52,7 @@ module tlb (
     input wire w_v1,
     
     // read port
-    input wire [$clog2(TLBNUM)-1:0] r_index,
+    input wire [$clog2(`TLBNUM)-1:0] r_index,
     output wire r_e,
     wire [ 18:0] r_vppn,
     output wire [ 5:0] r_ps,
