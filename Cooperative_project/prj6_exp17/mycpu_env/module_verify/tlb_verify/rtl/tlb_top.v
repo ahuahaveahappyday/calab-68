@@ -897,7 +897,27 @@ assign s0_error = (s_test_found[s0_test_id] ^ s0_found) || (s_test_found[s0_test
                     (s0_d   != s_test_d  [s0_test_id]) ||
                     (s0_v   != s_test_v  [s0_test_id]) )
                   );
-                   
+wire debug;
+wire debug1;
+wire debug2;
+wire debug3;
+wire debug4;
+
+assign debug = (s_test_found[s1_test_id] &&
+                  ( ~s1_found ||
+                    (s1_ppn != s_test_ppn[s1_test_id]) ||
+                    (s1_ps  != s_test_ps [s1_test_id]) ||
+                    (s1_plv != s_test_plv[s1_test_id]) ||
+                    (s1_mat != s_test_mat[s1_test_id]) ||
+                    (s1_d   != s_test_d  [s1_test_id]) ||
+                    (s1_v   != s_test_v  [s1_test_id]) )
+                  ) ;
+assign debug1=(s1_ppn != s_test_ppn[s1_test_id]);
+assign debug2= (s1_ps  != s_test_ps [s1_test_id]);
+assign debug3 = (s1_plv != s_test_plv[s1_test_id]);
+assign debug4=(s1_mat != s_test_mat[s1_test_id]) ;
+
+
 assign s1_error = (s_test_found[s1_test_id] ^ s1_found) || (s_test_found[s1_test_id] &&
                   ( ~s1_found ||
                     (s1_ppn != s_test_ppn[s1_test_id]) ||

@@ -100,7 +100,7 @@ module tlb (
     wire [`TLBNUM-1:0] cond4;
     wire [`TLBNUM-1:0] inv_match;
 
- //查找实现
+ //search
 
 genvar i;
 generate
@@ -147,12 +147,11 @@ assign s1_index = match1[0]  ? 4'b0000 :
 assign s0_found = |match0[`TLBNUM-1:0];
 assign s1_found = |match1[`TLBNUM-1:0];
 
-assign s0_ps = tlb_ps4MB[s0_index] ? 6'b010110 : 6'b001100;// 22 or 12 
-assign s1_ps = tlb_ps4MB[s1_index] ? 6'b010110 : 6'b001100;
+assign s0_ps = tlb_ps4MB[s0_index] ? 6'b010101 : 6'b001100;// 21 or 12 
+assign s1_ps = tlb_ps4MB[s1_index] ? 6'b010101 : 6'b001100;
 
-assign s0_port = tlb_ps4MB[s0_index] ? s0_vppn[9] : s0_va_bit12;
-assign s1_port = tlb_ps4MB[s1_index] ? s1_vppn[9] : s1_va_bit12;
-//选择�?23位或�?13位作为判�?,虚页号的�?低位不需要存放在 TLB �?,查找 TLB 时在根据被查找虚页号的最低位决定是�?�择奇数号页还是偶数号页的物理转换信�?
+assign s0_port = tlb_ps4MB[s0_index] ? s0_vppn[8] : s0_va_bit12;
+assign s1_port = tlb_ps4MB[s1_index] ? s1_vppn[8] : s1_va_bit12;
 
 assign s0_ppn = s0_port ? tlb_ppn1[s0_index] : tlb_ppn0[s0_index];
 assign s1_ppn = s1_port ? tlb_ppn1[s1_index] : tlb_ppn0[s1_index];
@@ -166,11 +165,10 @@ assign s0_v = s0_port ? tlb_v1[s0_index] : tlb_v0[s0_index];
 assign s1_v = s1_port ? tlb_v1[s1_index] : tlb_v0[s1_index];
 
 
-//读实�?
-
+//read
 assign r_e    = tlb_e    [r_index];
 assign r_vppn = tlb_vppn [r_index];
-assign r_ps   = tlb_ps4MB[r_index]? 6'b010110 : 6'b001100;
+assign r_ps   = tlb_ps4MB[r_index]? 6'b010101 : 6'b001100;
 assign r_asid = tlb_asid [r_index];
 assign r_g    = tlb_g    [r_index];
 
@@ -185,14 +183,17 @@ assign r_d1   = tlb_d1   [r_index];
 assign r_v0   = tlb_v0   [r_index];
 assign r_v1   = tlb_v1   [r_index];
 
-//写实�?
+//write
+wire   w_ps4MB;
+assign w_ps4MB=(w_ps == 6'b010101)?1:0;
+
 always @(posedge clk)
     begin
         if(we)
             begin
                 tlb_e[w_index]      <= w_e;
                 tlb_vppn[w_index]   <= w_vppn;
-                tlb_ps4MB[w_index]  <= (w_ps == 6'b010110);
+                tlb_ps4MB[w_index]  <= w_ps4MB;
                 tlb_asid[w_index]   <= w_asid;
                 tlb_g[w_index]      <= w_g;
 
