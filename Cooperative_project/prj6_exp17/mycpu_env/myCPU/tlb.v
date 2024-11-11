@@ -1,6 +1,8 @@
-`define TLBNUM 16
-
-module tlb (
+module tlb 
+#(
+    parameter TLBNUM=16
+)
+(
     input   wire                        clk,
     
     // search port 0 (for fetch)
@@ -8,7 +10,7 @@ module tlb (
     input   wire                        s0_va_bit12,
     input   wire [9:0]                  s0_asid,
     output  wire                        s0_found,
-    output  wire [$clog2(`TLBNUM)-1:0]  s0_index,
+    output  wire [$clog2(TLBNUM)-1:0]  s0_index,
     output  wire [19:0]                 s0_ppn,
     output  wire [5:0]                  s0_ps,
     output  wire [1:0]                  s0_plv,
@@ -21,7 +23,7 @@ module tlb (
     input   wire                        s1_va_bit12,
     input   wire [9:0]                  s1_asid,
     output  wire                        s1_found,
-    output  wire [$clog2(`TLBNUM)-1:0]  s1_index,
+    output  wire [$clog2(TLBNUM)-1:0]  s1_index,
     output  wire [19:0]                 s1_ppn,
     output  wire [5:0]                  s1_ps,
     output  wire [1:0]                  s1_plv,
@@ -35,7 +37,7 @@ module tlb (
 
     // write port
     input   wire                        we, // write enable
-    input   wire [$clog2(`TLBNUM)-1:0]  w_index,
+    input   wire [$clog2(TLBNUM)-1:0]  w_index,
     input   wire                        w_e,
     input   wire [18:0]                 w_vppn,
     input   wire [5:0]                  w_ps,
@@ -53,7 +55,7 @@ module tlb (
     input   wire                        w_v1,
 
     // read port
-    input   wire [$clog2(`TLBNUM)-1:0]  r_index,
+    input   wire [$clog2(TLBNUM)-1:0]  r_index,
     output  wire                        r_e,
     output  wire [18:0]                 r_vppn,
     output  wire [5:0]                  r_ps,
@@ -71,40 +73,40 @@ module tlb (
     output  wire                        r_v1
 
 );
-    reg [`TLBNUM-1:0] tlb_e;
-    reg [`TLBNUM-1:0] tlb_ps4MB; //pagesize 1:4MB, 0:4KB
+    reg [TLBNUM-1:0] tlb_e;
+    reg [TLBNUM-1:0] tlb_ps4MB; //pagesize 1:4MB, 0:4KB
 
-    reg [18:0] tlb_vppn [`TLBNUM-1:0];
-    reg [ 9:0] tlb_asid [`TLBNUM-1:0];
-    reg        tlb_g    [`TLBNUM-1:0];
+    reg [18:0] tlb_vppn [TLBNUM-1:0];
+    reg [ 9:0] tlb_asid [TLBNUM-1:0];
+    reg        tlb_g    [TLBNUM-1:0];
 
-    reg [19:0] tlb_ppn0 [`TLBNUM-1:0];
-    reg [ 1:0] tlb_plv0 [`TLBNUM-1:0];
-    reg [ 1:0] tlb_mat0 [`TLBNUM-1:0];
-    reg        tlb_d0   [`TLBNUM-1:0];
-    reg        tlb_v0   [`TLBNUM-1:0];
+    reg [19:0] tlb_ppn0 [TLBNUM-1:0];
+    reg [ 1:0] tlb_plv0 [TLBNUM-1:0];
+    reg [ 1:0] tlb_mat0 [TLBNUM-1:0];
+    reg        tlb_d0   [TLBNUM-1:0];
+    reg        tlb_v0   [TLBNUM-1:0];
 
-    reg [19:0] tlb_ppn1 [`TLBNUM-1:0];
-    reg [ 1:0] tlb_plv1 [`TLBNUM-1:0];
-    reg [ 1:0] tlb_mat1 [`TLBNUM-1:0];
-    reg        tlb_d1   [`TLBNUM-1:0];
-    reg        tlb_v1   [`TLBNUM-1:0];
+    reg [19:0] tlb_ppn1 [TLBNUM-1:0];
+    reg [ 1:0] tlb_plv1 [TLBNUM-1:0];
+    reg [ 1:0] tlb_mat1 [TLBNUM-1:0];
+    reg        tlb_d1   [TLBNUM-1:0];
+    reg        tlb_v1   [TLBNUM-1:0];
 
-    wire [`TLBNUM-1:0] match0;
-    wire [`TLBNUM-1:0] match1;
+    wire [TLBNUM-1:0] match0;
+    wire [TLBNUM-1:0] match1;
     wire               s0_port;
     wire               s1_port;
-    wire [`TLBNUM-1:0] cond1;
-    wire [`TLBNUM-1:0] cond2;
-    wire [`TLBNUM-1:0] cond3;
-    wire [`TLBNUM-1:0] cond4;
-    wire [`TLBNUM-1:0] inv_match;
+    wire [TLBNUM-1:0] cond1;
+    wire [TLBNUM-1:0] cond2;
+    wire [TLBNUM-1:0] cond3;
+    wire [TLBNUM-1:0] cond4;
+    wire [TLBNUM-1:0] inv_match;
 
  //search
 
 genvar i;
 generate
-    for (i = 0; i < `TLBNUM; i = i + 1) begin
+    for (i = 0; i < TLBNUM; i = i + 1) begin
         assign match0[i] = (s0_vppn[18:10]==tlb_vppn[i][18:10]) && (tlb_ps4MB[i] || s0_vppn[9:0]==tlb_vppn[i][9:0]) && ((s0_asid==tlb_asid[i]) || tlb_g[i]);
         assign match1[i] = (s1_vppn[18:10]==tlb_vppn[i][18:10]) && (tlb_ps4MB[i] || s1_vppn[9:0]==tlb_vppn[i][9:0]) && ((s1_asid==tlb_asid[i]) || tlb_g[i]);
     end
@@ -144,8 +146,8 @@ assign s1_index = match1[0]  ? 4'b0000 :
                   match1[14] ? 4'b1110 :
                   match1[15] ? 4'b1111 : 4'b0000;
 
-assign s0_found = |match0[`TLBNUM-1:0];
-assign s1_found = |match1[`TLBNUM-1:0];
+assign s0_found = |match0[TLBNUM-1:0];
+assign s1_found = |match1[TLBNUM-1:0];
 
 assign s0_ps = tlb_ps4MB[s0_index] ? 6'b010101 : 6'b001100;// 21 or 12 
 assign s1_ps = tlb_ps4MB[s1_index] ? 6'b010101 : 6'b001100;
@@ -217,7 +219,7 @@ always @(posedge clk)
 
 
 generate
-    for (i = 0; i < `TLBNUM; i = i + 1) begin
+    for (i = 0; i < TLBNUM; i = i + 1) begin
        assign cond1[i] = ~tlb_g[i];
        assign cond2[i] =  tlb_g[i];
        assign cond3[i] = s1_asid == tlb_asid[i];
