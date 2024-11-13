@@ -67,6 +67,7 @@ module IDreg(
     wire [15:0] op_25_22_d;
     wire [ 3:0] op_21_20_d;
     wire [31:0] op_19_15_d;
+    wire [31:0] op_14_10_d;
 
     wire        inst_add_w;
     wire        inst_sub_w;
@@ -123,6 +124,11 @@ module IDreg(
     wire        inst_rdcntvl_w;
     wire        inst_rdcntvh_w;
     wire        inst_rdcntid;
+    wire        inst_tlbsrch;
+    wire        inst_tlbrd;
+    wire        inst_tlbwr;
+    wire        inst_tlbfill;
+    wire        inst_invtlb;
     wire        no_inst;
 
     wire        need_ui5;
@@ -273,6 +279,8 @@ module IDreg(
     decoder_4_16 u_dec1(.in(op_25_22 ), .out(op_25_22_d ));
     decoder_2_4  u_dec2(.in(op_21_20 ), .out(op_21_20_d ));
     decoder_5_32 u_dec3(.in(op_19_15 ), .out(op_19_15_d ));
+    decoder_5_32 u_dec4(.in(rk), .out(op_14_10_d));
+
 
     //每一条指令的译码信号
     assign inst_add_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h00];
@@ -324,18 +332,24 @@ module IDreg(
     assign inst_csrrd  = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj == 5'b0;
     assign inst_csrwr  = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj == 5'b1;
     assign inst_csxchg = op_31_26_d[6'h01] & id_inst[25:24] == 2'b0 & rj[4:1] != 4'b0;
-    assign inst_ertn   = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & rk == 5'h0e;
+    assign inst_ertn   = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0e]; //& rk == 5'h0e;
     assign inst_syscall= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
     assign inst_break  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
-    assign inst_rdcntvl_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h18 & rj == 5'h00;
-    assign inst_rdcntvh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h19 & rj == 5'h00;
-    assign inst_rdcntid   = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & rk == 5'h18 & rd == 5'h00;
+    assign inst_rdcntvl_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & op_14_10_d[5'h18] & rj == 5'h00;
+    assign inst_rdcntvh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & op_14_10_d[5'h19] & rj == 5'h00;
+    assign inst_rdcntid   = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & op_14_10_d[5'h18] & rd == 5'h00;
+    assign inst_tlbsrch = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0a]; 
+    assign inst_tlbrd =   op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0b]; 
+    assign inst_tlbwr =   op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0c]; 
+    assign inst_tlbfill = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0d];
+    assign inst_invtlb =  op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h13];
+
     assign no_inst = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w | inst_srli_w | inst_srai_w  
                     | inst_addi_w | inst_ld_w | inst_st_w | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu
                     | inst_lu12i_w | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddul2i
                     | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_ld_b | inst_ld_h | inst_ld_bu
                     | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break
-                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid);          //指令不存在
+                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill |inst_invtlb);          //指令不存在
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）

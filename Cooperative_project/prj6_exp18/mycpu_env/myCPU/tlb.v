@@ -127,7 +127,7 @@ assign s0_index = match0[0]  ? 4'b0000 :
                   match0[12] ? 4'b1100 :
                   match0[13] ? 4'b1101 :
                   match0[14] ? 4'b1110 :
-                  match0[15] ? 4'b1111 : 4'b0000;
+                  4'b1111 ;
 
 assign s1_index = match1[0]  ? 4'b0000 :
                   match1[1]  ? 4'b0001 :
@@ -144,7 +144,7 @@ assign s1_index = match1[0]  ? 4'b0000 :
                   match1[12] ? 4'b1100 :
                   match1[13] ? 4'b1101 :
                   match1[14] ? 4'b1110 :
-                  match1[15] ? 4'b1111 : 4'b0000;
+                  4'b1111 ;
 
 assign s0_found = |match0[TLBNUM-1:0];
 assign s1_found = |match1[TLBNUM-1:0];

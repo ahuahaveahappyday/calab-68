@@ -341,7 +341,6 @@ module mycpu_top(
         .bresp              (bresp     ),
         .bvalid             (bvalid    ),
         .bready             (bready    )
-
     );
 
 endmodule
