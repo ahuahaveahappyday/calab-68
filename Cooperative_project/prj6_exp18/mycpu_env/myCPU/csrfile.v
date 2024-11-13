@@ -83,6 +83,7 @@ module CSRfile #(
     input  wire [               5:0] tlbrd_ps,
     input  wire [              18:0] tlbrd_vppn,
     input  wire                      tlbrd_g,
+    input  wire [               9:0] tlbrd_asid,
     input  wire                      tlbrd_v0,
     input  wire                      tlbrd_d0,
     input  wire [               1:0] tlbrd_mat0,
@@ -92,7 +93,24 @@ module CSRfile #(
     input  wire                      tlbrd_d1,
     input  wire [               1:0] tlbrd_mat1,
     input  wire [               1:0] tlbrd_plv1,
-    input  wire [              19:0] tlbrd_ppn1
+    input  wire [              19:0] tlbrd_ppn1,
+    // TLBWR
+    output wire                      tlbwr_ne,
+    output wire                      tlbwr_index,
+    output wire [               5:0] tlbwr_ps,
+    output wire [              18:0] tlbwr_vppn,
+    output wire                      tlbwr_g,
+    output wire [               9:0] tlbwr_asid,
+    output wire                      tlbwr_v0,
+    output wire                      tlbwr_d0,
+    output wire [               1:0] tlbwr_mat0,
+    output wire [               1:0] tlbwr_plv0,
+    output wire [              19:0] tlbwr_ppn0,
+    output wire                      tlbwr_v1,
+    output wire                      tlbwr_d1,
+    output wire [               1:0] tlbwr_mat1,
+    output wire [               1:0] tlbwr_plv1,
+    output wire [              19:0] tlbwr_ppn1
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
@@ -154,6 +172,9 @@ module CSRfile #(
     reg  [              1:0] csr_tlbelo1_mat;
     reg                      csr_tlbelo1_g;
     reg  [             19:0] csr_tlbelo1_ppn;
+
+    reg  [              9:0] csr_asid_asid;
+    wire [              5:0] csr_asid_asidbits;
 
     //实现中断处理
     assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0) && (csr_crmd_ie == 1'b1);
@@ -344,10 +365,8 @@ module CSRfile #(
     always @(posedge clk)begin
         if(~resetn)
             csr_tlbidx_ps <= 6'b0;
-        else if(tlbrd_en & tlbrd_valid)
-            csr_tlbidx_ps <= tlbrd_ps;
-        else if(tlbrd_en & ~tlbrd_valid)
-            csr_tlbidx_ps <= 6'b0;
+        else if(tlbrd_en)
+            csr_tlbidx_ps <= {6{tlbrd_valid}} & tlbrd_ps;
     end
 
     always @(posedge clk) begin
@@ -365,10 +384,8 @@ module CSRfile #(
     always @(posedge clk)begin
         if(~resetn)
             csr_tlbehi_vppn <= 19'b0;
-        else if(tlbrd_en & tlbrd_valid)
-            csr_tlbehi_vppn <= tlbrd_vppn;
-        else if(tlbrd_en & ~tlbrd_valid)    // set as 0 when tlbrd found invalid
-            csr_tlbehi_vppn <= 19'b0;
+        else if(tlbrd_en)
+            csr_tlbehi_vppn <= {19{tlbrd_valid}} & tlbrd_vppn;
     end
 /*--------------------------------TLBELO--------------------------------------------------------*/
     always @(posedge clk)begin
@@ -376,13 +393,9 @@ module CSRfile #(
             {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
                 <= 27'b0;
         end
-        else if(tlbrd_en & tlbrd_valid)begin
+        else if(tlbrd_en)begin
             {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
-                <= {tlbrd_v0,tlbrd_d0,tlbrd_plv0,tlbrd_mat0,tlbrd_g,tlbrd_ppn0}; 
-        end
-        else if(tlbrd_en & ~tlbrd_valid)begin
-            {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
-                <= 27'b0;
+                <= {27{tlbrd_valid}} & {tlbrd_v0,tlbrd_d0,tlbrd_plv0,tlbrd_mat0,tlbrd_g,tlbrd_ppn0}; 
         end
     end
 
@@ -391,16 +404,29 @@ module CSRfile #(
             {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
                 <= 27'b0;
         end
-        else if(tlbrd_en & tlbrd_valid)begin
+        else if(tlbrd_en)begin
             {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
-                <= {tlbrd_v1,tlbrd_d1,tlbrd_plv1,tlbrd_mat1,tlbrd_g,tlbrd_ppn1}; 
-        end
-        else if(tlbrd_en & ~tlbrd_valid)begin
-            {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
-                <= 27'b0;
+                <= {27{tlbrd_valid}} & {tlbrd_v1,tlbrd_d1,tlbrd_plv1,tlbrd_mat1,tlbrd_g,tlbrd_ppn1}; 
         end
     end
 /*-------------------------------------ASI0-----------------------------------------------*/
+    always @(posedge clk) begin
+        if(~resetn)
+            csr_asid_asid <= 10'b0;
+        else if(tlbrd_en)
+            csr_asid_asid <= {10{tlbrd_valid}} & tlbrd_asid;
+    end
+
+    assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
+
+
+    // tlbwr output
+    assign tlbwr_ne = csr_tlbidx_ne;
+    assign tlbwr_index = csr_tlbidx_index;
+
+
+
+
 
     // read csr value---------------------------------
     wire [31:0] csr_crmd_rvalue;
