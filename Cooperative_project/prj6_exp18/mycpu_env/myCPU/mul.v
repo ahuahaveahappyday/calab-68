@@ -1,15 +1,137 @@
-// 32位Booth两位乘需要生成16个部分积
-// 32位无符号数乘法→34位有符号数乘法，需17个部分积
-module Adder (
-    input   [63:0] in1,
-    input   [63:0] in2,
-    input   [63:0] in3,
-    output  [63:0] C,
-    output  [63:0] S
+module my_full_adder(      // 1 bit Full Adder
+    input a,
+    input b,
+    input cin,
+    output C,
+    output S
 );
-    assign S  = in1 ^ in2 ^ in3;
-    assign C = {(in1 & in2 | in1 & in3 | in2 & in3), 1'b0} ;
+    assign {C,S} = a+b+cin;
 endmodule
+module wallace_add_unit(
+    input    [16:0] pin,
+    input    [13:0] cin,
+    output   [13:0] cout,
+    output          S,
+    output          C
+);
+/*-------------------------level 1---------------------------------------*/
+    wire [4:0]  S_level_1;
+    my_full_adder adder1_4(
+        .a          (pin[16]),
+        .b          (pin[15]),
+        .cin        (pin[14]),
+        .S          (S_level_1[4]),
+        .C          (cout[4])
+    );
+    my_full_adder adder1_3(
+        .a          (pin[13]),
+        .b          (pin[12]),
+        .cin        (pin[11]),
+        .S          (S_level_1[3]),
+        .C          (cout[3])
+    );
+    my_full_adder adder1_2(
+        .a          (pin[10]),
+        .b          (pin[9]),
+        .cin        (pin[8]),
+        .S          (S_level_1[2]),
+        .C          (cout[2])
+    );
+    my_full_adder adder1_1(
+        .a          (pin[7]),
+        .b          (pin[6]),
+        .cin        (pin[5]),
+        .S          (S_level_1[1]),
+        .C          (cout[1])
+    );
+    my_full_adder adder1_0(
+        .a          (pin[4]),
+        .b          (pin[3]),
+        .cin        (pin[2]),
+        .S          (S_level_1[0]),
+        .C          (cout[0])
+    );
+/*-------------------------level 2---------------------------------------*/
+    wire [3:0]       S_level_2;
+    my_full_adder adder2_3(
+        .a          (S_level_1[4]),
+        .b          (S_level_1[3]),
+        .cin        (S_level_1[2]),
+        .S          (S_level_2[3]),
+        .C          (cout[8])
+    );
+    my_full_adder adder2_2(
+        .a          (S_level_1[1]),
+        .b          (S_level_1[0]),
+        .cin        (pin[1]),
+        .S          (S_level_2[2]),
+        .C          (cout[7])
+    );
+    my_full_adder adder2_1(
+        .a          (pin[0]),
+        .b          (cin[4]),
+        .cin        (cin[3]),
+        .S          (S_level_2[1]),
+        .C          (cout[6])
+    );
+    my_full_adder adder2_0(
+        .a          (cin[2]),
+        .b          (cin[1]),
+        .cin        (cin[0]),
+        .S          (S_level_2[0]),
+        .C          (cout[5])
+    );
+/*-------------------------level 3---------------------------------------*/ 
+    wire [1:0]       S_level_3;
+    my_full_adder adder3_1(
+        .a          (S_level_2[3]),
+        .b          (S_level_2[2]),
+        .cin        (S_level_2[1]),
+        .S          (S_level_3[1]),
+        .C          (cout[10])
+    );
+    my_full_adder adder3_0(
+        .a          (S_level_2[0]),
+        .b          (cin[6]),
+        .cin        (cin[5]),
+        .S          (S_level_3[0]),
+        .C          (cout[9])
+    );
+/*-------------------------level 4---------------------------------------*/    
+    wire [1:0]       S_level_4;
+    my_full_adder adder4_1(
+        .a          (S_level_3[1]),
+        .b          (S_level_3[0]),
+        .cin        (cin[10]),
+        .S          (S_level_4[1]),
+        .C          (cout[12])
+    );
+    my_full_adder adder4_0(
+        .a          (cin[9]),
+        .b          (cin[8]),
+        .cin        (cin[7]),
+        .S          (S_level_4[0]),
+        .C          (cout[11])
+    );
+/*-------------------------level 5---------------------------------------*/   
+    wire            S_level_5;
+    my_full_adder adder5_0(
+        .a          (S_level_4[1]),
+        .b          (S_level_4[0]),
+        .cin        (cin[11]),
+        .S          (S_level_5),
+        .C          (cout[13])
+    );
+/*-------------------------level 6---------------------------------------*/   
+    my_full_adder adder6_0(
+        .a          (S_level_5),
+        .b          (cin[13]),
+        .cin        (cin[12]),
+        .S          (S),
+        .C          (C)
+    );
+endmodule
+
 
 module Wallace_Mul (
     input          mul_clk,
@@ -19,6 +141,7 @@ module Wallace_Mul (
     input   [31:0] B,
     output  [63:0] result
 );
+    /*=====================================First level: Booth two-digit one-mul, partial product generation==============================*/
     wire [63:0] A_add;  
     wire [63:0] A_sub;
     wire [63:0] A2_add;
@@ -76,7 +199,7 @@ module Wallace_Mul (
                             sel_0[ 6], sel_0[ 4], sel_0[ 2], sel_0[ 0]}; 
     // debug信号应为0FFFF                                                                                              
     assign debug        = sel_x_val + sel_neg_2x_val + sel_neg_x_val + sel_2x_val + sel_0_val;
-    // 十六个未对齐的部分积
+    // 17个 * 64 bit 部分积, 未对齐
     assign {P[16], P[15], P[14], P[13], P[12],
             P[11], P[10], P[ 9], P[ 8],
             P[ 7], P[ 6], P[ 5], P[ 4],
@@ -97,136 +220,49 @@ module Wallace_Mul (
                 {64{sel_neg_2x_val[11]}}, {64{sel_neg_2x_val[10]}}, {64{sel_neg_2x_val[ 9]}}, {64{sel_neg_2x_val[ 8]}},
                 {64{sel_neg_2x_val[ 7]}}, {64{sel_neg_2x_val[ 6]}}, {64{sel_neg_2x_val[ 5]}}, {64{sel_neg_2x_val[ 4]}},
                 {64{sel_neg_2x_val[ 3]}}, {64{sel_neg_2x_val[ 2]}}, {64{sel_neg_2x_val[ 1]}}, {64{sel_neg_2x_val[ 0]}}} & {17{A2_sub}}; 
-
-//-----------------------------------------Level 1--------------------------------------------- 
-    wire [63:0] level_1 [11:0];
-    Adder adder1_1 (
-        .in1({P[15], 30'b0}),
-        .in2({P[14], 28'b0}),
-        .in3({P[13], 26'b0}),
-        .C(level_1[0]),
-        .S(level_1[1])
-    );
-    Adder adder1_2 (
-        .in1({P[12], 24'b0}),
-        .in2({P[11], 22'b0}),
-        .in3({P[10], 20'b0}),
-        .C(level_1[2]),
-        .S(level_1[3])
-    );
-    Adder adder1_3 (
-        .in1({P[ 9], 18'b0}),
-        .in2({P[ 8], 16'b0}),
-        .in3({P[ 7], 14'b0}),
-        .C(level_1[4]),
-        .S(level_1[5])
-    );
-    Adder adder1_4 (
-        .in1({P[ 6], 12'b0}),
-        .in2({P[ 5], 10'b0}),
-        .in3({P[ 4],  8'b0}),
-        .C(level_1[6]),
-        .S(level_1[7])
-    );
-    Adder adder1_5 (
-        .in1({P[ 3],  6'b0}),
-        .in2({P[ 2],  4'b0}),
-        .in3({P[ 1],  2'b0}),
-        .C(level_1[8]),
-        .S(level_1[9])
-    );
-    assign level_1[10] = P[0];
-    assign level_1[11] = {P[16], 32'b0};
-//-----------------------------------------Level 2--------------------------------------------- 
-    wire [63:0] level_2 [7:0];
-    Adder adder2_1 (
-        .in1(level_1[0]),
-        .in2(level_1[1]),
-        .in3(level_1[2]),
-        .C(level_2[0]),
-        .S(level_2[1])
-    );
-    Adder adder2_2 (
-        .in1(level_1[3]),
-        .in2(level_1[4]),
-        .in3(level_1[5]),
-        .C(level_2[2]),
-        .S(level_2[3])
-    );
-    Adder adder2_3 (
-        .in1(level_1[6]),
-        .in2(level_1[7]),
-        .in3(level_1[8]),
-        .C(level_2[4]),
-        .S(level_2[5])
-    );
-    Adder adder2_4 (
-        .in1(level_1[9]),
-        .in2(level_1[10]),
-        .in3(level_1[11]),
-        .C(level_2[6]),
-        .S(level_2[7])
-    );
-//-----------------------------------------Level 3--------------------------------------------- 
-    wire [63:0] level_3 [5:0];
-    Adder adder3_1 (
-        .in1(level_2[0]),
-        .in2(level_2[1]),
-        .in3(level_2[2]),
-        .C(level_3[0]),
-        .S(level_3[1])
-    );
-    Adder adder3_2 (
-        .in1(level_2[3]),
-        .in2(level_2[4]),
-        .in3(level_2[5]),
-        .C(level_3[2]),
-        .S(level_3[3])
-    );
-    assign level_3[4] = level_2[6];
-    assign level_3[5] = level_2[7];
-//-----------------------------------------Level 4--------------------------------------------- 
-    wire [63:0] level_4 [3:0];
-    Adder adder4_1 (
-        .in1(level_3[0]),
-        .in2(level_3[1]),
-        .in3(level_3[2]),
-        .C(level_4[0]),
-        .S(level_4[1])
-    );
-    Adder adder4_2 (
-        .in1(level_3[3]),
-        .in2(level_3[4]),
-        .in3(level_3[5]),
-        .C(level_4[2]),
-        .S(level_4[3])
-    );
-//-----------------------------------------Level 5--------------------------------------------- 
-    wire [63:0] level_5 [2:0];
-    Adder adder5_1 (
-        .in1(level_4[0]),
-        .in2(level_4[1]),
-        .in3(level_4[2]),
-        .C(level_5[0]),
-        .S(level_5[1])
-    );
-    assign level_5[2] = level_4[3]; 
-//-----------------------------------------Level 5--------------------------------------------- 
-    wire [63:0] level_6 [1:0];
-    Adder adder6_1 (
-        .in1(level_5[0]),
-        .in2(level_5[1]),
-        .in3(level_5[2]),
-        .C(level_6[0]),
-        .S(level_6[1])
-    );
-
-    reg  [63:0] level_6_r [1:0];
-    always @(posedge mul_clk) begin
-        if(~resetn)
-            {level_6_r[0],level_6_r[1]} <= {2{64'b0}};
-        else
-            {level_6_r[0],level_6_r[1]} <= {level_6[0],level_6[1]};
+    // 对齐的17个部分积
+    wire [63:0] p_aligned[16:0];
+    assign {p_aligned[16], p_aligned[15], p_aligned[14], p_aligned[13], p_aligned[12],
+            p_aligned[11], p_aligned[10], p_aligned[ 9], p_aligned[ 8],
+            p_aligned[ 7], p_aligned[ 6], p_aligned[ 5], p_aligned[ 4],
+            p_aligned[ 3], p_aligned[ 2], p_aligned[ 1], p_aligned[ 0]}
+            =   {P[16]<<32, P[15]<<30, P[14]<<28, P[13]<<26, P[12]<<24,
+                 P[11]<<22, P[10]<<20, P[ 9]<<18, P[ 8]<<16,
+                 P[ 7]<<14, P[ 6]<<12, P[ 5]<<10, P[ 4]<<8,
+                 P[ 3]<<6 , P[ 2]<<4 , P[ 1]<<2 , P[ 0]} ;
+    wire [13:0] cin [64:0];
+    wire  [63:0] S_top;
+    wire  [63:0] C_top;
+    genvar i;
+    assign cin[0] = 14'b0;
+    /* ===================================Second level: Wallace Tree===========================================================*/
+    generate
+        for (i = 0; i < 64; i = i + 1) begin : generate_for_loop
+            wallace_add_unit wallace_add(
+                .pin        ({p_aligned[16][i], p_aligned[15][i], p_aligned[14][i], p_aligned[13][i], p_aligned[12][i],
+                            p_aligned[11][i], p_aligned[10][i], p_aligned[ 9][i], p_aligned[ 8][i],
+                            p_aligned[ 7][i], p_aligned[ 6][i], p_aligned[ 5][i], p_aligned[ 4][i],
+                            p_aligned[ 3][i], p_aligned[ 2][i], p_aligned[ 1][i], p_aligned[ 0][i]}),
+                .cin        (cin[i]),
+                .cout       (cin[i+1]),
+                .S          (S_top[i]),
+                .C          (C_top[i])
+        );
+        end
+    endgenerate
+    // Set reg to divide pipeline stages
+    reg [63:0] S_top_reg;
+    reg [63:0] C_top_reg;
+    always @(posedge mul_clk)begin
+        if(~resetn)begin
+            S_top_reg <= 64'b0;
+            C_top_reg <= 64'b0;
+        end
+        else begin
+            S_top_reg <= S_top;
+            C_top_reg <= C_top;
+        end
     end
-    assign result = (level_6_r[0] + level_6_r[1]);
+    /* ===========================Third level: Top 64 bit adder===========================================================================*/
+    assign result = S_top_reg + (C_top_reg << 1);
 endmodule
