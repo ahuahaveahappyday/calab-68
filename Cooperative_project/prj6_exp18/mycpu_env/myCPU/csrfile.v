@@ -94,7 +94,7 @@ module CSRfile #(
     input  wire [               1:0] tlbrd_mat1,
     input  wire [               1:0] tlbrd_plv1,
     input  wire [              19:0] tlbrd_ppn1,
-    // TLBWR
+    // TLBWR or TLBFILL
     output wire                      tlbwr_ne,
     output wire                      tlbwr_index,
     output wire [               5:0] tlbwr_ps,
@@ -420,10 +420,17 @@ module CSRfile #(
     assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
 
 
-    // tlbwr output
+    // tlbwr/tlbfill output
     assign tlbwr_ne = csr_tlbidx_ne;
     assign tlbwr_index = csr_tlbidx_index;
-
+    assign tlbwr_asid = csr_asid_asid;
+    assign tlbwr_g = csr_tlbelo0_g & csr_tlbelo1_g; // only if the G bit in both TLBELO0 and TLBELO1 is 1
+    assign tlbwr_ps = csr_tlbidx_ps;
+    assign tlbwr_vppn = csr_tlbehi_vppn;
+    assign {tlbwr_v0, tlbwr_d0, tlbwr_mat0, tlbwr_plv0, tlbwr_ppn0} = 
+        {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_mat,csr_tlbelo0_plv,csr_tlbelo0_ppn};
+    assign {tlbwr_v1, tlbwr_d1, tlbwr_mat1, tlbwr_plv1, tlbwr_ppn1} = 
+        {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_mat,csr_tlbelo1_plv,csr_tlbelo1_ppn};
 
 
 
