@@ -516,6 +516,12 @@ module CSRfile #(
     wire [31:0] csr_tcfg_rvalue;
     wire [31:0] csr_tval_rvalue;
     wire [31:0] csr_ticlr_rvalue;
+    wire [31:0] csr_tlbidx_rvalue;
+    wire [31:0] csr_tlbehi_rvalue;
+    wire [31:0] csr_tlbelo0_rvalue;
+    wire [31:0] csr_tlbelo1_rvalue;
+    wire [31:0] csr_asid_rvalue;
+    wire [31:0] csr_tlbrentry_rvalue;
 
     assign csr_crmd_rvalue = {23'b0, csr_crmd_datm, csr_crmd_datf, csr_crmd_pg, csr_crmd_da, csr_crmd_ie, csr_crmd_plv};
     assign csr_prmd_rvalue = {29'b0, csr_prmd_pie, csr_prmd_pplv};
@@ -532,10 +538,12 @@ module CSRfile #(
     assign csr_tcfg_rvalue = {csr_tcfg_initval, csr_tcfg_periodic, csr_tcfg_en};
     assign csr_tval_rvalue = csr_tval;
     assign csr_ticlr_rvalue = {31'b0, csr_ticlr_clr};
-
-
-    // assign excep_entry = wb_ex ? csr_eentry_rvalue     //PC在flush时候取指的地址
-    //                   /*ertn_flush*/:csr_era_pc;
+    assign csr_tlbidx_rvalue = {csr_tlbidx_ne, 1'b0, csr_tlbidx_ps, {24-$clog2(TLBNUM){1'b0}}, csr_tlbidx_index};
+    assign csr_tlbehi_rvalue = {csr_tlbehi_vppn, 13'b0};
+    assign csr_tlbelo0_rvalue = {4'b0, csr_tlbelo0_ppn, 1'b0, csr_tlbelo0_g, csr_tlbelo0_mat, csr_tlbelo0_plv, csr_tlbelo0_d, csr_tlbelo0_v};
+    assign csr_tlbelo1_rvalue = {4'b0, csr_tlbelo1_ppn, 1'b0, csr_tlbelo1_g, csr_tlbelo1_mat, csr_tlbelo1_plv, csr_tlbelo1_d, csr_tlbelo1_v};
+    assign csr_asid_rvalue = {8'b0, csr_asid_asidbits, 6'b0, csr_asid_asid};
+    assign csr_tlbrentry_rvalue = {csr_tlbrentry_pa, 6'b0};
 
     assign csr_rvalue =      {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
                             |{32{csr_num == `CSR_PRMD}} & csr_prmd_rvalue
@@ -551,6 +559,12 @@ module CSRfile #(
                             |{32{csr_num == `CSR_TID}}   & csr_tid_rvalue
                             |{32{csr_num == `CSR_TCFG}}  & csr_tcfg_rvalue
                             |{32{csr_num == `CSR_TVAL}}  & csr_tval_rvalue
-                            |{32{csr_num == `CSR_TICLR}} & csr_ticlr_rvalue;
+                            |{32{csr_num == `CSR_TICLR}} & csr_ticlr_rvalue
+                            |{32{csr_num == `CSR_TLBIDX}} & csr_tlbidx_rvalue
+                            |{32{csr_num == `CSR_TLBEHI}} & csr_tlbehi_rvalue
+                            |{32{csr_num == `CSR_TLBELO0}} & csr_tlbelo0_rvalue
+                            |{32{csr_num == `CSR_TLBELO1}} & csr_tlbelo1_rvalue
+                            |{32{csr_num == `CSR_ASID}} & csr_asid_rvalue
+                            |{32{csr_num == `CSR_TLBRENTRY}} & csr_tlbrentry_rvalue;
 
 endmodule
