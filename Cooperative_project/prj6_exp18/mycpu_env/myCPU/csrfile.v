@@ -8,8 +8,8 @@
 `define CSR_EENTRY 14'hc
 `define CSR_TLBIDX 14'h10
 `define CSR_TLBEHI 14'h11
-`define CSR_TLBLO0 14'h12
-`define CSR_TLBLO1 14'h13
+`define CSR_TLBELO0 14'h12
+`define CSR_TLBELO1 14'h13
 `define CSR_ASID 14'h18
 `define CSR_SAVE0 14'h30
 `define CSR_SAVE1 14'h31
@@ -39,6 +39,19 @@
 `define CSR_TCFG_PERIOD 1
 `define CSR_TCFG_INITV 31:2
 `define CSR_TICLR_CLR 0
+`define CSR_TLBIDX_INDEX $clog2(TLBNUM)-1:0
+`define CSR_TLBIDX_PS 28:24
+`define CSR_TLBIDX_NE 31
+`define CSR_TLBEHI_VPPN 31:13
+`define CSR_TLBELO_V 0
+`define CSR_TLBELO_D 1
+`define CSR_TLBELO_PLV 3:2
+`define CSR_TLBELO_MAT 5:4
+`define CSR_TLBELO_G 5
+`define CSR_TLBELO_PPN 27:8
+`define CSR_ASID_ASID 9:0
+`define CSR_TLBRENTRY_PA 31:6
+
 // ECODE
 `define ECODE_ADE 5'h8
 `define ECODE_ALE 5'h9    
@@ -175,6 +188,8 @@ module CSRfile #(
 
     reg  [              9:0] csr_asid_asid;
     wire [              5:0] csr_asid_asidbits;
+
+    reg  [             25:0] csr_tlbrentry_pa;
 
     //实现中断处理
     assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0) && (csr_crmd_ie == 1'b1);
@@ -360,6 +375,9 @@ module CSRfile #(
             csr_tlbidx_index <= {($clog2(TLBNUM)) {1'b0}};
         else if (tlbsrch_en & tlbsrch_found) 
             csr_tlbidx_index <= tlbsrch_idx;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_index <=   csr_wmask[`CSR_TLBIDX_INDEX]  & csr_wvalue[`CSR_TLBIDX_INDEX]
+                                | ~csr_wmask[`CSR_TLBIDX_INDEX]  & csr_tlbidx_index;       
     end
 
     always @(posedge clk)begin
@@ -367,6 +385,9 @@ module CSRfile #(
             csr_tlbidx_ps <= 6'b0;
         else if(tlbrd_en)
             csr_tlbidx_ps <= {6{tlbrd_valid}} & tlbrd_ps;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_ps <=     csr_wmask[`CSR_TLBIDX_PS]  & csr_wvalue[`CSR_TLBIDX_PS]
+                                | ~csr_wmask[`CSR_TLBIDX_PS]  & csr_tlbidx_ps;  
     end
 
     always @(posedge clk) begin
@@ -376,6 +397,9 @@ module CSRfile #(
             csr_tlbidx_ne <= ~tlbsrch_found;
         else if(tlbrd_en)
             csr_tlbidx_ne <= ~tlbrd_valid;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_ne <=     csr_wmask[`CSR_TLBIDX_NE]  & csr_wvalue[`CSR_TLBIDX_NE]
+                                | ~csr_wmask[`CSR_TLBIDX_NE]  & csr_tlbidx_ne;  
     end
 
     assign tlbrd_idx = csr_tlbidx_index;
@@ -386,6 +410,9 @@ module CSRfile #(
             csr_tlbehi_vppn <= 19'b0;
         else if(tlbrd_en)
             csr_tlbehi_vppn <= {19{tlbrd_valid}} & tlbrd_vppn;
+        else if(csr_we && csr_num == `CSR_TLBEHI)
+            csr_tlbehi_vppn <=     csr_wmask[`CSR_TLBEHI_VPPN]  & csr_wvalue[`CSR_TLBEHI_VPPN]
+                                | ~csr_wmask[`CSR_TLBEHI_VPPN]  & csr_tlbehi_vppn;  
     end
 /*--------------------------------TLBELO--------------------------------------------------------*/
     always @(posedge clk)begin
@@ -396,6 +423,20 @@ module CSRfile #(
         else if(tlbrd_en)begin
             {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
                 <= {27{tlbrd_valid}} & {tlbrd_v0,tlbrd_d0,tlbrd_plv0,tlbrd_mat0,tlbrd_g,tlbrd_ppn0}; 
+        end
+        else if(csr_we && csr_num == `CSR_TLBELO0) begin
+            csr_tlbelo0_v <= csr_wmask[`CSR_TLBELO_V] & csr_wvalue[`CSR_TLBELO_V]
+                            | ~csr_wmask[`CSR_TLBELO_V] & csr_tlbelo0_v;
+            csr_tlbelo0_d <= csr_wmask[`CSR_TLBELO_D] & csr_wvalue[`CSR_TLBELO_D]
+                             | ~csr_wmask[`CSR_TLBELO_D] & csr_tlbelo0_d;
+            csr_tlbelo0_plv <= csr_wmask[`CSR_TLBELO_PLV] & csr_wvalue[`CSR_TLBELO_PLV]
+                            | ~csr_wmask[`CSR_TLBELO_PLV] & csr_tlbelo0_plv;
+            csr_tlbelo0_mat <= csr_wmask[`CSR_TLBELO_MAT] & csr_wvalue[`CSR_TLBELO_MAT]
+                            | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo0_mat;
+            csr_tlbelo0_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
+                            | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo0_g;
+            csr_tlbelo0_g <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo0_g;
         end
     end
 
@@ -408,6 +449,20 @@ module CSRfile #(
             {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
                 <= {27{tlbrd_valid}} & {tlbrd_v1,tlbrd_d1,tlbrd_plv1,tlbrd_mat1,tlbrd_g,tlbrd_ppn1}; 
         end
+        else if(csr_we && csr_num == `CSR_TLBELO0) begin
+            csr_tlbelo1_v <= csr_wmask[`CSR_TLBELO_V] & csr_wvalue[`CSR_TLBELO_V]
+                            | ~csr_wmask[`CSR_TLBELO_V] & csr_tlbelo1_v;
+            csr_tlbelo1_d <= csr_wmask[`CSR_TLBELO_D] & csr_wvalue[`CSR_TLBELO_D]
+                            | ~csr_wmask[`CSR_TLBELO_D] & csr_tlbelo1_d;
+            csr_tlbelo1_plv <= csr_wmask[`CSR_TLBELO_PLV] & csr_wvalue[`CSR_TLBELO_PLV]
+                            | ~csr_wmask[`CSR_TLBELO_PLV] & csr_tlbelo1_plv;
+            csr_tlbelo1_mat <= csr_wmask[`CSR_TLBELO_MAT] & csr_wvalue[`CSR_TLBELO_MAT]
+                            | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo1_mat;
+            csr_tlbelo1_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
+                            | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo1_g;
+            csr_tlbelo1_g <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo1_g;
+        end
     end
 /*-------------------------------------ASI0-----------------------------------------------*/
     always @(posedge clk) begin
@@ -415,10 +470,20 @@ module CSRfile #(
             csr_asid_asid <= 10'b0;
         else if(tlbrd_en)
             csr_asid_asid <= {10{tlbrd_valid}} & tlbrd_asid;
+        else if(csr_we && csr_num == `CSR_ASID)
+            csr_asid_asid <=     csr_wmask[`CSR_ASID_ASID]  & csr_wvalue[`CSR_ASID_ASID]
+                                | ~csr_wmask[`CSR_ASID_ASID]  & csr_asid_asid;  
     end
 
     assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
-
+/*----------------------------------TLBRENTRY-----------------------------------------------*/
+    always @(posedge clk)begin
+        if(~resetn)
+            csr_tlbrentry_pa <= 26'b0;
+        else if(csr_we && csr_num == `CSR_TLBRENTRY)
+            csr_tlbrentry_pa <=     csr_wmask[`CSR_TLBRENTRY_PA]  & csr_wvalue[`CSR_TLBRENTRY_PA]
+                                | ~csr_wmask[`CSR_TLBRENTRY_PA]  & csr_tlbrentry_pa; 
+    end
 
     // tlbwr/tlbfill output
     assign tlbwr_ne = csr_tlbidx_ne;
