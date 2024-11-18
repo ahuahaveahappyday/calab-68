@@ -4,7 +4,7 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [231:0] id_to_ex_bus,
+    input wire [236:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -25,8 +25,25 @@ module EXEreg(
 
     input  wire [63:0]  counter,
 
-    output wire         ex_tlb_srch,
-    output wire         ex_tlb_inv
+    //TLB interface
+    // tlb interface
+    output wire        ex_tlb_srch,
+    output wire        ex_tlb_inv,
+    output wire [ 4:0] invtlb_op,
+
+    output wire [18:0] s1_vppn,
+    output wire        s1_va_bit12,
+    output wire [ 9:0] s1_asid,
+
+    input               s1_found,
+    input  [ 3:0]       s1_index,
+    input  [19:0]       s1_ppn,
+    input  [ 5:0]       s1_ps,
+    input  [ 1:0]       s1_plv,
+    input  [ 1:0]       s1_mat,
+    input               s1_d,
+    input               s1_v
+
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
     reg         ex_valid;
@@ -49,6 +66,7 @@ module EXEreg(
 
     reg  [4:0]  ex_tlb_op;
     reg         ex_srch_conflict;
+    reg  [4:0]  ex_invtlb_op;
 
     reg         ex_csr_re;
     reg         ex_csr_we;
@@ -104,15 +122,15 @@ module EXEreg(
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode,
-              ex_tlb_op,ex_srch_conflict
-              }       <= {232{1'b0}};
+              ex_tlb_op,ex_srch_conflict,ex_invtlb_op
+              }       <= {237{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode,
-             ex_tlb_op,ex_srch_conflict
+             ex_tlb_op,ex_srch_conflict,ex_invtlb_op
              }     <= id_to_ex_bus;    
     end
 
@@ -207,5 +225,6 @@ module EXEreg(
 //TLB相关
     assign ex_tlb_srch = ex_tlb_op[4];
     assign ex_tlb_inv  = ex_tlb_op[0];
+    assign invtlb_op   = ex_invtlb_op;
 
 endmodule
