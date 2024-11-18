@@ -123,7 +123,10 @@ module CSRfile #(
     output wire                      tlbwr_d1,
     output wire [               1:0] tlbwr_mat1,
     output wire [               1:0] tlbwr_plv1,
-    output wire [              19:0] tlbwr_ppn1
+    output wire [              19:0] tlbwr_ppn1,
+
+    output  wire [              18:0] wire_csr_tlbehi_vppn,
+    output  wire [               9:0] wire_csr_asid
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
@@ -414,6 +417,8 @@ module CSRfile #(
             csr_tlbehi_vppn <=     csr_wmask[`CSR_TLBEHI_VPPN]  & csr_wvalue[`CSR_TLBEHI_VPPN]
                                 | ~csr_wmask[`CSR_TLBEHI_VPPN]  & csr_tlbehi_vppn;  
     end
+
+    assign wire_csr_tlbehi_vppn = csr_tlbehi_vppn;
 /*--------------------------------TLBELO--------------------------------------------------------*/
     always @(posedge clk)begin
         if(~resetn)begin
@@ -476,6 +481,7 @@ module CSRfile #(
     end
 
     assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
+    assign wire_csr_asid =csr_asid;
 /*----------------------------------TLBRENTRY-----------------------------------------------*/
     always @(posedge clk)begin
         if(~resetn)

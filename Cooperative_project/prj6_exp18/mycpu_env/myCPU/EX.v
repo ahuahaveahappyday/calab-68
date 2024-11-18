@@ -26,8 +26,6 @@ module EXEreg(
     input  wire [63:0]  counter,
 
     //TLB interface
-    // tlb interface
-    output wire        ex_tlb_srch,
     output wire        ex_tlb_inv,
     output wire [ 4:0] invtlb_op,
 
@@ -43,6 +41,9 @@ module EXEreg(
     input  [ 1:0]       s1_mat,
     input               s1_d,
     input               s1_v
+
+    input  wire [18:0] csr_tlbehi_vppn,
+    input  wire [ 9:0] csr_asid
 
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
@@ -226,5 +227,10 @@ module EXEreg(
     assign ex_tlb_srch = ex_tlb_op[4];
     assign ex_tlb_inv  = ex_tlb_op[0];
     assign invtlb_op   = ex_invtlb_op;
+
+    assign s1_asid       = ex_tlb_inv ?  ex_alu_src1[9:0] : csr_asid; // alu src1 is rj value
+    assign {s1_vppn, s1_va_bit12} = ex_tlb_inv ?  ex_rkd_value[31:12] :
+                                    ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0} :
+                                    ex_alu_result[31:12]; 
 
 endmodule

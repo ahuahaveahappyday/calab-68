@@ -122,44 +122,44 @@ module mycpu_top
     //------------------------------------------------  CSRfile中TLB相关 ---------------------------------------------------------
 
     // TLBSRCH
-    reg                      tlbsrch_en;
-    reg                      tlbsrch_found;
-    reg [$clog2(TLBNUM)-1:0] tlbsrch_idx;
+    wire                      tlbsrch_en;
+    wire                      tlbsrch_found;
+    wire [$clog2(TLBNUM)-1:0] tlbsrch_idx;
     // TLBRD
-    reg [$clog2(TLBNUM)-1:0] tlbrd_idx;
-    reg                      tlbrd_en;
-    reg                      tlbrd_valid;
-    reg [               5:0] tlbrd_ps;
-    reg [              18:0] tlbrd_vppn;
-    reg                      tlbrd_g;
-    reg [               9:0] tlbrd_asid;
-    reg                      tlbrd_v0;
-    reg                      tlbrd_d0;
-    reg [               1:0] tlbrd_mat0;
-    reg [               1:0] tlbrd_plv0;
-    reg [              19:0] tlbrd_ppn0;
-    reg                      tlbrd_v1;
-    reg                      tlbrd_d1;
-    reg [               1:0] tlbrd_mat1;
-    reg [               1:0] tlbrd_plv1;
-    reg [              19:0] tlbrd_ppn1;
+    wire [$clog2(TLBNUM)-1:0] tlbrd_idx;
+    wire                      tlbrd_en;
+    wire                      tlbrd_valid;
+    wire [               5:0] tlbrd_ps;
+    wire [              18:0] tlbrd_vppn;
+    wire                      tlbrd_g;
+    wire [               9:0] tlbrd_asid;
+    wire                      tlbrd_v0;
+    wire                      tlbrd_d0;
+    wire [               1:0] tlbrd_mat0;
+    wire [               1:0] tlbrd_plv0;
+    wire [              19:0] tlbrd_ppn0;
+    wire                      tlbrd_v1;
+    wire                      tlbrd_d1;
+    wire [               1:0] tlbrd_mat1;
+    wire [               1:0] tlbrd_plv1;
+    wire [              19:0] tlbrd_ppn1;
     // TLBWR or TLBFILL
-    reg                      tlbwr_ne;
-    reg                      tlbwr_index;
-    reg [               5:0] tlbwr_ps;
-    reg [              18:0] tlbwr_vppn;
-    reg                      tlbwr_g;
-    reg [               9:0] tlbwr_asid;
-    reg                      tlbwr_v0;
-    reg                      tlbwr_d0;
-    reg [               1:0] tlbwr_mat0;
-    reg [               1:0] tlbwr_plv0;
-    reg [              19:0] tlbwr_ppn0;
-    reg                      tlbwr_v1;
-    reg                      tlbwr_d1;
-    reg [               1:0] tlbwr_mat1;
-    reg [               1:0] tlbwr_plv1;
-    reg [              19:0] tlbwr_ppn1;
+    wire                      tlbwr_ne;
+    wire                      tlbwr_index;
+    wire [               5:0] tlbwr_ps;
+    wire [              18:0] tlbwr_vppn;
+    wire                      tlbwr_g;
+    wire [               9:0] tlbwr_asid;
+    wire                      tlbwr_v0;
+    wire                      tlbwr_d0;
+    wire [               1:0] tlbwr_mat0;
+    wire [               1:0] tlbwr_plv0;
+    wire [              19:0] tlbwr_ppn0;
+    wire                      tlbwr_v1;
+    wire                      tlbwr_d1;
+    wire [               1:0] tlbwr_mat1;
+    wire [               1:0] tlbwr_plv1;
+    wire [              19:0] tlbwr_ppn1;
 
 
     //----------------------------------------------------- TLB相关 --------------------------------------------------------------
@@ -175,7 +175,7 @@ module mycpu_top
     wire                        s0_va_bit12;
     wire [9:0]                  s0_asid;
     wire                        s0_found;
-    wire [$clog2(TLBNUM)-1:0]  s0_index;
+    wire [$clog2(TLBNUM)-1:0]   s0_index;
     wire [19:0]                 s0_ppn;
     wire [5:0]                  s0_ps;
     wire [1:0]                  s0_plv;
@@ -187,7 +187,7 @@ module mycpu_top
     wire                        s1_va_bit12;
     wire [9:0]                  s1_asid;
     wire                        s1_found;
-    wire [$clog2(TLBNUM)-1:0]  s1_index;
+    wire [$clog2(TLBNUM)-1:0]   s1_index;
     wire [19:0]                 s1_ppn;
     wire [5:0]                  s1_ps;
     wire [1:0]                  s1_plv;
@@ -199,7 +199,7 @@ module mycpu_top
     wire [4:0]                  invtlb_op;
     // write port
     wire                        we; // write enable
-    wire [$clog2(TLBNUM)-1:0]  w_index;
+    wire [$clog2(TLBNUM)-1:0]   w_index;
     wire                        w_e;
     wire [18:0]                 w_vppn;
     wire [5:0]                  w_ps;
@@ -216,7 +216,7 @@ module mycpu_top
     wire                        w_d1;
     wire                        w_v1;
     // read port
-    wire [$clog2(TLBNUM)-1:0]  r_index;
+    wire [$clog2(TLBNUM)-1:0]   r_index;
     wire                        r_e;
     wire [18:0]                 r_vppn;
     wire [5:0]                  r_ps;
@@ -232,6 +232,10 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
+
+
+    wire [18:0]                 csr_tlbehi_vppn;
+    wire [ 9:0]                 csr_asid;
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
@@ -292,8 +296,23 @@ module mycpu_top
         .data_sram_addr_ok  (data_sram_addr_ok),
         .flush              (ertn_flush || wb_ex),
         .counter            (counter),
-        .ex_tlb_srch        (tlb_srch),
-        .ex_tlb_inv         (tlb_inv)
+
+        .ex_tlb_inv         (invtlb_valid),
+        .invtlb_op          (invtlb_op),
+        .s1_vppn            (s1_vppn),
+        .s1_va_bit12        (s1_va_bit12),
+        .s1_asid            (s1_asid),
+        .s1_found           (s1_found),
+        .s1_index           (s1_index),
+        .s1_ppn             (s1_ppn),
+        .s1_ps              (s1_ps),
+        .s1_plv             (s1_plv),
+        .s1_mat             (s1_mat),
+        .s1_d               (s1_d),
+        .s1_v               (s1_v),
+
+        .csr_tlbehi_vppn    (csr_tlbehi_vppn),
+        .csr_asid           (csr_asid)
     );
 
     MEMreg my_memReg(
@@ -396,11 +415,54 @@ module mycpu_top
         .ipi_int_in         (ipi_int_in),
         .has_int            (has_int)
         //.excep_entry(excep_entry)
+
+        .tlbsrch_en         (tlbsrch_en),
+        .tlbsrch_found      (tlbsrch_found),
+        .tlbsrch_idx        (tlbsrch_idx),
+
+        .tlbrd_idx          (tlbrd_idx),
+        .tlbrd_en           (tlbrd_en),
+        .tlbrd_valid        (tlbrd_valid),
+        .tlbrd_ps           (tlbrd_ps),
+        .tlbrd_vppn         (tlbrd_vppn),
+        .tlbrd_g            (tlbrd_g),
+        .tlbrd_asid         (tlbrd_asid),
+        .tlbrd_v0           (tlbrd_v0),
+        .tlbrd_d0           (tlbrd_d0),
+        .tlbrd_mat0         (tlbrd_mat0),
+        .tlbrd_plv0         (tlbrd_plv0),
+        .tlbrd_ppn0         (tlbrd_ppn0),
+        .tlbrd_v1           (tlbrd_v1),
+        .tlbrd_d1           (tlbrd_d1),
+        .tlbrd_mat1         (tlbrd_mat1),
+        .tlbrd_plv1         (tlbrd_plv1),
+        .tlbrd_ppn1         (tlbrd_ppn1),
+
+        .tlbwr_ne           (tlbwr_ne),
+        .tlbwr_index        (tlbwr_index),
+        .tlbwr_ps           (tlbwr_ps),
+        .tlbwr_vppn         (tlbwr_vppn),
+        .tlbwr_g            (tlbwr_g),
+        .tlbwr_asid         (tlbwr_asid),
+        .tlbwr_v0           (tlbwr_v0),
+        .tlbwr_d0           (tlbwr_d0),
+        .tlbwr_mat0         (tlbwr_mat0),
+        .tlbwr_plv0         (tlbwr_plv0),
+        .tlbwr_ppn0         (tlbwr_ppn0),
+        .tlbwr_v1           (tlbwr_v1),
+        .tlbwr_d1           (tlbwr_d1),
+        .tlbwr_mat1         (tlbwr_mat1),
+        .tlbwr_plv1         (tlbwr_plv1),
+        .tlbwr_ppn1         (tlbwr_ppn1),
+
+        .wire_csr_tlbehi_vppn    (csr_tlbehi_vppn),
+        .wire_csr_asid           (csr_asid)
     );
 
     //----------------------------- TLB ------------------------------------------------------------------------------------
     tlb u_tlb(
         .clk        (clk),
+
         .s0_vppn    (s0_vppn),
         .s0_va_bit12(s0_va_bit12),
         .s0_asid    (s0_asid),
@@ -423,15 +485,16 @@ module mycpu_top
         .s1_mat     (s1_mat),
         .s1_d       (s1_d),
         .s1_v       (s1_v),
+
         .invtlb_valid(invtlb_valid),
         .invtlb_op  (invtlb_op),
-        .inst_wb_tlbfill(inst_wb_tlbfill),
+
         .we         (tlbwe),
-        .w_index    (tlbindex_index_CSRoutput),
+        .w_index    (w_index),
         .w_e        (w_e),
-        .w_vppn     (tlbehi_vppn_CSRoutput),
+        .w_vppn     (w_vppn),
         .w_ps       (w_ps),
-        .w_asid     (asid_CSRoutput),
+        .w_asid     (w_asid),
         .w_g        (w_g),
         .w_ppn0     (w_ppn0),
         .w_plv0     (w_plv0),
@@ -443,7 +506,8 @@ module mycpu_top
         .w_mat1     (w_mat1),
         .w_d1       (w_d1),
         .w_v1       (w_v1),
-        .r_index    (tlbindex_index_CSRoutput),
+        
+        .r_index    (r_index),
         .r_e        (r_e),
         .r_vppn     (r_vppn),
         .r_ps       (r_ps),
