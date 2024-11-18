@@ -4,7 +4,7 @@ module WBreg(
     //mem与wb模块交互接口
     output wire        wb_allowin,
     input  wire        mem_to_wb_valid,
-    input  wire [199:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    input  wire [204:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
     //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -28,7 +28,11 @@ module WBreg(
     //  传给if级的跳转地址
     output wire [31:0] wb_csr_rvalue,
 
-    output wire        ertn_flush
+    output wire        ertn_flush,
+
+    output wire        wb_tlb_wr,
+    output wire        wb_tlb_fill,
+    output wire        wb_tlb_rd
 );
     
     wire        wb_ready_go;
@@ -40,6 +44,8 @@ module WBreg(
     reg  [4 :0] wb_rf_waddr;
     reg         wb_rf_we;
     reg         wb_read_TID;
+
+    reg  [4:0]  wb_tlb_op;
 
     reg         wb_csr_re;
     reg         wb_csr_we;
@@ -77,12 +83,14 @@ module WBreg(
         if(~resetn) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush
-            ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_INT,wb_excep_esubcode,wb_vaddr} <= 200'b0;
+            ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_INT,wb_excep_esubcode,wb_vaddr,
+            wb_tlb_op} <= 205'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush,
-            mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE,wb_excep_INT, wb_excep_esubcode ,wb_vaddr} <= mem_to_wb_bus;
+            mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE,wb_excep_INT, wb_excep_esubcode ,wb_vaddr,
+            wb_tlb_op} <= mem_to_wb_bus;
         end
     end
 
@@ -117,5 +125,10 @@ module WBreg(
                         6'h9;                           //ALE                           
     assign wb_esubcode= wb_excep_esubcode;
     assign wb_ex_pc =   wb_pc;
+
+//TLB相关
+    assign wb_tlb_wr   =  wb_tlb_op[3];
+    assign wb_tlb_fill =  wb_tlb_op[2];
+    assign wb_tlb_rd   =  wb_tlb_op[1];
 
 endmodule

@@ -4,13 +4,13 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [225:0] id_to_ex_bus,
+    input wire [231:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [239:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
-    input  wire [1:0]  mem_to_ex_bus,   // ex_en
+    output wire [245:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    input  wire [2:0]  mem_to_ex_bus,   // ex_en
 
     //ex模块与数据存储器交互
     output wire         data_sram_req,
@@ -23,7 +23,10 @@ module EXEreg(
     
     input  wire         flush,
 
-    input  wire [63:0]  counter
+    input  wire [63:0]  counter,
+
+    output wire         ex_tlb_srch,
+    output wire         ex_tlb_inv
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
     reg         ex_valid;
@@ -44,6 +47,9 @@ module EXEreg(
     reg         ex_read_counter_low;
     reg         ex_read_TID;
 
+    reg  [4:0]  ex_tlb_op;
+    reg         ex_srch_conflict;
+
     reg         ex_csr_re;
     reg         ex_csr_we;
     reg  [13:0] ex_csr_num;
@@ -61,6 +67,7 @@ module EXEreg(
     reg         id_excep_en;
     
     wire        ex_ready_go;
+    wire        block;
     wire [31:0] ex_alu_result;
     wire        alu_complete;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
@@ -70,6 +77,7 @@ module EXEreg(
     wire [31:0] ex_counter_result;
 
     wire        ex_res_from_wb;
+    wire        mem_srch_conflict;
     wire        mem_excep_en;
     wire        mem_ertn_flush;
     wire [31:0] ex_vaddr;            
@@ -78,12 +86,13 @@ module EXEreg(
     assign ex_ready_go      = alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
     assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
     assign ex_to_mem_valid  = ex_valid & ex_ready_go;
+    assign block            = ex_tlb_op[4] & mem_srch_conflict;
 
 //EX流水级需要的寄存器，根据clk不断更新
     always @(posedge clk) begin
         if(~resetn)
             ex_valid <= 1'b0;
-        else if(flush)
+        else if(block || flush)
             ex_valid <= 1'b0;
         else if(ex_allowin)
             ex_valid <= id_to_ex_valid; 
@@ -94,14 +103,16 @@ module EXEreg(
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode
-              }       <= {226{1'b0}};
+              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode,
+              ex_tlb_op,ex_srch_conflict
+              }       <= {232{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode
+             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode,
+             ex_tlb_op,ex_srch_conflict
              }     <= id_to_ex_bus;    
     end
 
@@ -116,6 +127,7 @@ module EXEreg(
         .complete       (alu_complete)
     );
 // 来自mem和wb的异常数据
+    assign mem_srch_conflict = mem_to_ex_bus[2];
     assign mem_excep_en = mem_to_ex_bus[1];
     assign mem_ertn_flush=mem_to_ex_bus[0];
 // 寄存器写回数据来自wb级
@@ -176,7 +188,9 @@ module EXEreg(
                                 ex_excep_INT,               //1 bit
                                 ex_excep_esubcode,          // 9 bit
                                 ex_vaddr,                     //32bit
-                                ex_mem_req                  //1 bit 
+                                ex_mem_req,                  //1 bit 
+                                ex_tlb_op,                  //5 bit
+                                ex_srch_conflict            //1 bit
                                 };
 
 // 读计数器
@@ -190,5 +204,8 @@ module EXEreg(
                       {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
                       {32{~ex_read_counter}} & ex_alu_result;
 
+//TLB相关
+    assign ex_tlb_srch = ex_tlb_op[4];
+    assign ex_tlb_inv  = ex_tlb_op[0];
 
 endmodule

@@ -115,6 +115,13 @@ module mycpu_top(
 
     wire          data_sram_data_ok;
     wire  [31:0]  data_sram_rdata;
+
+    //TLB相关
+    wire          tlb_srch;
+    wire          tlb_wr;
+    wire          tlb_fill;
+    wire          tlb_rd;
+    wire          tlb_inv;
     
     IFreg my_ifReg(
         .clk                (aclk),
@@ -186,7 +193,10 @@ module mycpu_top(
 
         .flush              (ertn_flush || wb_ex),
 
-        .counter            (counter)
+        .counter            (counter),
+
+        .ex_tlb_srch        (tlb_srch),
+        .ex_tlb_inv         (tlb_inv)
     );
 
     MEMreg my_memReg(
@@ -241,7 +251,11 @@ module mycpu_top(
         .wb_ex_pc           (wb_pc),
         .wb_vaddr           (wb_vaddr),
 
-        .wb_csr_rvalue      (wb_csr_rvalue)
+        .wb_csr_rvalue      (wb_csr_rvalue),
+
+        .wb_tlb_wr          (tlb_wr),
+        .wb_tlb_fill        (tlb_fill),
+        .wb_tlb_rd          (tlb_rd)
     );
 
     CSRfile my_csrfild(
