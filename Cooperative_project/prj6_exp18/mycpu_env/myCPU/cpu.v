@@ -119,6 +119,49 @@ module mycpu_top
     wire         data_sram_data_ok;
     wire [31:0]  data_sram_rdata;
 
+    //------------------------------------------------  CSRfile中TLB相关 ---------------------------------------------------------
+
+    // TLBSRCH
+    reg                      tlbsrch_en;
+    reg                      tlbsrch_found;
+    reg [$clog2(TLBNUM)-1:0] tlbsrch_idx;
+    // TLBRD
+    reg [$clog2(TLBNUM)-1:0] tlbrd_idx;
+    reg                      tlbrd_en;
+    reg                      tlbrd_valid;
+    reg [               5:0] tlbrd_ps;
+    reg [              18:0] tlbrd_vppn;
+    reg                      tlbrd_g;
+    reg [               9:0] tlbrd_asid;
+    reg                      tlbrd_v0;
+    reg                      tlbrd_d0;
+    reg [               1:0] tlbrd_mat0;
+    reg [               1:0] tlbrd_plv0;
+    reg [              19:0] tlbrd_ppn0;
+    reg                      tlbrd_v1;
+    reg                      tlbrd_d1;
+    reg [               1:0] tlbrd_mat1;
+    reg [               1:0] tlbrd_plv1;
+    reg [              19:0] tlbrd_ppn1;
+    // TLBWR or TLBFILL
+    reg                      tlbwr_ne;
+    reg                      tlbwr_index;
+    reg [               5:0] tlbwr_ps;
+    reg [              18:0] tlbwr_vppn;
+    reg                      tlbwr_g;
+    reg [               9:0] tlbwr_asid;
+    reg                      tlbwr_v0;
+    reg                      tlbwr_d0;
+    reg [               1:0] tlbwr_mat0;
+    reg [               1:0] tlbwr_plv0;
+    reg [              19:0] tlbwr_ppn0;
+    reg                      tlbwr_v1;
+    reg                      tlbwr_d1;
+    reg [               1:0] tlbwr_mat1;
+    reg [               1:0] tlbwr_plv1;
+    reg [              19:0] tlbwr_ppn1;
+
+
     //----------------------------------------------------- TLB相关 --------------------------------------------------------------
     wire          tlb_wr;
     wire          tlb_fill;
@@ -295,7 +338,43 @@ module mycpu_top
         .wb_csr_rvalue      (wb_csr_rvalue),
         .wb_tlb_wr          (tlb_wr),
         .wb_tlb_fill        (tlb_fill),
-        .wb_tlb_rd          (tlb_rd)
+        .wb_tlb_rd          (tlb_rd),
+        .tlbsrch_en         (tlbsrch_en),
+        .tlbsrch_found      (tlbsrch_found),
+        .tlbsrch_idx        (tlbsrch_idx),
+        .tlbrd_idx          (tlbrd_idx),
+        .tlbrd_en           (tlbrd_en),
+        .tlbrd_valid        (tlbrd_valid),
+        .tlbrd_ps           (tlbrd_ps),
+        .tlbrd_vppn         (tlbrd_vppn),
+        .tlbrd_g            (tlbrd_g),
+        .tlbrd_asid         (tlbrd_asid),
+        .tlbrd_v0           (tlbrd_v0),
+        .tlbrd_d0           (tlbrd_d0),
+        .tlbrd_mat0         (tlbrd_mat0),
+        .tlbrd_plv0         (tlbrd_plv0),
+        .tlbrd_ppn0         (tlbrd_ppn0),
+        .tlbrd_v1           (tlbrd_v1),
+        .tlbrd_d1           (tlbrd_d1),
+        .tlbrd_mat1         (tlbrd_mat1),
+        .tlbrd_plv1         (tlbrd_plv1),
+        .tlbrd_ppn1         (tlbrd_ppn1),
+        .tlbwr_ne           (tlbwr_ne),
+        .tlbwr_index        (tlbwr_index),
+        .tlbwr_ps           (tlbwr_ps),
+        .tlbwr_vppn         (tlbwr_vppn),
+        .tlbwr_g            (tlbwr_g),
+        .tlbwr_asid         (tlbwr_asid),
+        .tlbwr_v0           (tlbwr_v0),
+        .tlbwr_d0           (tlbwr_d0),
+        .tlbwr_mat0         (tlbwr_mat0),
+        .tlbwr_plv0         (tlbwr_plv0),
+        .tlbwr_ppn0         (tlbwr_ppn0),
+        .tlbwr_v1           (tlbwr_v1),
+        .tlbwr_d1           (tlbwr_d1),
+        .tlbwr_mat1         (tlbwr_mat1),
+        .tlbwr_plv1         (tlbwr_plv1),
+        .tlbwr_ppn1         (tlbwr_ppn1)
     );
 
     CSRfile my_csrfild(
