@@ -481,7 +481,7 @@ module CSRfile #(
     end
 
     assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
-    assign wire_csr_asid =csr_asid;
+    assign wire_csr_asid =csr_asid_asid;
 /*----------------------------------TLBRENTRY-----------------------------------------------*/
     always @(posedge clk)begin
         if(~resetn)

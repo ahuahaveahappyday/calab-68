@@ -40,7 +40,7 @@ module EXEreg(
     input  [ 1:0]       s1_plv,
     input  [ 1:0]       s1_mat,
     input               s1_d,
-    input               s1_v
+    input               s1_v,
 
     input  wire [18:0] csr_tlbehi_vppn,
     input  wire [ 9:0] csr_asid

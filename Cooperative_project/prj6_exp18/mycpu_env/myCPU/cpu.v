@@ -413,7 +413,7 @@ module mycpu_top
         .ertn_flush         (ertn_flush),
         .hw_int_in          (hw_int_in),
         .ipi_int_in         (ipi_int_in),
-        .has_int            (has_int)
+        .has_int            (has_int),
         //.excep_entry(excep_entry)
 
         .tlbsrch_en         (tlbsrch_en),
