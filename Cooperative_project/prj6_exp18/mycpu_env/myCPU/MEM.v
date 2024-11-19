@@ -8,7 +8,7 @@ module MEMreg(
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [204:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [205:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [39:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与ex模块交互接口
@@ -151,7 +151,8 @@ module MEMreg(
                             mem_excep_INT,               // 1 bit
                             mem_excep_esubcode,          // 9 bit
                             mem_vaddr,                   //32bit
-                            mem_tlb_op                  //5 bit
+                            mem_tlb_op,                  //5 bit
+                            mem_srch_conflict             //1bit
                             };        
     assign mem_to_ex_bus  = {mem_excep_en & mem_valid , mem_ertn_flush, mem_srch_conflict};    
 

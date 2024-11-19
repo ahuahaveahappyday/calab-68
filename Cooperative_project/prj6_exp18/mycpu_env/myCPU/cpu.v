@@ -66,14 +66,14 @@ module mycpu_top
     wire [65:0] if_to_id_bus;
     wire [236:0] id_to_ex_bus;
     wire [245:0] ex_to_mem_bus;
-    wire [199:0] mem_to_wb_bus;
+    wire [205:0] mem_to_wb_bus;
 
     wire [33:0] id_to_if_bus;
     wire [39:0] ex_to_id_bus;
     wire [39:0] mem_to_id_bus;
     wire [37:0] wb_to_id_bus;
-    // wire [1:0] wb_to_ex_bus;
-    wire [1:0] mem_to_ex_bus;
+    wire        wb_to_ex_bus;
+    wire [1:0]  mem_to_ex_bus;
 
     wire csr_re;
     wire [13:0] csr_num;
@@ -282,7 +282,7 @@ module mycpu_top
         .mem_allowin        (mem_allowin),
         .ex_to_mem_valid    (ex_to_mem_valid),
         .ex_to_mem_bus      (ex_to_mem_bus),
-        //.wb_to_ex_bus(wb_to_ex_bus),
+        .wb_to_ex_bus       (wb_to_ex_bus),
         .mem_to_ex_bus      (mem_to_ex_bus),
         .data_sram_req      (data_sram_req),
         .data_sram_wr       (data_sram_wr),
@@ -335,6 +335,7 @@ module mycpu_top
         .resetn             (aresetn),
         .wb_allowin         (wb_allowin),
         .mem_to_wb_valid    (mem_to_wb_valid),
+        .wb_to_ex_bus       (wb_to_ex_bus),
         .mem_to_wb_bus      (mem_to_wb_bus),
         .debug_wb_pc        (debug_wb_pc),
         .debug_wb_rf_we     (debug_wb_rf_we),

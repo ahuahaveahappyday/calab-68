@@ -10,7 +10,9 @@ module EXEreg(
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
     output wire [245:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
-    input  wire [2:0]  mem_to_ex_bus,   // ex_en
+    input  wire [2:0]  mem_to_ex_bus,   // 
+    //ex与wb模块交互接口
+    input  wire        wb_to_ex_bus,
 
     //ex模块与数据存储器交互
     output wire         data_sram_req,
@@ -98,21 +100,22 @@ module EXEreg(
 
     wire        ex_res_from_wb;
     wire        mem_srch_conflict;
+    wire        wb_srch_conflict;
     wire        mem_excep_en;
     wire        mem_ertn_flush;
     wire [31:0] ex_vaddr;            
 
 //流水线控制信号
-    assign ex_ready_go      = alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
+    assign ex_ready_go      = ~block & alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
     assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
     assign ex_to_mem_valid  = ex_valid & ex_ready_go;
-    assign block            = ex_tlb_op[4] & mem_srch_conflict;
+    assign block            =( ex_tlb_op[4] & mem_srch_conflict) |(ex_tlb_op[4] & wb_srch_conflict);
 
 //EX流水级需要的寄存器，根据clk不断更新
     always @(posedge clk) begin
         if(~resetn)
             ex_valid <= 1'b0;
-        else if(block || flush)
+        else if(flush)
             ex_valid <= 1'b0;
         else if(ex_allowin)
             ex_valid <= id_to_ex_valid; 

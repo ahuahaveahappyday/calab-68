@@ -4,7 +4,11 @@ module WBreg(
     //mem与wb模块交互接口
     output wire        wb_allowin,
     input  wire        mem_to_wb_valid,
-    input  wire [204:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    input  wire [205:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata，mem_pc}
+    
+    //ex与wb模块交互接口
+    output  wire        wb_to_ex_bus,
+
     //debug信号
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
@@ -46,6 +50,7 @@ module WBreg(
     reg         wb_read_TID;
 
     reg  [4:0]  wb_tlb_op;
+    reg         wb_srch_conflict;
 
     reg         wb_csr_re;
     reg         wb_csr_we;
@@ -84,13 +89,13 @@ module WBreg(
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush
             ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_INT,wb_excep_esubcode,wb_vaddr,
-            wb_tlb_op} <= 205'b0;
+            wb_tlb_op,wb_srch_conflict} <= 206'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush,
             mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE,wb_excep_INT, wb_excep_esubcode ,wb_vaddr,
-            wb_tlb_op} <= mem_to_wb_bus;
+            wb_tlb_op,wb_srch_conflict} <= mem_to_wb_bus;
         end
     end
 
@@ -99,6 +104,7 @@ module WBreg(
                             wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
     assign wb_to_id_bus = {wb_rf_we & wb_valid & ~wb_ex & ~ertn_flush, wb_rf_waddr, final_rf_wdata};
     assign wb_csr_rvalue = csr_rvalue;
+    assign wb_to_ex_bus = wb_srch_conflict;
     //debug信号
     assign debug_wb_pc = wb_pc;
     assign debug_wb_rf_wdata = final_rf_wdata;
