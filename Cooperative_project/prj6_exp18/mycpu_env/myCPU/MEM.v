@@ -4,7 +4,7 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [245:0]ex_to_mem_bus, 
+    input  wire [246:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
@@ -39,6 +39,7 @@ module MEMreg(
 
     reg  [4:0]  mem_tlb_op;
     reg         mem_srch_conflict;
+    reg         mem_inst_refetch;
 
     reg         mem_csr_re;
     reg         mem_csr_we;
@@ -62,7 +63,7 @@ module MEMreg(
     wire [31:0] mem_result;//从dram读出的数据
     wire [31:0] mem_word_result;
     wire [15:0] mem_half_result;
-    wire [8:0] mem_byte_result;
+    wire [8:0]  mem_byte_result;
 
     wire        mem_res_from_wb;
     reg         mem_sram_requed;
@@ -93,7 +94,7 @@ module MEMreg(
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
              ,mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict} <= 246'b0;
+             mem_tlb_op,mem_srch_conflict,mem_inst_refetch} <= 247'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
@@ -102,7 +103,7 @@ module MEMreg(
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT
              , mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict} <= ex_to_mem_bus;
+             mem_tlb_op,mem_srch_conflict,mem_inst_refetch} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级

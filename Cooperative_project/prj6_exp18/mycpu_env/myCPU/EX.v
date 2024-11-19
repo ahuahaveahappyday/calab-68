@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [236:0] id_to_ex_bus,
+    input wire [237:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [245:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [246:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
     input  wire [2:0]  mem_to_ex_bus,   // 
     //ex与wb模块交互接口
     input  wire        wb_to_ex_bus,
@@ -71,6 +71,7 @@ module EXEreg(
     reg  [4:0]  ex_tlb_op;
     reg         ex_srch_conflict;
     reg  [4:0]  ex_invtlb_op;
+    reg         ex_inst_refetch;
 
     reg         ex_csr_re;
     reg         ex_csr_we;
@@ -127,15 +128,15 @@ module EXEreg(
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode,
-              ex_tlb_op,ex_srch_conflict,ex_invtlb_op
-              }       <= {237{1'b0}};
+              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_inst_refetch
+              }       <= {238{1'b0}};
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode,
-             ex_tlb_op,ex_srch_conflict,ex_invtlb_op
+             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_inst_refetch
              }     <= id_to_ex_bus;    
     end
 
@@ -150,6 +151,7 @@ module EXEreg(
         .complete       (alu_complete)
     );
 // 来自mem和wb的异常数据
+    assign wb_srch_conflict = wb_to_ex_bus; 
     assign mem_srch_conflict = mem_to_ex_bus[2];
     assign mem_excep_en = mem_to_ex_bus[1];
     assign mem_ertn_flush=mem_to_ex_bus[0];
