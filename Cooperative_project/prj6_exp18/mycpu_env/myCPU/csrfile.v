@@ -492,7 +492,7 @@ module CSRfile #(
     end
 
     // tlbwr/tlbfill output
-    assign tlbwr_ne = csr_tlbidx_ne;
+    assign tlbwr_ne = (csr_estat_ecode == 6'h3F) ? 0 : csr_tlbidx_ne;
     assign tlbwr_index = csr_tlbidx_index;
     assign tlbwr_asid = csr_asid_asid;
     assign tlbwr_g = csr_tlbelo0_g & csr_tlbelo1_g; // only if the G bit in both TLBELO0 and TLBELO1 is 1
