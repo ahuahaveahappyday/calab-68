@@ -297,19 +297,12 @@ module mycpu_top
         .flush              (ertn_flush || wb_ex),
         .counter            (counter),
 
+        .ex_tlb_srch        (tlbsrch_en),
         .ex_tlb_inv         (invtlb_valid),
         .invtlb_op          (invtlb_op),
         .s1_vppn            (s1_vppn),
         .s1_va_bit12        (s1_va_bit12),
         .s1_asid            (s1_asid),
-        .s1_found           (s1_found),
-        .s1_index           (s1_index),
-        .s1_ppn             (s1_ppn),
-        .s1_ps              (s1_ps),
-        .s1_plv             (s1_plv),
-        .s1_mat             (s1_mat),
-        .s1_d               (s1_d),
-        .s1_v               (s1_v),
 
         .csr_tlbehi_vppn    (csr_tlbehi_vppn),
         .csr_asid           (csr_asid)
@@ -358,9 +351,6 @@ module mycpu_top
         .wb_tlb_wr          (tlb_wr),
         .wb_tlb_fill        (tlb_fill),
         .wb_tlb_rd          (tlb_rd),
-        .tlbsrch_en         (tlbsrch_en),
-        .tlbsrch_found      (tlbsrch_found),
-        .tlbsrch_idx        (tlbsrch_idx),
         .tlbrd_idx          (tlbrd_idx),
         .tlbrd_en           (tlbrd_en),
         .tlbrd_valid        (tlbrd_valid),
@@ -417,8 +407,8 @@ module mycpu_top
         //.excep_entry(excep_entry)
 
         .tlbsrch_en         (tlbsrch_en),
-        .tlbsrch_found      (tlbsrch_found),
-        .tlbsrch_idx        (tlbsrch_idx),
+        .tlbsrch_found      (s1_found),
+        .tlbsrch_idx        (s1_index),
 
         .tlbrd_idx          (tlbrd_idx),
         .tlbrd_en           (tlbrd_en),

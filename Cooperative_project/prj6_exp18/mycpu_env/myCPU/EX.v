@@ -26,21 +26,13 @@ module EXEreg(
     input  wire [63:0]  counter,
 
     //TLB interface
+    output wire        ex_tlb_srch,
     output wire        ex_tlb_inv,
     output wire [ 4:0] invtlb_op,
 
     output wire [18:0] s1_vppn,
     output wire        s1_va_bit12,
     output wire [ 9:0] s1_asid,
-
-    input               s1_found,
-    input  [ 3:0]       s1_index,
-    input  [19:0]       s1_ppn,
-    input  [ 5:0]       s1_ps,
-    input  [ 1:0]       s1_plv,
-    input  [ 1:0]       s1_mat,
-    input               s1_d,
-    input               s1_v,
 
     input  wire [18:0] csr_tlbehi_vppn,
     input  wire [ 9:0] csr_asid
