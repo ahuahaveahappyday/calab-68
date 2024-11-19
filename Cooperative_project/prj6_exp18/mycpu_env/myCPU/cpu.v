@@ -356,8 +356,8 @@ module mycpu_top
         .wb_csr_rvalue      (wb_csr_rvalue),
         .wb_tlb_wr          (tlb_wr),
         .wb_tlb_fill        (tlb_fill),
-        .wb_tlb_rd          (tlbrd_valid),
-        .tlbrd_idx          (r_index),
+        .wb_tlb_rd          (tlbrd_en),
+        /*.tlbrd_idx          (r_index),
         .tlbrd_en           (r_e),
         .tlbrd_ps           (r_ps),
         .tlbrd_vppn         (r_vppn),
@@ -388,7 +388,7 @@ module mycpu_top
         .tlbwr_d1           (tlbwr_d1),
         .tlbwr_mat1         (tlbwr_mat1),
         .tlbwr_plv1         (tlbwr_plv1),
-        .tlbwr_ppn1         (tlbwr_ppn1)
+        .tlbwr_ppn1         (tlbwr_ppn1)*/
     );
 
     CSRfile my_csrfild(
@@ -415,9 +415,9 @@ module mycpu_top
         .tlbsrch_found      (s1_found),
         .tlbsrch_idx        (s1_index),
 
-        .tlbrd_valid        (tlbrd_valid),
+        .tlbrd_valid        (r_e),
         .tlbrd_idx          (r_index),
-        .tlbrd_en           (r_e),
+        .tlbrd_en           (tlbrd_en),
         .tlbrd_ps           (r_ps),
         .tlbrd_vppn         (r_vppn),
         .tlbrd_g            (r_g),
