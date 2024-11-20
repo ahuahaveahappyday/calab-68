@@ -38,9 +38,9 @@ module WBreg(
     output wire        wb_tlb_fill,
     output wire        wb_tlb_rd,
     // tlbsrch
-    output wire        tlbsrch_en,
-    output wire        tlbsrch_found,
-    output wire [3:0]  tlbsrch_idx
+    output wire        wb_tlbsrch_en,
+    output wire        wb_tlbsrch_found,
+    output wire [3:0]  wb_tlbsrch_idx
 );
     
     wire        wb_ready_go;

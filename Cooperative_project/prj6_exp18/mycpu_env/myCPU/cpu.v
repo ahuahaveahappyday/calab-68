@@ -52,7 +52,6 @@ module mycpu_top
     output wire [4:0]           debug_wb_rf_wnum,
     output wire [31:0]          debug_wb_rf_wdata
 );
-
     wire id_allowin;
     wire ex_allowin;
     wire mem_allowin;
@@ -118,54 +117,51 @@ module mycpu_top
     wire         data_sram_addr_ok;
     wire         data_sram_data_ok;
     wire [31:0]  data_sram_rdata;
+    // ----------------------------------------------   output from ex -------------------------------------------------------------
+    // search tlb port 1
+    wire [18:0]                 ex_s1_vppn;
+    wire                        ex_s1_va_bit12;
+    wire [9:0]                  ex_s1_asid;
+    // invtlb
+    wire                        ex_invtlb_valid;
+    wire [4:0]                  ex_invtlb_op;
 
-    //------------------------------------------------  CSRfile中TLB相关 ---------------------------------------------------------
 
-    // TLBSRCH
-    wire                      tlbsrch_en;
-    wire                      tlbsrch_found;
-    wire [$clog2(TLBNUM)-1:0] tlbsrch_idx;
+    // -----------------------------------------------  output from wb ---------------------------------------------------------------
+    // tlbsrch
+    wire                        wb_tlbsrch_en;
+    wire                        wb_tlbsrch_found;
+    wire [$clog2(TLBNUM)-1:0]   wb_tlbsrch_idx; 
+    // tlbrd
+    wire                        wb_tlbrd_en;
+    // tlbwr
+    wire                        wb_tlbwr_en;
+    // tlbfill
+    wire                        wb_tlbfill_en;
+
+    //------------------------------------------------  output from csrfile ---------------------------------------------------------
     // TLBRD
-    wire [$clog2(TLBNUM)-1:0] tlbrd_idx;
-    wire                      tlbrd_en;
-    wire                      tlbrd_valid;
-    wire [               5:0] tlbrd_ps;
-    wire [              18:0] tlbrd_vppn;
-    wire                      tlbrd_g;
-    wire [               9:0] tlbrd_asid;
-    wire                      tlbrd_v0;
-    wire                      tlbrd_d0;
-    wire [               1:0] tlbrd_mat0;
-    wire [               1:0] tlbrd_plv0;
-    wire [              19:0] tlbrd_ppn0;
-    wire                      tlbrd_v1;
-    wire                      tlbrd_d1;
-    wire [               1:0] tlbrd_mat1;
-    wire [               1:0] tlbrd_plv1;
-    wire [              19:0] tlbrd_ppn1;
+    wire [$clog2(TLBNUM)-1:0] csr_tlbrd_idx;        // output to tlb
     // TLBWR or TLBFILL
-    wire                      tlb_csr_ne;
-    wire                      tlb_csr_index;
-    wire [               5:0] tlb_csr_ps;
-    wire [              18:0] tlb_csr_vppn;
-    wire                      tlb_csr_g;
-    wire [               9:0] tlb_csr_asid;
-    wire                      tlb_csr_v0;
-    wire                      tlb_csr_d0;
-    wire [               1:0] tlb_csr_mat0;
-    wire [               1:0] tlb_csr_plv0;
-    wire [              19:0] tlb_csr_ppn0;
-    wire                      tlb_csr_v1;
-    wire                      tlb_csr_d1;
-    wire [               1:0] tlb_csr_mat1;
-    wire [               1:0] tlb_csr_plv1;
-    wire [              19:0] tlb_csr_ppn1;
+    wire                      csr_tlb_ne;
+    wire                      csr_tlb_index;
+    wire [               5:0] csr_tlb_ps;
+    wire [              18:0] csr_tlb_vppn;
+    wire                      csr_tlb_g;
+    wire [               9:0] csr_tlb_asid;
+    wire                      csr_tlb_v0;
+    wire                      csr_tlb_d0;
+    wire [               1:0] csr_tlb_mat0;
+    wire [               1:0] csr_tlb_plv0;
+    wire [              19:0] csr_tlb_ppn0;
+    wire                      csr_tlb_v1;
+    wire                      csr_tlb_d1;
+    wire [               1:0] csr_tlb_mat1;
+    wire [               1:0] csr_tlb_plv1;
+    wire [              19:0] csr_tlb_ppn1;
 
 
-    //----------------------------------------------------- TLB相关 --------------------------------------------------------------
-    wire          tlb_wr;
-    wire          tlb_fill;
-
+    //----------------------------------------------------- output from tlb --------------------------------------------------------------
     // TLB ports
     wire                        clk;
     // search port 0 (for fetch)
@@ -181,9 +177,6 @@ module mycpu_top
     wire                        s0_d;
     wire                        s0_v;
     // search port 1 (for load/store)
-    wire [18:0]                 s1_vppn;
-    wire                        s1_va_bit12;
-    wire [9:0]                  s1_asid;
     wire                        s1_found;
     wire [$clog2(TLBNUM)-1:0]   s1_index;
     wire [19:0]                 s1_ppn;
@@ -192,28 +185,7 @@ module mycpu_top
     wire [1:0]                  s1_mat;
     wire                        s1_d;
     wire                        s1_v;
-    // invtlb opcode
-    wire                        invtlb_valid;
-    wire [4:0]                  invtlb_op;
-    // write port
-    wire [$clog2(TLBNUM)-1:0]   w_index;
-    wire                        w_e;
-    wire [18:0]                 w_vppn;
-    wire [5:0]                  w_ps;
-    wire [9:0]                  w_asid;
-    wire                        w_g;
-    wire [19:0]                 w_ppn0;
-    wire [1:0]                  w_plv0;
-    wire [1:0]                  w_mat0;
-    wire                        w_d0;
-    wire                        w_v0;
-    wire [19:0]                 w_ppn1;
-    wire [1:0]                  w_plv1;
-    wire [1:0]                  w_mat1;
-    wire                        w_d1;
-    wire                        w_v1;
     // read port
-    wire [$clog2(TLBNUM)-1:0]   r_index;
     wire                        r_e;
     wire [18:0]                 r_vppn;
     wire [5:0]                  r_ps;
@@ -230,9 +202,6 @@ module mycpu_top
     wire                        r_d1;
     wire                        r_v1;
 
-
-    wire [18:0]                 csr_tlbehi_vppn;
-    wire [ 9:0]                 csr_asid;
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
@@ -294,12 +263,11 @@ module mycpu_top
         .flush              (ertn_flush || wb_ex),
         .counter            (counter),
 
-        // .ex_tlb_srch        (tlbsrch_en),
-        .ex_tlb_inv         (invtlb_valid),
-        .invtlb_op          (invtlb_op),
-        .s1_vppn            (s1_vppn),
-        .s1_va_bit12        (s1_va_bit12),
-        .s1_asid            (s1_asid),
+        .ex_tlb_inv         (ex_invtlb_valid),
+        .invtlb_op          (ex_invtlb_op),
+        .s1_vppn            (ex_s1_vppn),
+        .s1_va_bit12        (ex_s1_va_bit12),
+        .s1_asid            (ex_s1_asid),
 
         .s1_found           (s1_found),
         .s1_index           (s1_index),
@@ -310,8 +278,8 @@ module mycpu_top
         .s1_d               (s1_d),
         .s1_v               (s1_v),
 
-        .csr_tlbehi_vppn    (tlb_csr_vppn),
-        .csr_asid           (tlb_csr_asid)
+        .csr_tlbehi_vppn    (csr_tlb_vppn),
+        .csr_asid           (csr_tlb_asid)
     );
 
     MEMreg my_memReg(
@@ -355,47 +323,15 @@ module mycpu_top
         .wb_ex_pc           (wb_pc),
         .wb_vaddr           (wb_vaddr),
         .wb_csr_rvalue      (wb_csr_rvalue),
-        .wb_tlb_wr          (tlb_wr),
-        .wb_tlb_fill        (tlb_fill),
-        .wb_tlb_rd          (tlbrd_en),
-        .tlbsrch_en         (tlbsrch_en),
-        .tlbsrch_found      (tlbsrch_found),
-        .tlbsrch_idx        (tlbsrch_idx)
-        /*.tlbrd_idx          (r_index),
-        .tlbrd_en           (r_e),
-        .tlbrd_ps           (r_ps),
-        .tlbrd_vppn         (r_vppn),
-        .tlbrd_g            (r_g),
-        .tlbrd_asid         (r_asid),
-        .tlbrd_v0           (r_v0),
-        .tlbrd_d0           (r_d0),
-        .tlbrd_mat0         (r_mat0),
-        .tlbrd_plv0         (r_plv0),
-        .tlbrd_ppn0         (r_ppn0),
-        .tlbrd_v1           (r_v1),
-        .tlbrd_d1           (r_d1),
-        .tlbrd_mat1         (r_mat1),
-        .tlbrd_plv1         (r_plv1),
-        .tlbrd_ppn1         (r_ppn1),
-        .tlbwr_ne           (tlbwr_ne),
-        .tlbwr_index        (tlbwr_index),
-        .tlbwr_ps           (tlbwr_ps),
-        .tlbwr_vppn         (tlbwr_vppn),
-        .tlbwr_g            (tlbwr_g),
-        .tlbwr_asid         (tlbwr_asid),
-        .tlbwr_v0           (tlbwr_v0),
-        .tlbwr_d0           (tlbwr_d0),
-        .tlbwr_mat0         (tlbwr_mat0),
-        .tlbwr_plv0         (tlbwr_plv0),
-        .tlbwr_ppn0         (tlbwr_ppn0),
-        .tlbwr_v1           (tlbwr_v1),
-        .tlbwr_d1           (tlbwr_d1),
-        .tlbwr_mat1         (tlbwr_mat1),
-        .tlbwr_plv1         (tlbwr_plv1),
-        .tlbwr_ppn1         (tlbwr_ppn1)*/
+        .wb_tlb_wr          (wb_tlbwr_en),
+        .wb_tlb_fill        (wb_tlbfill_en),
+        .wb_tlb_rd          (wb_tlbrd_en),
+        .wb_tlbsrch_en      (wb_tlbsrch_en),
+        .wb_tlbsrch_found   (wb_tlbsrch_found),
+        .wb_tlbsrch_idx     (wb_tlbsrch_idx)
     );
 
-    CSRfile my_csrfild(
+    CSRfile my_csrfild(     // all operation to update csrfile is on wb
         .clk                (aclk),
         .resetn             (aresetn),
         .csr_re             (csr_re),
@@ -413,15 +349,14 @@ module mycpu_top
         .hw_int_in          (hw_int_in),
         .ipi_int_in         (ipi_int_in),
         .has_int            (has_int),
-        //.excep_entry(excep_entry)
 
-        .tlbsrch_en         (tlbsrch_en),
-        .tlbsrch_found      (tlbsrch_found),
-        .tlbsrch_idx        (tlbsrch_idx),
+        .tlbsrch_en         (wb_tlbsrch_en),
+        .tlbsrch_found      (wb_tlbsrch_found),
+        .tlbsrch_idx        (wb_tlbsrch_idx),
 
+        .tlbrd_en           (wb_tlbrd_en),
+        .tlbrd_idx          (csr_tlbrd_idx),    // output to tlb
         .tlbrd_valid        (r_e),
-        .tlbrd_idx          (r_index),
-        .tlbrd_en           (tlbrd_en),
         .tlbrd_ps           (r_ps),
         .tlbrd_vppn         (r_vppn),
         .tlbrd_g            (r_g),
@@ -437,89 +372,89 @@ module mycpu_top
         .tlbrd_plv1         (r_plv1),
         .tlbrd_ppn1         (r_ppn1),
 
-        .tlb_csr_ne         (tlb_csr_ne),
-        .tlb_csr_index      (tlb_csr_index),
-        .tlb_csr_ps         (tlb_csr_ps),
-        .tlb_csr_vppn       (tlb_csr_vppn),
-        .tlb_csr_g          (tlb_csr_g),
-        .tlb_csr_asid       (tlb_csr_asid),
-        .tlb_csr_v0         (tlb_csr_v0),
-        .tlb_csr_d0         (tlb_csr_d0),
-        .tlb_csr_mat0       (tlb_csr_mat0),
-        .tlb_csr_plv0       (tlb_csr_plv0),
-        .tlb_csr_ppn0       (tlb_csr_ppn0),
-        .tlb_csr_v1         (tlb_csr_v1),
-        .tlb_csr_d1         (tlb_csr_d1),
-        .tlb_csr_mat1       (tlb_csr_mat1),
-        .tlb_csr_plv1       (tlb_csr_plv1),
-        .tlb_csr_ppn1       (tlb_csr_ppn1)
+        .csr_tlb_ne         (csr_tlb_ne),
+        .csr_tlb_index      (csr_tlb_index),
+        .csr_tlb_ps         (csr_tlb_ps),
+        .csr_tlb_vppn       (csr_tlb_vppn),
+        .csr_tlb_g          (csr_tlb_g),
+        .csr_tlb_asid       (csr_tlb_asid),
+        .csr_tlb_v0         (csr_tlb_v0),
+        .csr_tlb_d0         (csr_tlb_d0),
+        .csr_tlb_mat0       (csr_tlb_mat0),
+        .csr_tlb_plv0       (csr_tlb_plv0),
+        .csr_tlb_ppn0       (csr_tlb_ppn0),
+        .csr_tlb_v1         (csr_tlb_v1),
+        .csr_tlb_d1         (csr_tlb_d1),
+        .csr_tlb_mat1       (csr_tlb_mat1),
+        .csr_tlb_plv1       (csr_tlb_plv1),
+        .csr_tlb_ppn1       (csr_tlb_ppn1)
     );
 
     //----------------------------- TLB ------------------------------------------------------------------------------------
     tlb u_tlb(
-        .clk        (clk),
+        .clk                (clk),
 
-        .s0_vppn    (s0_vppn),
-        .s0_va_bit12(s0_va_bit12),
-        .s0_asid    (s0_asid),
-        .s0_found   (s0_found),
-        .s0_index   (s0_index),
-        .s0_ppn     (s0_ppn),
-        .s0_ps      (s0_ps),
-        .s0_plv     (s0_plv),
-        .s0_mat     (s0_mat),
-        .s0_d       (s0_d),
-        .s0_v       (s0_v),
+        .s0_vppn            (s0_vppn),
+        .s0_va_bit12        (s0_va_bit12),
+        .s0_asid            (s0_asid),
+        .s0_found           (s0_found),
+        .s0_index           (s0_index),
+        .s0_ppn             (s0_ppn),
+        .s0_ps              (s0_ps),
+        .s0_plv             (s0_plv),
+        .s0_mat             (s0_mat),
+        .s0_d               (s0_d),
+        .s0_v               (s0_v),
 
-        .s1_vppn    (s1_vppn),
-        .s1_va_bit12(s1_va_bit12),
-        .s1_asid    (s1_asid),
-        .s1_found   (s1_found),
-        .s1_index   (s1_index),
-        .s1_ppn     (s1_ppn),
-        .s1_ps      (s1_ps),
-        .s1_plv     (s1_plv),
-        .s1_mat     (s1_mat),
-        .s1_d       (s1_d),
-        .s1_v       (s1_v),
+        .s1_vppn            (ex_s1_vppn),
+        .s1_va_bit12        (ex_s1_va_bit12),
+        .s1_asid            (ex_s1_asid),
+        .s1_found           (s1_found),
+        .s1_index           (s1_index),
+        .s1_ppn             (s1_ppn),
+        .s1_ps              (s1_ps),
+        .s1_plv             (s1_plv),
+        .s1_mat             (s1_mat),
+        .s1_d               (s1_d),
+        .s1_v               (s1_v),
 
-        .invtlb_valid(invtlb_valid),
-        .invtlb_op  (invtlb_op),
+        .invtlb_valid       (ex_invtlb_valid),
+        .invtlb_op          (ex_invtlb_op),
 
-        .we         (tlb_wr || tlb_fill),
-        .w_index    (tlb_csr_index),
-        .w_e        (~tlb_csr_ne),
-        .w_vppn     (tlb_csr_vppn),
-        .w_ps       (tlb_csr_ps),
-        .w_asid     (tlb_csr_asid),
-        .w_g        (tlb_csr_g),
-        .w_ppn0     (tlb_csr_ppn0),
-        .w_plv0     (tlb_csr_plv0),
-        .w_mat0     (tlb_csr_mat0),
-        .w_d0       (tlb_csr_d0),
-        .w_v0       (tlb_csr_v0),
-        .w_ppn1     (tlb_csr_ppn1),
-        .w_plv1     (tlb_csr_plv1),
-        .w_mat1     (tlb_csr_mat1),
-        .w_d1       (tlb_csr_d1),
-        .w_v1       (tlb_csr_v1),
-        
-        .r_index    (r_index),
-        .r_e        (r_e),
-        .r_vppn     (r_vppn),
-        .r_ps       (r_ps),
-        .r_asid     (r_asid),
-        .r_g        (r_g),
-        .r_ppn0     (r_ppn0),
-        .r_plv0     (r_plv0),
-        .r_mat0     (r_mat0),
-        .r_d0       (r_d0),
-        .r_v0       (r_v0),
-        .r_ppn1     (r_ppn1),
-        .r_plv1     (r_plv1),
-        .r_mat1     (r_mat1),
-        .r_d1       (r_d1),
-        .r_v1       (r_v1)
+        .we                 (wb_tlbwr_en || wb_tlbfill_en),
+        .w_index            (csr_tlb_index),
+        .w_e                (~csr_tlb_ne),
+        .w_vppn             (csr_tlb_vppn),
+        .w_ps               (csr_tlb_ps),
+        .w_asid             (csr_tlb_asid),
+        .w_g                (csr_tlb_g),
+        .w_ppn0             (csr_tlb_ppn0),
+        .w_plv0             (csr_tlb_plv0),
+        .w_mat0             (csr_tlb_mat0),
+        .w_d0               (csr_tlb_d0),
+        .w_v0               (csr_tlb_v0),
+        .w_ppn1             (csr_tlb_ppn1),
+        .w_plv1             (csr_tlb_plv1),
+        .w_mat1             (csr_tlb_mat1),
+        .w_d1               (csr_tlb_d1),
+        .w_v1               (csr_tlb_v1),
+
+        .r_index            (csr_tlbrd_idx),
+        .r_e                (r_e),
+        .r_vppn             (r_vppn),
+        .r_ps               (r_ps),
+        .r_asid             (r_asid),
+        .r_g                (r_g),
+        .r_ppn0             (r_ppn0),
+        .r_plv0             (r_plv0),
+        .r_mat0             (r_mat0),
+        .r_d0               (r_d0),
+        .r_v0               (r_v0),
+        .r_ppn1             (r_ppn1),
+        .r_plv1             (r_plv1),
+        .r_mat1             (r_mat1),
+        .r_d1               (r_d1),
+        .r_v1               (r_v1)
     );
     //----------------------------------------------------- TLB END -----------------------------------------------------------------------
 
