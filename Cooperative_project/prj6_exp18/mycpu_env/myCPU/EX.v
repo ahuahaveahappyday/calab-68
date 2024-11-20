@@ -9,7 +9,7 @@ module EXEreg(
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [246:0]ex_to_mem_bus,//{ex_pc,ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result,ex_rkd_value}
+    output wire [251:0]ex_to_mem_bus,
     input  wire [2:0]  mem_to_ex_bus,   // 
     //ex与wb模块交互接口
     input  wire        wb_to_ex_bus,
@@ -105,6 +105,9 @@ module EXEreg(
     wire        mem_excep_en;
     wire        mem_ertn_flush;
     wire [31:0] ex_vaddr;            
+
+    // tlb relevant       
+    wire [4:0]  ex_tlbsrch_res;    // {s1_found,s1_index} 
 
 //流水线控制信号
     assign ex_ready_go      = ~block & alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
@@ -215,7 +218,8 @@ module EXEreg(
                                 ex_vaddr,                     //32bit
                                 ex_mem_req,                  //1 bit 
                                 ex_tlb_op,                  //5 bit
-                                ex_srch_conflict            //1 bit
+                                ex_srch_conflict,            //1 bit
+                                ex_tlbsrch_res              // 5 bit
                                 };
 
 // 读计数器
@@ -239,5 +243,6 @@ module EXEreg(
     assign {s1_vppn, s1_va_bit12} =   ex_tlb_inv ?  ex_rkd_value[31:12]     // rk
                                     : ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0}
                                     : ex_alu_result[31:12];     // data_sram_addr
+    assign ex_tlbsrch_res = {s1_found,s1_index};
 
 endmodule

@@ -4,11 +4,11 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [246:0]ex_to_mem_bus, 
+    input  wire [251:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
-    output wire [205:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
+    output wire [210:0] mem_to_wb_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_pc}
     //mem与id模块交互接口
     output wire [39:0] mem_to_id_bus, // {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     //mem与ex模块交互接口
@@ -68,6 +68,8 @@ module MEMreg(
     wire        mem_res_from_wb;
     reg         mem_sram_requed;
 
+    reg [4:0]   mem_tlbsrch_res;
+
 
 //流水线控制信号
     assign mem_ready_go      =      ~mem_sram_requed 
@@ -94,7 +96,7 @@ module MEMreg(
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
              ,mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict,mem_inst_refetch} <= 247'b0;
+             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= 252'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
@@ -103,7 +105,7 @@ module MEMreg(
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT
              , mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict,mem_inst_refetch} <= ex_to_mem_bus;
+             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
@@ -153,7 +155,8 @@ module MEMreg(
                             mem_excep_esubcode,          // 9 bit
                             mem_vaddr,                   //32bit
                             mem_tlb_op,                  //5 bit
-                            mem_srch_conflict             //1bit
+                            mem_srch_conflict,             //1bit
+                            mem_tlbsrch_res             // 5 bit
                             };        
     assign mem_to_ex_bus  = {mem_excep_en & mem_valid , mem_ertn_flush, mem_srch_conflict};    
 
