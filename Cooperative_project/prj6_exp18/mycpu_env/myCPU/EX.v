@@ -234,9 +234,10 @@ module EXEreg(
     assign ex_tlb_inv  = ex_tlb_op[0];
     assign invtlb_op   = ex_invtlb_op;
 
-    assign s1_asid       = ex_tlb_inv ?  ex_alu_src1[9:0] : csr_asid; // alu src1 is rj value
-    assign {s1_vppn, s1_va_bit12} = ex_tlb_inv ?  ex_rkd_value[31:12] :
-                                    ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0} :
-                                    ex_alu_result[31:12]; 
+    assign s1_asid       =  ex_tlb_inv ?  ex_alu_src1[9:0]  // alu src1 is rj value 
+                            : csr_asid;
+    assign {s1_vppn, s1_va_bit12} =   ex_tlb_inv ?  ex_rkd_value[31:12]     // rk
+                                    : ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0}
+                                    : ex_alu_result[31:12];     // data_sram_addr
 
 endmodule

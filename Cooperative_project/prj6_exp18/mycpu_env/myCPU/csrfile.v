@@ -108,25 +108,22 @@ module CSRfile #(
     input  wire [               1:0] tlbrd_plv1,
     input  wire [              19:0] tlbrd_ppn1,
     // TLBWR or TLBFILL
-    output wire                      tlbwr_ne,
-    output wire                      tlbwr_index,
-    output wire [               5:0] tlbwr_ps,
-    output wire [              18:0] tlbwr_vppn,
-    output wire                      tlbwr_g,
-    output wire [               9:0] tlbwr_asid,
-    output wire                      tlbwr_v0,
-    output wire                      tlbwr_d0,
-    output wire [               1:0] tlbwr_mat0,
-    output wire [               1:0] tlbwr_plv0,
-    output wire [              19:0] tlbwr_ppn0,
-    output wire                      tlbwr_v1,
-    output wire                      tlbwr_d1,
-    output wire [               1:0] tlbwr_mat1,
-    output wire [               1:0] tlbwr_plv1,
-    output wire [              19:0] tlbwr_ppn1,
-
-    output  wire [              18:0] wire_csr_tlbehi_vppn,
-    output  wire [               9:0] wire_csr_asid
+    output wire                      tlb_csr_ne,
+    output wire                      tlb_csr_index,
+    output wire [               5:0] tlb_csr_ps,
+    output wire [              18:0] tlb_csr_vppn,
+    output wire                      tlb_csr_g,
+    output wire [               9:0] tlb_csr_asid,
+    output wire                      tlb_csr_v0,
+    output wire                      tlb_csr_d0,
+    output wire [               1:0] tlb_csr_mat0,
+    output wire [               1:0] tlb_csr_plv0,
+    output wire [              19:0] tlb_csr_ppn0,
+    output wire                      tlb_csr_v1,
+    output wire                      tlb_csr_d1,
+    output wire [               1:0] tlb_csr_mat1,
+    output wire [               1:0] tlb_csr_plv1,
+    output wire [              19:0] tlb_csr_ppn1
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
@@ -492,15 +489,15 @@ module CSRfile #(
     end
 
     // tlbwr/tlbfill output
-    assign tlbwr_ne = (csr_estat_ecode == 6'h3F) ? 0 : csr_tlbidx_ne;
-    assign tlbwr_index = csr_tlbidx_index;
-    assign tlbwr_asid = csr_asid_asid;
-    assign tlbwr_g = csr_tlbelo0_g & csr_tlbelo1_g; // only if the G bit in both TLBELO0 and TLBELO1 is 1
-    assign tlbwr_ps = csr_tlbidx_ps;
-    assign tlbwr_vppn = csr_tlbehi_vppn;
-    assign {tlbwr_v0, tlbwr_d0, tlbwr_mat0, tlbwr_plv0, tlbwr_ppn0} = 
+    assign tlb_csr_ne = (csr_estat_ecode == 6'h3F) ? 0 : csr_tlbidx_ne;
+    assign tlb_csr_index = csr_tlbidx_index;
+    assign tlb_csr_asid = csr_asid_asid;
+    assign tlb_csr_g = csr_tlbelo0_g & csr_tlbelo1_g; // only if the G bit in both TLBELO0 and TLBELO1 is 1
+    assign tlb_csr_ps = csr_tlbidx_ps;
+    assign tlb_csr_vppn = csr_tlbehi_vppn;
+    assign {tlb_csr_v0, tlb_csr_d0, tlb_csr_mat0, tlb_csr_plv0, tlb_csr_ppn0} = 
         {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_mat,csr_tlbelo0_plv,csr_tlbelo0_ppn};
-    assign {tlbwr_v1, tlbwr_d1, tlbwr_mat1, tlbwr_plv1, tlbwr_ppn1} = 
+    assign {tlb_csr_v1, tlb_csr_d1, tlb_csr_mat1, tlb_csr_plv1, tlb_csr_ppn1} = 
         {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_mat,csr_tlbelo1_plv,csr_tlbelo1_ppn};
 
 

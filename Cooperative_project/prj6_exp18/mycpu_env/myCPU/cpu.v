@@ -144,22 +144,22 @@ module mycpu_top
     wire [               1:0] tlbrd_plv1;
     wire [              19:0] tlbrd_ppn1;
     // TLBWR or TLBFILL
-    wire                      tlbwr_ne;
-    wire                      tlbwr_index;
-    wire [               5:0] tlbwr_ps;
-    wire [              18:0] tlbwr_vppn;
-    wire                      tlbwr_g;
-    wire [               9:0] tlbwr_asid;
-    wire                      tlbwr_v0;
-    wire                      tlbwr_d0;
-    wire [               1:0] tlbwr_mat0;
-    wire [               1:0] tlbwr_plv0;
-    wire [              19:0] tlbwr_ppn0;
-    wire                      tlbwr_v1;
-    wire                      tlbwr_d1;
-    wire [               1:0] tlbwr_mat1;
-    wire [               1:0] tlbwr_plv1;
-    wire [              19:0] tlbwr_ppn1;
+    wire                      tlb_csr_ne;
+    wire                      tlb_csr_index;
+    wire [               5:0] tlb_csr_ps;
+    wire [              18:0] tlb_csr_vppn;
+    wire                      tlb_csr_g;
+    wire [               9:0] tlb_csr_asid;
+    wire                      tlb_csr_v0;
+    wire                      tlb_csr_d0;
+    wire [               1:0] tlb_csr_mat0;
+    wire [               1:0] tlb_csr_plv0;
+    wire [              19:0] tlb_csr_ppn0;
+    wire                      tlb_csr_v1;
+    wire                      tlb_csr_d1;
+    wire [               1:0] tlb_csr_mat1;
+    wire [               1:0] tlb_csr_plv1;
+    wire [              19:0] tlb_csr_ppn1;
 
 
     //----------------------------------------------------- TLB相关 --------------------------------------------------------------
@@ -310,8 +310,8 @@ module mycpu_top
         .s1_d               (s1_d),
         .s1_v               (s1_v),
 
-        .csr_tlbehi_vppn    (csr_tlbehi_vppn),
-        .csr_asid           (csr_asid)
+        .csr_tlbehi_vppn    (tlb_csr_vppn),
+        .csr_asid           (tlb_csr_asid)
     );
 
     MEMreg my_memReg(
@@ -357,7 +357,7 @@ module mycpu_top
         .wb_csr_rvalue      (wb_csr_rvalue),
         .wb_tlb_wr          (tlb_wr),
         .wb_tlb_fill        (tlb_fill),
-        .wb_tlb_rd          (tlbrd_en),
+        .wb_tlb_rd          (tlbrd_en)
         /*.tlbrd_idx          (r_index),
         .tlbrd_en           (r_e),
         .tlbrd_ps           (r_ps),
@@ -434,25 +434,22 @@ module mycpu_top
         .tlbrd_plv1         (r_plv1),
         .tlbrd_ppn1         (r_ppn1),
 
-        .tlbwr_ne           (tlbwr_ne),
-        .tlbwr_index        (tlbwr_index),
-        .tlbwr_ps           (tlbwr_ps),
-        .tlbwr_vppn         (tlbwr_vppn),
-        .tlbwr_g            (tlbwr_g),
-        .tlbwr_asid         (tlbwr_asid),
-        .tlbwr_v0           (tlbwr_v0),
-        .tlbwr_d0           (tlbwr_d0),
-        .tlbwr_mat0         (tlbwr_mat0),
-        .tlbwr_plv0         (tlbwr_plv0),
-        .tlbwr_ppn0         (tlbwr_ppn0),
-        .tlbwr_v1           (tlbwr_v1),
-        .tlbwr_d1           (tlbwr_d1),
-        .tlbwr_mat1         (tlbwr_mat1),
-        .tlbwr_plv1         (tlbwr_plv1),
-        .tlbwr_ppn1         (tlbwr_ppn1),
-
-        .wire_csr_tlbehi_vppn    (csr_tlbehi_vppn),
-        .wire_csr_asid           (csr_asid)
+        .tlb_csr_ne         (tlb_csr_ne),
+        .tlb_csr_index      (tlb_csr_index),
+        .tlb_csr_ps         (tlb_csr_ps),
+        .tlb_csr_vppn       (tlb_csr_vppn),
+        .tlb_csr_g          (tlb_csr_g),
+        .tlb_csr_asid       (tlb_csr_asid),
+        .tlb_csr_v0         (tlb_csr_v0),
+        .tlb_csr_d0         (tlb_csr_d0),
+        .tlb_csr_mat0       (tlb_csr_mat0),
+        .tlb_csr_plv0       (tlb_csr_plv0),
+        .tlb_csr_ppn0       (tlb_csr_ppn0),
+        .tlb_csr_v1         (tlb_csr_v1),
+        .tlb_csr_d1         (tlb_csr_d1),
+        .tlb_csr_mat1       (tlb_csr_mat1),
+        .tlb_csr_plv1       (tlb_csr_plv1),
+        .tlb_csr_ppn1       (tlb_csr_ppn1)
     );
 
     //----------------------------- TLB ------------------------------------------------------------------------------------
@@ -470,6 +467,7 @@ module mycpu_top
         .s0_mat     (s0_mat),
         .s0_d       (s0_d),
         .s0_v       (s0_v),
+
         .s1_vppn    (s1_vppn),
         .s1_va_bit12(s1_va_bit12),
         .s1_asid    (s1_asid),
@@ -486,22 +484,22 @@ module mycpu_top
         .invtlb_op  (invtlb_op),
 
         .we         (tlb_wr || tlb_fill),
-        .w_index    (tlbwr_index),
-        .w_e        (~tlbwr_ne),
-        .w_vppn     (tlbwr_vppn),
-        .w_ps       (tlbwr_ps),
-        .w_asid     (tlbwr_asid),
-        .w_g        (tlbwr_g),
-        .w_ppn0     (tlbwr_ppn0),
-        .w_plv0     (tlbwr_plv0),
-        .w_mat0     (tlbwr_mat0),
-        .w_d0       (tlbwr_d0),
-        .w_v0       (tlbwr_v0),
-        .w_ppn1     (tlbwr_ppn1),
-        .w_plv1     (tlbwr_plv1),
-        .w_mat1     (tlbwr_mat1),
-        .w_d1       (tlbwr_d1),
-        .w_v1       (tlbwr_v1),
+        .w_index    (tlb_csr_index),
+        .w_e        (~tlb_csr_ne),
+        .w_vppn     (tlb_csr_vppn),
+        .w_ps       (tlb_csr_ps),
+        .w_asid     (tlb_csr_asid),
+        .w_g        (tlb_csr_g),
+        .w_ppn0     (tlb_csr_ppn0),
+        .w_plv0     (tlb_csr_plv0),
+        .w_mat0     (tlb_csr_mat0),
+        .w_d0       (tlb_csr_d0),
+        .w_v0       (tlb_csr_v0),
+        .w_ppn1     (tlb_csr_ppn1),
+        .w_plv1     (tlb_csr_plv1),
+        .w_mat1     (tlb_csr_mat1),
+        .w_d1       (tlb_csr_d1),
+        .w_v1       (tlb_csr_v1),
         
         .r_index    (r_index),
         .r_e        (r_e),
