@@ -36,7 +36,11 @@ module WBreg(
 
     output wire        wb_tlb_wr,
     output wire        wb_tlb_fill,
-    output wire        wb_tlb_rd
+    output wire        wb_tlb_rd,
+    // tlbsrch
+    output wire        tlbsrch_en,
+    output wire        tlbsrch_found,
+    output wire [3:0]  tlbsrch_idx
 );
     
     wire        wb_ready_go;
@@ -139,6 +143,10 @@ module WBreg(
     assign wb_tlb_wr   =  wb_tlb_op[3];
     assign wb_tlb_fill =  wb_tlb_op[2];
     assign wb_tlb_rd   =  wb_tlb_op[1];
+    // tlbsrch
+    assign tlbsrch_en  =  wb_tlb_op[4];
+    assign tlbsrch_found= wb_tlbsrch_res[4];
+    assign tlbsrch_idx =  wb_tlbsrch_res[3:0];
 
     
 

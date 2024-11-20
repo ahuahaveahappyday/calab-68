@@ -294,7 +294,7 @@ module mycpu_top
         .flush              (ertn_flush || wb_ex),
         .counter            (counter),
 
-        .ex_tlb_srch        (tlbsrch_en),
+        // .ex_tlb_srch        (tlbsrch_en),
         .ex_tlb_inv         (invtlb_valid),
         .invtlb_op          (invtlb_op),
         .s1_vppn            (s1_vppn),
@@ -357,7 +357,10 @@ module mycpu_top
         .wb_csr_rvalue      (wb_csr_rvalue),
         .wb_tlb_wr          (tlb_wr),
         .wb_tlb_fill        (tlb_fill),
-        .wb_tlb_rd          (tlbrd_en)
+        .wb_tlb_rd          (tlbrd_en),
+        .tlbsrch_en         (tlbsrch_en),
+        .tlbsrch_found      (tlbsrch_found),
+        .tlbsrch_idx        (tlbsrch_idx)
         /*.tlbrd_idx          (r_index),
         .tlbrd_en           (r_e),
         .tlbrd_ps           (r_ps),
@@ -413,8 +416,8 @@ module mycpu_top
         //.excep_entry(excep_entry)
 
         .tlbsrch_en         (tlbsrch_en),
-        .tlbsrch_found      (s1_found),
-        .tlbsrch_idx        (s1_index),
+        .tlbsrch_found      (tlbsrch_found),
+        .tlbsrch_idx        (tlbsrch_idx),
 
         .tlbrd_valid        (r_e),
         .tlbrd_idx          (r_index),
