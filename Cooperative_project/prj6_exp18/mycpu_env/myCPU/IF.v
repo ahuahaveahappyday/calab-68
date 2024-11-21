@@ -19,7 +19,7 @@ module IFreg(
     output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
     //etrn清空流水线
     input  wire         flush,
-    input  wire [31:0]  wb_csr_rvalue
+    input  wire [31:0]  wb_flush_entry
 );
     reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
 
@@ -120,7 +120,7 @@ module IFreg(
     /* 控制信号和寄存器 */
     assign seq_pc           =   if_pc + 3'h4;  
     assign pre_pc           =   flush_reg ? excep_entry_reg
-                                : flush ? wb_csr_rvalue
+                                : flush ? wb_flush_entry
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
                                 : seq_pc;
@@ -145,7 +145,7 @@ module IFreg(
         end
         else if((~inst_sram_req | ~inst_sram_addr_ok) & flush)begin
             flush_reg <= 1'b1;
-            excep_entry_reg <= wb_csr_rvalue;
+            excep_entry_reg <= wb_flush_entry;
         end
         else if(inst_sram_req & inst_sram_addr_ok)
             flush_reg <= 1'b0;

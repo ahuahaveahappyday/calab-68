@@ -30,7 +30,7 @@ module WBreg(
     output wire [31:0] wb_ex_pc,
     output reg  [31:0] wb_vaddr,
     //  传给if级的跳转地址
-    output wire [31:0] wb_csr_rvalue,
+    output wire [31:0] wb_flush_entry,
 
     output wire        ertn_flush,
 
@@ -40,7 +40,10 @@ module WBreg(
     // tlbsrch
     output wire        wb_tlbsrch_en,
     output wire        wb_tlbsrch_found,
-    output wire [3:0]  wb_tlbsrch_idx
+    output wire [3:0]  wb_tlbsrch_idx,
+
+    // refetch
+    output wire         wb_refetch_flush
 );
     
     wire        wb_ready_go;
@@ -77,6 +80,7 @@ module WBreg(
 
 
     wire [31:0] final_rf_wdata;
+    wire        wb_refetch;
 
 //流水线控制信号
     assign wb_ready_go      = 1'b1;
@@ -110,7 +114,6 @@ module WBreg(
     assign final_rf_wdata = wb_csr_re   ? csr_rvalue : 
                             wb_read_TID ? csr_rvalue : wb_rf_wdata;             //add csr_tid_rvalue for rdcntid.w
     assign wb_to_id_bus = {wb_rf_we & wb_valid & ~wb_ex & ~ertn_flush, wb_rf_waddr, final_rf_wdata};
-    assign wb_csr_rvalue = csr_rvalue;
     assign wb_to_ex_bus = wb_srch_conflict;
     //debug信号
     assign debug_wb_pc = wb_pc;
@@ -148,6 +151,12 @@ module WBreg(
     assign tlbsrch_found= wb_tlbsrch_res[4];
     assign tlbsrch_idx =  wb_tlbsrch_res[3:0];
 
-    
-
+// refetch sign
+    assign wb_refetch_flush =    wb_tlb_op[3]   // inst_tlbwr
+                                || wb_tlb_op[2]    // inst_tlbfill
+                                || wb_tlb_op[1]    // inst_tlbrd
+                                || wb_tlb_op[0]   // inst_invtlb
+                                ;
+    assign wb_flush_entry =     (wb_ex || ertn_flush) ? csr_rvalue                // Higher priority
+                                :wb_pc + 32'd4;
 endmodule

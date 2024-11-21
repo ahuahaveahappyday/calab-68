@@ -9,7 +9,7 @@ module IDreg(
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [237:0]           id_to_ex_bus,
+    output wire [236:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [39:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -181,7 +181,6 @@ module IDreg(
     wire [4:0]  id_tlb_op;
     wire        id_srch_conflict;//和tlbsrch指令冲突相关
     wire [4:0]  id_invtlb_op;//opcode of inst_invtlb
-    wire        id_inst_refetch;//重取指令标志
 
     wire        id_csr_re;
     wire [13:0] id_csr_num;
@@ -266,8 +265,7 @@ module IDreg(
                            id_excep_esubcode,     // 9 bit
                            id_tlb_op,             //5 bit
                            id_srch_conflict,       //1 bit
-                           id_invtlb_op,             //5 bit
-                           id_inst_refetch          //1bit
+                           id_invtlb_op             //5 bit
                           };
 
 //译码逻辑信号-----------------------------------------------------------------------------------------------------------------------------------
@@ -537,7 +535,6 @@ module IDreg(
     assign id_invtlb_op = id_inst[4:0];
     assign id_tlb_op = {inst_tlbsrch,inst_tlbwr,inst_tlbfill,inst_tlbrd,inst_invtlb};
     assign id_srch_conflict = inst_csrwr | inst_csxchg | inst_tlbrd;
-    assign id_inst_refetch       = inst_invtlb || inst_tlbrd || inst_tlbwr || inst_tlbfill;
 
 // 计数器读和TID读
     assign id_read_counter     = inst_rdcntvl_w | inst_rdcntvh_w;

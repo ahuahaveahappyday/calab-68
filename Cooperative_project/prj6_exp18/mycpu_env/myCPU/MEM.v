@@ -70,6 +70,8 @@ module MEMreg(
 
     reg [4:0]   mem_tlbsrch_res;
 
+    wire        mem_refetch;
+
 
 //流水线控制信号
     assign mem_ready_go      =      ~mem_sram_requed 
@@ -158,9 +160,16 @@ module MEMreg(
                             mem_srch_conflict,             //1bit
                             mem_tlbsrch_res             // 5 bit
                             };        
-    assign mem_to_ex_bus  = {mem_excep_en & mem_valid , mem_ertn_flush, mem_srch_conflict};    
+    assign mem_to_ex_bus  = {(mem_excep_en|| mem_refetch) & mem_valid , mem_ertn_flush, mem_srch_conflict};    
 
 //异常处理
     assign mem_excep_en = ex_excep_en;
+
+// refetch sign
+    assign mem_refetch =    mem_tlb_op[3]   // inst_tlbwr
+                            || mem_tlb_op[2]    // inst_tlbfill
+                            || mem_tlb_op[1]    // inst_tlbrd
+                            || mem_tlb_op[0]   // inst_invtlb
+                            ;
 
 endmodule

@@ -63,7 +63,7 @@ module mycpu_top
     wire mem_to_wb_valid;
 
     wire [65:0] if_to_id_bus;
-    wire [237:0] id_to_ex_bus;
+    wire [236:0] id_to_ex_bus;
     wire [251:0] ex_to_mem_bus;
     wire [210:0] mem_to_wb_bus;
 
@@ -91,7 +91,7 @@ module mycpu_top
     wire [7:0] hw_int_in;
     wire ipi_int_in;
     wire has_int;
-    wire [31:0] wb_csr_rvalue;
+    wire [31:0] wb_flush_entry;
 
     wire [63:0] counter;
     // exp12 temporarily set to 0
@@ -126,7 +126,6 @@ module mycpu_top
     wire                        ex_invtlb_valid;
     wire [4:0]                  ex_invtlb_op;
 
-
     // -----------------------------------------------  output from wb ---------------------------------------------------------------
     // tlbsrch
     wire                        wb_tlbsrch_en;
@@ -138,13 +137,12 @@ module mycpu_top
     wire                        wb_tlbwr_en;
     // tlbfill
     wire                        wb_tlbfill_en;
+    // refetch
+    wire                        wb_refetch_flush;                        
 
     //------------------------------------------------  output from csrfile ---------------------------------------------------------
-    // TLBRD
-    wire [$clog2(TLBNUM)-1:0] csr_tlbrd_idx;        // output to tlb
-    // TLBWR or TLBFILL
     wire                      csr_tlb_ne;
-    wire                      csr_tlb_index;
+    wire [$clog2(TLBNUM)-1:0] csr_tlb_index;
     wire [               5:0] csr_tlb_ps;
     wire [              18:0] csr_tlb_vppn;
     wire                      csr_tlb_g;
@@ -162,8 +160,6 @@ module mycpu_top
 
 
     //----------------------------------------------------- output from tlb --------------------------------------------------------------
-    // TLB ports
-    wire                        clk;
     // search port 0 (for fetch)
     wire [18:0]                 s0_vppn;
     wire                        s0_va_bit12;
@@ -220,8 +216,8 @@ module mycpu_top
         .id_to_if_bus       (id_to_if_bus),
         .if_to_id_valid     (if_to_id_valid),
         .if_to_id_bus       (if_to_id_bus),
-        .flush              (ertn_flush || wb_ex),
-        .wb_csr_rvalue      (wb_csr_rvalue)
+        .flush              (ertn_flush || wb_ex || wb_refetch_flush),
+        .wb_flush_entry      (wb_flush_entry)
     );
 
     IDreg my_idReg(
@@ -237,7 +233,7 @@ module mycpu_top
         .wb_to_id_bus       (wb_to_id_bus),
         .mem_to_id_bus      (mem_to_id_bus),
         .ex_to_id_bus       (ex_to_id_bus),
-        .flush              (ertn_flush || wb_ex),
+        .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .has_int            (has_int)
     );
 
@@ -260,7 +256,7 @@ module mycpu_top
         .data_sram_addr     (data_sram_addr),
         .data_sram_wdata    (data_sram_wdata),
         .data_sram_addr_ok  (data_sram_addr_ok),
-        .flush              (ertn_flush || wb_ex),
+        .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .counter            (counter),
 
         .ex_tlb_inv         (ex_invtlb_valid),
@@ -295,7 +291,7 @@ module mycpu_top
         .mem_to_ex_bus      (mem_to_ex_bus),
         .data_sram_data_ok  (data_sram_data_ok),
         .data_sram_rdata    (data_sram_rdata),
-        .flush              (ertn_flush || wb_ex)
+        .flush              (ertn_flush || wb_ex || wb_refetch_flush)
     );
 
     WBreg my_wbReg(
@@ -322,13 +318,14 @@ module mycpu_top
         .wb_esubcode        (wb_esubcode),
         .wb_ex_pc           (wb_pc),
         .wb_vaddr           (wb_vaddr),
-        .wb_csr_rvalue      (wb_csr_rvalue),
+        .wb_flush_entry      (wb_flush_entry),
         .wb_tlb_wr          (wb_tlbwr_en),
         .wb_tlb_fill        (wb_tlbfill_en),
         .wb_tlb_rd          (wb_tlbrd_en),
         .wb_tlbsrch_en      (wb_tlbsrch_en),
         .wb_tlbsrch_found   (wb_tlbsrch_found),
-        .wb_tlbsrch_idx     (wb_tlbsrch_idx)
+        .wb_tlbsrch_idx     (wb_tlbsrch_idx),
+        .wb_refetch_flush   (wb_refetch_flush)
     );
 
     CSRfile my_csrfild(     // all operation to update csrfile is on wb
@@ -355,7 +352,6 @@ module mycpu_top
         .tlbsrch_idx        (wb_tlbsrch_idx),
 
         .tlbrd_en           (wb_tlbrd_en),
-        .tlbrd_idx          (csr_tlbrd_idx),    // output to tlb
         .tlbrd_valid        (r_e),
         .tlbrd_ps           (r_ps),
         .tlbrd_vppn         (r_vppn),
@@ -392,7 +388,7 @@ module mycpu_top
 
     //----------------------------- TLB ------------------------------------------------------------------------------------
     tlb u_tlb(
-        .clk                (clk),
+        .clk                (aclk),
 
         .s0_vppn            (s0_vppn),
         .s0_va_bit12        (s0_va_bit12),
@@ -439,7 +435,7 @@ module mycpu_top
         .w_d1               (csr_tlb_d1),
         .w_v1               (csr_tlb_v1),
 
-        .r_index            (csr_tlbrd_idx),
+        .r_index            (csr_tlb_index),
         .r_e                (r_e),
         .r_vppn             (r_vppn),
         .r_ps               (r_ps),

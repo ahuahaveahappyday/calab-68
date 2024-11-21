@@ -90,7 +90,6 @@ module CSRfile #(
     input  wire                      tlbsrch_found,
     input  wire [$clog2(TLBNUM)-1:0] tlbsrch_idx,
     // TLBRD
-    output wire [$clog2(TLBNUM)-1:0] tlbrd_idx,
     input  wire                      tlbrd_en,
     input  wire                      tlbrd_valid,
     input  wire [               5:0] tlbrd_ps,
@@ -109,7 +108,7 @@ module CSRfile #(
     input  wire [              19:0] tlbrd_ppn1,
     // TLBWR or TLBFILL
     output wire                      csr_tlb_ne,
-    output wire                      csr_tlb_index,
+    output wire [$clog2(TLBNUM)-1:0] csr_tlb_index,
     output wire [               5:0] csr_tlb_ps,
     output wire [              18:0] csr_tlb_vppn,
     output wire                      csr_tlb_g,
