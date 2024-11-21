@@ -20,6 +20,8 @@
 `define CSR_TVAL 14'h42     
 `define CSR_TICLR 14'h44
 `define CSR_TLBRENTRY 14'h88
+`define CSR_DMW0 14'h180
+`define CSR_DMW1 14'h181
 // INDEX OF DOMAIN
 `define CSR_CRMD_PLV 1:0
 `define CSR_CRMD_PIE 2
@@ -51,6 +53,11 @@
 `define CSR_TLBELO_PPN 27:8
 `define CSR_ASID_ASID 9:0
 `define CSR_TLBRENTRY_PA 31:6
+`define CSR_DMW_PLV0 0
+`define CSR_DMW_PLV3 3
+`define CSR_DMW_MAT 5:4
+`define CSR_DMW_PSEG 27:25
+`define CSR_DMW_VSEG 31:29
 
 // ECODE
 `define ECODE_ADE 5'h8
@@ -189,6 +196,17 @@ module CSRfile #(
     wire [              5:0] csr_asid_asidbits;
 
     reg  [             25:0] csr_tlbrentry_pa;
+
+    reg                      csr_dmw0_plv0;
+    reg                      csr_dmw0_plv3;
+    reg  [             1:0]  csr_dmw0_mat;
+    reg  [             2:0]  csr_dmw0_pseg;
+    reg  [             2:0]  csr_dmw0_vseg;
+    reg                      csr_dmw1_plv0;
+    reg                      csr_dmw1_plv3;
+    reg  [             1:0]  csr_dmw1_mat;
+    reg  [             2:0]  csr_dmw1_pseg;
+    reg  [             2:0]  csr_dmw1_vseg;
 
     //实现中断处理
     assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0) && (csr_crmd_ie == 1'b1);
@@ -499,7 +517,50 @@ module CSRfile #(
     assign {csr_tlb_v1, csr_tlb_d1, csr_tlb_mat1, csr_tlb_plv1, csr_tlb_ppn1} = 
         {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_mat,csr_tlbelo1_plv,csr_tlbelo1_ppn};
 
+/*------------------------------------DMW---------------------------------------------------------*/
+    always @(posedge clk)begin
+        if(~resetn)begin
+            csr_dmw0_plv0 <= 1'b0;
+            csr_dmw0_plv3 <= 1'b0;
+            csr_dmw0_mat <= 2'b0;
+            csr_dmw0_pseg <= 3'b0;
+            csr_dmw0_vseg <= 3'b0;
+        end
+        else if(csr_we && csr_num == `CSR_DMW0)begin
+            csr_dmw0_plv0 <=     csr_wmask[`CSR_DMW_PLV0] & csr_wvalue[`CSR_DMW_PLV0]
+                                | ~csr_wmask[`CSR_DMW_PLV0] & csr_dmw0_plv0;
+            csr_dmw0_plv3 <=     csr_wmask[`CSR_DMW_PLV3] & csr_wvalue[`CSR_DMW_PLV3]
+                                | ~csr_wmask[`CSR_DMW_PLV3] & csr_dmw0_plv3;
+            csr_dmw0_mat <=     csr_wmask[`CSR_DMW_MAT] & csr_wvalue[`CSR_DMW_MAT]
+                                | ~csr_wmask[`CSR_DMW_MAT] & csr_dmw0_mat;
+            csr_dmw0_pseg <=     csr_wmask[`CSR_DMW_PSEG] & csr_wvalue[`CSR_DMW_PSEG]
+                                | ~csr_wmask[`CSR_DMW_PSEG] & csr_dmw0_pseg;
+            csr_dmw0_vseg <=     csr_wmask[`CSR_DMW_VSEG] & csr_wvalue[`CSR_DMW_VSEG]
+                                | ~csr_wmask[`CSR_DMW_VSEG] & csr_dmw0_vseg;
+        end
+end
 
+    always @(posedge clk)begin
+        if(~resetn)begin
+            csr_dmw1_plv0 <= 1'b0;
+            csr_dmw1_plv3 <= 1'b0;
+            csr_dmw1_mat <= 2'b0;
+            csr_dmw1_pseg <= 3'b0;
+            csr_dmw1_vseg <= 3'b0;
+        end
+        else if(csr_we && csr_num == `CSR_DMW1)begin
+            csr_dmw1_plv0 <=     csr_wmask[`CSR_DMW_PLV0] & csr_wvalue[`CSR_DMW_PLV0]
+                                | ~csr_wmask[`CSR_DMW_PLV0] & csr_dmw1_plv0;
+            csr_dmw1_plv3 <=     csr_wmask[`CSR_DMW_PLV3] & csr_wvalue[`CSR_DMW_PLV3]
+                                | ~csr_wmask[`CSR_DMW_PLV3] & csr_dmw1_plv3;
+            csr_dmw1_mat <=     csr_wmask[`CSR_DMW_MAT] & csr_wvalue[`CSR_DMW_MAT]
+                                | ~csr_wmask[`CSR_DMW_MAT] & csr_dmw1_mat;
+            csr_dmw1_pseg <=     csr_wmask[`CSR_DMW_PSEG] & csr_wvalue[`CSR_DMW_PSEG]
+                                | ~csr_wmask[`CSR_DMW_PSEG] & csr_dmw1_pseg;
+            csr_dmw1_vseg <=     csr_wmask[`CSR_DMW_VSEG] & csr_wvalue[`CSR_DMW_VSEG]
+                                | ~csr_wmask[`CSR_DMW_VSEG] & csr_dmw1_vseg;
+        end
+end
 
 
     // read csr value---------------------------------
@@ -524,6 +585,8 @@ module CSRfile #(
     wire [31:0] csr_tlbelo1_rvalue;
     wire [31:0] csr_asid_rvalue;
     wire [31:0] csr_tlbrentry_rvalue;
+    wire [31:0] csr_dmw0_rvalue;
+    wire [31:0] csr_dmw1_rvalue;
 
     assign csr_crmd_rvalue = {23'b0, csr_crmd_datm, csr_crmd_datf, csr_crmd_pg, csr_crmd_da, csr_crmd_ie, csr_crmd_plv};
     assign csr_prmd_rvalue = {29'b0, csr_prmd_pie, csr_prmd_pplv};
@@ -546,6 +609,8 @@ module CSRfile #(
     assign csr_tlbelo1_rvalue = {4'b0, csr_tlbelo1_ppn, 1'b0, csr_tlbelo1_g, csr_tlbelo1_mat, csr_tlbelo1_plv, csr_tlbelo1_d, csr_tlbelo1_v};
     assign csr_asid_rvalue = {8'b0, csr_asid_asidbits, 6'b0, csr_asid_asid};
     assign csr_tlbrentry_rvalue = {csr_tlbrentry_pa, 6'b0};
+    assign csr_dmw0_rvalue = {csr_dmw0_vseg, 1'b0, csr_dmw0_pseg, 19'b0, csr_dmw0_mat,csr_dmw0_plv3 ,2'b0, csr_dmw0_plv0};
+    assign csr_dmw1_rvalue = {csr_dmw1_vseg, 1'b0, csr_dmw1_pseg, 19'b0, csr_dmw1_mat,csr_dmw1_plv3 ,2'b0, csr_dmw1_plv0};
 
     assign csr_rvalue =      {32{csr_num == `CSR_CRMD}} & csr_crmd_rvalue
                             |{32{csr_num == `CSR_PRMD}} & csr_prmd_rvalue
@@ -567,6 +632,8 @@ module CSRfile #(
                             |{32{csr_num == `CSR_TLBELO0}} & csr_tlbelo0_rvalue
                             |{32{csr_num == `CSR_TLBELO1}} & csr_tlbelo1_rvalue
                             |{32{csr_num == `CSR_ASID}} & csr_asid_rvalue
-                            |{32{csr_num == `CSR_TLBRENTRY}} & csr_tlbrentry_rvalue;
+                            |{32{csr_num == `CSR_TLBRENTRY}} & csr_tlbrentry_rvalue
+                            |{32{csr_num == `CSR_DMW0}}& csr_dmw0_rvalue
+                            |{32{csr_num == `CSR_DMW1}} & csr_dmw1_rvalue;
 
 endmodule
