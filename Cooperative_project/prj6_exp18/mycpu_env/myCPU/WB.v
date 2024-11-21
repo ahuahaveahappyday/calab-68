@@ -150,11 +150,11 @@ module WBreg(
     assign tlbsrch_idx =  wb_tlbsrch_res[3:0];
 
 // refetch sign
-    assign wb_refetch_flush =    wb_tlb_op[3]   // inst_tlbwr
-                                || wb_tlb_op[2]    // inst_tlbfill
-                                || wb_tlb_op[1]    // inst_tlbrd
-                                || wb_tlb_op[0]   // inst_invtlb
-                                ;
+    assign wb_refetch_flush =   wb_valid && (wb_tlb_op[3]   // inst_tlbwr
+                                        || wb_tlb_op[2]    // inst_tlbfill
+                                        || wb_tlb_op[1]    // inst_tlbrd
+                                        || wb_tlb_op[0]   // inst_invtlb
+                                        );
     assign wb_flush_entry =     (wb_ex || ertn_flush) ? csr_rvalue                // Higher priority
                                 :wb_pc + 32'd4;
 endmodule

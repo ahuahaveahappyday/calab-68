@@ -47,7 +47,7 @@
 `define CSR_TLBELO_D 1
 `define CSR_TLBELO_PLV 3:2
 `define CSR_TLBELO_MAT 5:4
-`define CSR_TLBELO_G 5
+`define CSR_TLBELO_G 6
 `define CSR_TLBELO_PPN 27:8
 `define CSR_ASID_ASID 9:0
 `define CSR_TLBRENTRY_PA 31:6
@@ -436,8 +436,8 @@ module CSRfile #(
                             | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo0_mat;
             csr_tlbelo0_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
                             | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo0_g;
-            csr_tlbelo0_g <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
-                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo0_g;
+            csr_tlbelo0_ppn <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo0_ppn;
         end
     end
 
@@ -461,8 +461,8 @@ module CSRfile #(
                             | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo1_mat;
             csr_tlbelo1_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
                             | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo1_g;
-            csr_tlbelo1_g <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
-                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo1_g;
+            csr_tlbelo1_ppn <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo1_ppn;
         end
     end
 /*-------------------------------------ASI0-----------------------------------------------*/
