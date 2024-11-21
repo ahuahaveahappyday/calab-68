@@ -154,9 +154,7 @@ module EXEreg(
     );
 // 来自mem和wb的异常数据
     assign wb_srch_conflict = wb_to_ex_bus; 
-    assign mem_srch_conflict = mem_to_ex_bus[2];
-    assign mem_excep_en = mem_to_ex_bus[1];
-    assign mem_ertn_flush=mem_to_ex_bus[0];
+    assign {mem_excep_en,mem_ertn_flush,mem_srch_conflict} = mem_to_ex_bus;
 // 寄存器写回数据来自wb级
     assign ex_res_from_wb  = ex_csr_re;
 //模块间通信

@@ -20,8 +20,7 @@ module MEMreg(
     input  wire         flush
 
 );
-//MEM模块需要的寄存器，寄存当前时钟周期的信号
-//定义方式与EX模块一致 此处不再赘述
+//接受ex级传递来的数据的寄存器
     reg  [31:0] mem_pc;
     reg         mem_valid;
     reg  [31:0] mem_alu_result; //寄存的alu的运算结果
@@ -36,16 +35,13 @@ module MEMreg(
     reg         mem_read_counter;
     reg  [31:0] mem_counter_result;
     reg         mem_read_TID;
-
     reg  [4:0]  mem_tlb_op;
     reg         mem_srch_conflict;
-
     reg         mem_csr_re;
     reg         mem_csr_we;
     reg  [13:0] mem_csr_num;
     reg  [31:0] mem_csr_wmask;
     reg         mem_ertn_flush;
-    wire        mem_excep_en;
     reg         mem_excep_ADEF;
     reg         mem_excep_SYSCALL;
     reg         mem_excep_ALE;
@@ -53,11 +49,13 @@ module MEMreg(
     reg         mem_excep_INE;
     reg         mem_excep_INT;
     reg [8:0]   mem_excep_esubcode;
-
     reg         ex_excep_en;
     reg [31:0]  mem_vaddr;
+    reg [4:0]   mem_tlbsrch_res;
 
+// 流水级控制信号
     wire        mem_ready_go;
+// load or store
     wire [31:0] mem_rf_wdata;
     wire [31:0] mem_result;//从dram读出的数据
     wire [31:0] mem_word_result;
@@ -66,20 +64,18 @@ module MEMreg(
 
     wire        mem_res_from_wb;
     reg         mem_sram_requed;
-
-    reg [4:0]   mem_tlbsrch_res;
-
+// refetch   or exception
+    wire        mem_excep_en;
     wire        mem_refetch;
 
-
-//流水线控制信号
+//流水线控制信号----------------------------------------------------------------------------------------------------------------------------------------
     assign mem_ready_go      =      ~mem_sram_requed 
                                     | mem_sram_requed & data_sram_data_ok;
     assign mem_allowin       =      ~mem_valid 
                                     | mem_ready_go & wb_allowin;     
     assign mem_to_wb_valid   =      mem_valid & mem_ready_go;
 
-//MEM流水级需要的寄存器，根据clk不断更新
+//MEM流水级寄存器接受从ex级传递的数据----------------------------------------------------------------------------------------------------------------------------------------
     always @(posedge clk) begin
         if(~resetn)
             mem_valid <= 1'b0;
@@ -109,10 +105,8 @@ module MEMreg(
              mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= ex_to_mem_bus;
         end
     end
-// 寄存器写回数据来自wb级
-    assign mem_res_from_wb  = mem_csr_re;
-//模块间通信
-    //与内存交互接口定义
+
+//load 与内存交互接口----------------------------------------------------------------------------------------------------------------------------------------
     assign mem_word_result =    data_sram_rdata;
     assign mem_half_result =    mem_data_sram_addr[1] ? data_sram_rdata[31:16]
                                 : data_sram_rdata[15:0];
@@ -124,11 +118,13 @@ module MEMreg(
     assign mem_result =         mem_op_st_ld_b ? ({{24{~mem_op_st_ld_u & mem_byte_result[7]}}, mem_byte_result[7:0]}):       // mem_ld_st_type[3] identify if signed externed
                                 mem_op_st_ld_h ? ({{16{~mem_op_st_ld_u & mem_half_result[15]}}, mem_half_result[15:0]}) :
                                 mem_word_result;
-    //assign data_sram_wdata= mem_rkd_value;
 
-    //打包
-    assign mem_rf_wdata = mem_read_counter ? mem_counter_result : 
+//模块间通信----------------------------------------------------------------------------------------------------------------------------------------
+// 寄存器写回数据来自wb级
+    assign mem_res_from_wb  = mem_csr_re;
+     assign mem_rf_wdata = mem_read_counter ? mem_counter_result : 
                           mem_res_from_mem ? mem_result : mem_alu_result;//生成寄存器写回的值
+//打包
     assign mem_to_id_bus  = {mem_rf_we & mem_valid, 
                             mem_rf_waddr, 
                             mem_rf_wdata,
@@ -159,9 +155,11 @@ module MEMreg(
                             mem_srch_conflict,             //1bit
                             mem_tlbsrch_res             // 5 bit
                             };        
-    assign mem_to_ex_bus  = {(mem_excep_en|| mem_refetch) & mem_valid , mem_ertn_flush, mem_srch_conflict & mem_valid};    
+    assign mem_to_ex_bus  = {(mem_excep_en|| mem_refetch) & mem_valid ,
+                             mem_ertn_flush & mem_valid, 
+                             mem_srch_conflict & mem_valid};    
 
-//异常处理
+//异常处理 
     assign mem_excep_en = ex_excep_en;
 
 // refetch sign
