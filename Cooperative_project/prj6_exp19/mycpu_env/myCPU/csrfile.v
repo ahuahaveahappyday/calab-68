@@ -145,8 +145,8 @@ module CSRfile #(
     reg                       csr_crmd_ie;
     reg                       csr_crmd_da;
     reg                       csr_crmd_pg;
-    wire                      csr_crmd_datf;
-    wire                      csr_crmd_datm;
+    reg  [               1:0] csr_crmd_datf;
+    reg  [               1:0] csr_crmd_datm;
 
     reg  [               1:0] csr_prmd_pplv;
     reg                       csr_prmd_pie;
@@ -262,11 +262,25 @@ module CSRfile #(
             csr_crmd_da <= 1'b0;
             csr_crmd_pg <= 1'b1;
         end
-    
+        else if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
+            csr_crmd_da <=      csr_wmask[`CSR_CRMD_DA] & csr_wvalue[`CSR_CRMD_DA]
+                                | ~csr_wmask[`CSR_CRMD_DA] & csr_crmd_da;
+            csr_crmd_pg <=      csr_wmask[`CSR_CRMD_PG] & csr_wvalue[`CSR_CRMD_PG]
+                                | ~csr_wmask[`CSR_CRMD_PG] & csr_crmd_pg;
+        end
     end
-    assign csr_crmd_datf  = 2'b00;
-    assign csr_crmd_datm  = 2'b00;
-
+    always @(posedge clk)begin
+        if(~resetn)begin
+            csr_crmd_datf <=     2'b0;
+            csr_crmd_datm <=     2'b0;    
+        end
+        else if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
+            csr_crmd_datf <=     csr_wmask[`CSR_CRMD_DATF] & csr_wvalue[`CSR_CRMD_DATF]
+                                | ~csr_wmask[`CSR_CRMD_DATF] & csr_crmd_datf;
+            csr_crmd_datm <=     csr_wmask[`CSR_CRMD_DATM] & csr_wvalue[`CSR_CRMD_DATM]
+                                | ~csr_wmask[`CSR_CRMD_DATM] & csr_crmd_datm;
+        end
+    end
     assign csr_output_pg =   csr_crmd_pg;
     assign csr_output_plv =  csr_crmd_plv;
 
