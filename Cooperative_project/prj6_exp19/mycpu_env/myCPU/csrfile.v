@@ -306,7 +306,9 @@ module CSRfile #(
         csr_estat_is[9:2]   <= hw_int_in[7:0];          // come from hardware sampling
         csr_estat_is[10]    <= 1'b0;                    // reserved
 
-        if(timer_cnt[31:0] == 32'b0)                     // time counter interrupt
+        if(~resetn)
+            csr_estat_is[11] <= 1'b0;
+        else if(timer_cnt[31:0] == 32'b0)                     // time counter interrupt
             csr_estat_is[11] <= 1'b1;
         else if(csr_we && csr_num == `CSR_TICLR && csr_wmask[`CSR_TICLR_CLR] && csr_wvalue[`CSR_TICLR_CLR])
             csr_estat_is[11] <= 1'b0;
@@ -317,7 +319,11 @@ module CSRfile #(
 
     // ecode and esubcode
     always @(posedge clk)begin
-        if(wb_ex)   begin
+        if(~resetn)begin
+            csr_estat_ecode    <= 6'b0;
+            csr_estat_esubcode <= 9'b0;
+        end
+        else if(wb_ex)   begin
             csr_estat_ecode    <= wb_ecode;
             csr_estat_esubcode <= wb_esubcode;
         end

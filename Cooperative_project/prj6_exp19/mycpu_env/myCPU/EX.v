@@ -114,6 +114,8 @@ module EXEreg(
     wire                        hit_dmw1;
     // 异常相关
     wire        ex_excep_en;
+    wire [5:0]  ex_ecode;
+    wire [8:0]  ex_esubcode;
     wire        ex_excep_ALE;
     wire        ex_excep_TLBR;
     wire        ex_excep_PIL;
@@ -201,8 +203,8 @@ module EXEreg(
                                 ex_alu_result,
                                 ex_res_from_wb & ex_valid};   
     assign ex_to_mem_bus    =   {ex_pc,                     // 32 bit
-                                ex_res_from_mem & ex_valid, // 1 bit
-                                ex_rf_we & ex_valid,        // 1 bit
+                                ex_res_from_mem, // 1 bit
+                                ex_rf_we,        // 1 bit
                                 ex_rf_waddr,                // 5 bit
                                 ex_alu_result,              // 32 bit
                                 ex_rkd_value,               // 32 bit
@@ -245,7 +247,7 @@ module EXEreg(
     assign ex_vaddr =           {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
                                 {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
                                 {32{~ex_read_counter}} & ex_alu_result;
-    assign ex_esubcode =        (id_excep_en) ? id_ecode
+    assign ex_esubcode =        (id_excep_en) ? id_esubcode
                                 :9'b0;
     assign ex_ecode =           (id_excep_en) ? id_ecode
                                 :ex_excep_ALE ? 6'h9

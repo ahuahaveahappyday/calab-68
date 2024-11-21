@@ -546,7 +546,7 @@ module IDreg(
     assign id_excep_INE     =   no_inst
                                 || (inst_invtlb && id_invtlb_op > 5'h06);        // 记录该条指令是否存在INE异常
     assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
-    assign id_esubcode =        (if_excep_en) ? if_ecode
+    assign id_esubcode =        (if_excep_en) ? if_esubcode
                                 :9'b0;
     assign id_ecode =           (if_excep_en) ? if_ecode
                                 :id_excep_INT ? 6'h0
