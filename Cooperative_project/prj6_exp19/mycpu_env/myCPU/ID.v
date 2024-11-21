@@ -5,11 +5,11 @@ module IDreg(
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
     output wire [33:0]            id_to_if_bus,//{br_taken, br_target}
-    input  wire [65:0]            if_to_id_bus,//{if_inst, if_pc}
+    input  wire [79:0]            if_to_id_bus,
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
-    output wire [236:0]           id_to_ex_bus,
+    output wire [237:0]           id_to_ex_bus,
     //数据前递总线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [39:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
@@ -195,10 +195,12 @@ module IDreg(
     wire        id_excep_SYSCALL;
     wire        id_excep_BRK;
     wire        id_excep_INE;
-    wire [8:0]  id_excep_esubcode;
+    wire [8:0]  id_esubcode;
+    wire [5:0]  id_ecode;
 
     reg        if_excep_en;
-    reg        id_excep_ADEF;
+    reg  [5:0] if_ecode;
+    reg  [8:0] if_esubcode;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -222,9 +224,9 @@ module IDreg(
     end
     always @(posedge clk) begin
         if(~resetn)
-            {id_inst, id_pc, if_excep_en, id_excep_ADEF} <= 66'b0;
+            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode} <= 80'b0;
         if(if_to_id_valid & id_allowin) begin
-            {id_inst, id_pc, if_excep_en, id_excep_ADEF} <= if_to_id_bus;
+            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode} <= if_to_id_bus;
         end
     end
 
@@ -257,12 +259,8 @@ module IDreg(
                            id_csr_wmask,         // 32 bit
                            id_ertn_flush,        // 1 bit
                            id_excep_en,          // 1 bit
-                           id_excep_ADEF,        // 1 bit
-                           id_excep_SYSCALL,       // 1 bit
-                           id_excep_BRK,         // 1 bit
-                           id_excep_INE,         // 1 bit
-                           id_excep_INT,         //1 bit
-                           id_excep_esubcode,     // 9 bit
+                           id_esubcode,     // 9 bit
+                           id_ecode,        // 6 bit
                            id_tlb_op,             //5 bit
                            id_srch_conflict,       //1 bit
                            id_invtlb_op             //5 bit
@@ -548,6 +546,12 @@ module IDreg(
     assign id_excep_INE     =   no_inst
                                 || (inst_invtlb && id_invtlb_op > 5'h06);        // 记录该条指令是否存在INE异常
     assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
-    assign id_excep_esubcode =  9'h0;
+    assign id_esubcode =        (if_excep_en) ? if_ecode
+                                :9'b0;
+    assign id_ecode =           (if_excep_en) ? if_ecode
+                                :id_excep_INT ? 6'h0
+                                :id_excep_BRK ? 6'hc
+                                :id_excep_INE ? 6'hd
+                                :6'hb;  // syscall
 
 endmodule

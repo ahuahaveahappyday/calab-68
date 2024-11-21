@@ -42,14 +42,9 @@ module MEMreg(
     reg  [13:0] mem_csr_num;
     reg  [31:0] mem_csr_wmask;
     reg         mem_ertn_flush;
-    reg         mem_excep_ADEF;
-    reg         mem_excep_SYSCALL;
-    reg         mem_excep_ALE;
-    reg         mem_excep_BRK;
-    reg         mem_excep_INE;
-    reg         mem_excep_INT;
-    reg [8:0]   mem_excep_esubcode;
-    reg         ex_excep_en;
+    reg [8:0]   mem_esubcode;
+    reg [5:0]   mem_ecode;
+    reg         mem_excep_en;
     reg [31:0]  mem_vaddr;
     reg [4:0]   mem_tlbsrch_res;
 
@@ -64,8 +59,7 @@ module MEMreg(
 
     wire        mem_res_from_wb;
     reg         mem_sram_requed;
-// refetch   or exception
-    wire        mem_excep_en;
+// refetch 
     wire        mem_refetch;
 
 //流水线控制信号----------------------------------------------------------------------------------------------------------------------------------------
@@ -91,8 +85,7 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
-             ,mem_excep_esubcode,mem_vaddr,mem_sram_requed,
+             mem_excep_en, mem_esubcode, mem_ecode, mem_vaddr,mem_sram_requed,
              mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= 251'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
@@ -100,8 +93,7 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT
-             , mem_excep_esubcode,mem_vaddr,mem_sram_requed,
+             mem_excep_en, mem_esubcode, mem_ecode, mem_vaddr,mem_sram_requed,
              mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= ex_to_mem_bus;
         end
     end
@@ -143,13 +135,8 @@ module MEMreg(
                             mem_rkd_value,               // 32 bit
                             mem_ertn_flush,              // 1 bit
                             mem_excep_en,               // 1 bit
-                            mem_excep_ADEF,             // 1 bit
-                            mem_excep_SYSCALL,            // 1 bit
-                            mem_excep_ALE,              // 1 bit
-                            mem_excep_BRK,              // 1 bit
-                            mem_excep_INE,              // 1 bit
-                            mem_excep_INT,               // 1 bit
-                            mem_excep_esubcode,          // 9 bit
+                            mem_esubcode,          // 9 bit
+                            mem_ecode,              // 6 bit
                             mem_vaddr,                   //32bit
                             mem_tlb_op,                  //5 bit
                             mem_srch_conflict,             //1bit
@@ -159,8 +146,6 @@ module MEMreg(
                              mem_ertn_flush & mem_valid, 
                              mem_srch_conflict & mem_valid};    
 
-//异常处理 
-    assign mem_excep_en = ex_excep_en;
 
 // refetch sign
     assign mem_refetch =    mem_tlb_op[3]   // inst_tlbwr

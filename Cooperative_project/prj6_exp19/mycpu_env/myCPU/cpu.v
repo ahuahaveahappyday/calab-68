@@ -62,8 +62,8 @@ module mycpu_top
     wire ex_to_mem_valid;
     wire mem_to_wb_valid;
 
-    wire [65:0] if_to_id_bus;
-    wire [236:0] id_to_ex_bus;
+    wire [79:0] if_to_id_bus;
+    wire [237:0] id_to_ex_bus;
     wire [250:0] ex_to_mem_bus;
     wire [210:0] mem_to_wb_bus;
 
@@ -162,6 +162,7 @@ module mycpu_top
     wire [              19:0] csr_tlb_ppn1;
 
     wire                      csr_output_pg;
+    wire [               1:0] csr_output_plv;
     wire                      csr_dmw0_plv_met;
     wire [               2:0] csr_output_dmw0_pseg;
     wire [               2:0] csr_output_dmw0_vseg;
@@ -227,6 +228,7 @@ module mycpu_top
         .s0_vppn            (if_s0_vppn),
         .s0_va_bit12        (if_s0_va_bit12),    
         .csr_crmd_pg        (csr_output_pg),
+        .csr_crmd_plv       (csr_output_plv),
         .csr_dmw0_plv_met   (csr_dmw0_plv_met),
         .csr_dmw0_pseg      (csr_output_dmw0_pseg),
         .csr_dmw0_vseg      (csr_output_dmw0_vseg),
@@ -300,6 +302,7 @@ module mycpu_top
         .csr_asid           (csr_tlb_asid),
 
         .csr_crmd_pg        (csr_output_pg),
+        .csr_crmd_plv       (csr_output_plv),
         .csr_dmw0_plv_met   (csr_dmw0_plv_met),
         .csr_dmw0_pseg      (csr_output_dmw0_pseg),
         .csr_dmw0_vseg      (csr_output_dmw0_vseg),
@@ -416,6 +419,7 @@ module mycpu_top
         .csr_tlb_ppn1       (csr_tlb_ppn1),
 
         .csr_output_pg      (csr_output_pg),
+        .csr_output_plv     (csr_output_plv),
         .csr_dmw0_plv_met   (csr_dmw0_plv_met),
         .csr_output_dmw0_pseg(csr_output_dmw0_pseg),
         .csr_output_dmw0_vseg(csr_output_dmw0_vseg),

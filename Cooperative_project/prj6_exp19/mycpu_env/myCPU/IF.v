@@ -16,7 +16,7 @@ module IFreg(
     input  wire         id_allowin,
     input  wire [33:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
-    output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
+    output wire [79:0]  if_to_id_bus,
     //etrn清空流水线
     input  wire         flush,
     input  wire [31:0]  wb_flush_entry,
@@ -24,6 +24,7 @@ module IFreg(
     output wire [18:0] s0_vppn,
     output wire        s0_va_bit12,
     input wire          csr_crmd_pg,
+    input wire  [1:0]   csr_crmd_plv,
     input wire          csr_dmw0_plv_met,
     input wire  [2:0]   csr_dmw0_pseg,
     input wire  [2:0]   csr_dmw0_vseg,
@@ -38,47 +39,50 @@ module IFreg(
     input  wire                        s0_v
 
 );
+// pre if reg 接受 inst_sram 数据
+    reg         pre_if_reqed_reg;
+    reg  [31:0] pre_if_ir;
+    reg         pre_if_ir_valid;
+// if reg接受从pre if 级的数据
     reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
-
     reg  [31:0] if_pc;
-
-    wire [31:0] if_inst;
-
     reg  [31:0] if_ir;
     reg         if_ir_valid;
+    reg         if_excep_en;
+    reg  [ 5:0] if_ecode;
+    reg  [ 8:0] if_esubcode;
 //流水控制信号
     wire        if_ready_go;
     wire        if_allowin;
-
     wire        pre_if_readygo;
     wire        to_if_valid;
 
     wire [31:0] seq_pc;
     wire [31:0] pre_pc;
     wire [31:0] pre_pc_pa;
-
+    wire [31:0] if_inst;
 //branch类指令的信号和目标地址，来自ID模块
+    reg          br_taken_reg;
+    reg  [ 31:0] br_target_reg;
+
     wire         br_taken;
     wire [ 31:0] br_target;
     wire         br_stall;
 
-    reg          br_taken_reg;
-    reg  [ 31:0] br_target_reg;
-
 // 异常相关
+    wire [ 5:0] pre_if_ecode;
+    wire [ 8:0] pre_if_esubcode;
     wire        pre_if_excep_en;
     wire        pre_if_excep_ADEF;
-    reg         if_excep_en;
-    reg         if_excep_ADEF;
-
+    wire        pre_if_excep_TLBR;
+    wire        pre_if_excep_PIF;
+    wire        pre_if_excep_PPI;
+// if reg 接受从wb级 的数据
     reg          flush_reg;
     reg  [ 31:0] flush_entry_reg;
+
     reg          inst_cancel;
 //----------------------------------------------------------------------------------------------------------------------------------------------
-
-    reg         pre_if_reqed_reg;
-    reg  [31:0] pre_if_ir;
-    reg         pre_if_ir_valid;
 //===============================================流水线控制信号和数据交互
     /* if 级的握手信号*/
     always @(posedge clk) begin         // 表示if级当前正在等待指令返回，或者if级的指令缓存有效
@@ -98,7 +102,12 @@ module IFreg(
 
     /* 与id的数据和控制信号交互 */
     assign {br_taken, br_target, br_stall} =        id_to_if_bus;
-    assign if_to_id_bus =                           {if_inst, if_pc, if_excep_en, if_excep_ADEF};          
+    assign if_to_id_bus =                           {if_inst,       // 32 bit
+                                                    if_pc,          // 32 bit 
+                                                    if_excep_en,    // 1 bit
+                                                    if_ecode,       // 6 bit
+                                                    if_esubcode     // 9 bit
+                                                    };         
 
     /* 清空流水线时，第一个指令需要丢弃*/
     always @(posedge clk) begin
@@ -239,10 +248,19 @@ module IFreg(
 
 //====================================================取指地址错异常处理
     assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
-    assign pre_if_excep_en =            pre_if_excep_ADEF;
+    assign pre_if_excep_TLBR   =        csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
+    assign pre_if_excep_PIF =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
+    assign pre_if_excep_PPI =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (s0_plv > csr_crmd_plv);
+    assign pre_if_ecode =               pre_if_excep_ADEF?  6'h08   // adef
+                                        :pre_if_excep_TLBR?6'h3f  // tlbr
+                                        :pre_if_excep_PIF? 6'h3 // pif
+                                        :6'h7;   // ppi
+    assign pre_if_esubcode =            9'b0;
+    assign pre_if_excep_en =            pre_if_excep_ADEF| pre_if_excep_TLBR;
     always @(posedge clk)begin
         if_excep_en  <=                 pre_if_excep_en;
-        if_excep_ADEF <=                pre_if_excep_ADEF;
+        if_ecode <=                     pre_if_ecode;
+        if_esubcode <=                  pre_if_esubcode;
     end
 
 endmodule

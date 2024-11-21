@@ -133,6 +133,7 @@ module CSRfile #(
     output wire [              19:0] csr_tlb_ppn1,
     // address translate
     output wire                      csr_output_pg,
+    output wire [               1:0] csr_output_plv,
     output wire                      csr_dmw0_plv_met,
     output wire [               2:0] csr_output_dmw0_pseg,
     output wire [               2:0] csr_output_dmw0_vseg,
@@ -267,6 +268,7 @@ module CSRfile #(
     assign csr_crmd_datm  = 2'b00;
 
     assign csr_output_pg =   csr_crmd_pg;
+    assign csr_output_plv =  csr_crmd_plv;
 
     /*---------------------------PRMD---------------------------------------------------*/
     always @(posedge clk)begin

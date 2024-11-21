@@ -4,13 +4,13 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [236:0] id_to_ex_bus,
+    input wire [237:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
     output wire [250:0]ex_to_mem_bus,
-    input  wire [2:0]  mem_to_ex_bus,   // 
+    input  wire [2:0]  mem_to_ex_bus,
     //ex与wb模块交互接口
     input  wire        wb_to_ex_bus,
 
@@ -49,6 +49,7 @@ module EXEreg(
     input  wire [ 9:0] csr_asid,
     // addr translate
     input wire          csr_crmd_pg,
+    input wire  [1:0]   csr_crmd_plv,
     input wire          csr_dmw0_plv_met,
     input wire  [2:0]   csr_dmw0_pseg,
     input wire  [2:0]   csr_dmw0_vseg,
@@ -57,7 +58,7 @@ module EXEreg(
     input wire  [2:0]   csr_dmw1_vseg
 
 );
-//ex模块需要的寄存器，寄存当前时钟周期的信号
+//ex reg 从id级接受数据
     reg         ex_valid;
     reg  [31:0] ex_pc;//ex流水级的pc值
     reg  [18:0] ex_alu_op;
@@ -85,19 +86,11 @@ module EXEreg(
     reg  [13:0] ex_csr_num;
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
-    wire        ex_excep_en;
-    reg         ex_excep_ADEF;
-    reg         ex_excep_SYSCALL;
-    wire         ex_excep_ALE;
-    reg         ex_excep_BRK;
-    reg         ex_excep_INE;
-    reg         ex_excep_INT;
-    reg  [8:0]  ex_excep_esubcode;
     
+    reg  [8:0]  id_esubcode;
+    reg  [5:0]  id_ecode;
     reg         id_excep_en;
     
-    wire        ex_ready_go;
-    wire        block;
     wire [31:0] ex_alu_result;
     wire        alu_complete;
     wire [1:0]  ex_data_sram_addr;      // lowest 2 byte 
@@ -111,8 +104,22 @@ module EXEreg(
     wire        wb_srch_conflict;
     wire        mem_excep_en;
     wire        mem_ertn_flush;
+    wire        ex_ready_go;
+    wire        block;
     wire [31:0] ex_vaddr; 
     wire [31:0] sram_addr_pa;      
+    // 虚实地址转换
+    wire [31:0]                 sram_addr_map;
+    wire                        hit_dmw0;
+    wire                        hit_dmw1;
+    // 异常相关
+    wire        ex_excep_en;
+    wire        ex_excep_ALE;
+    wire        ex_excep_TLBR;
+    wire        ex_excep_PIL;
+    wire        ex_excep_PIS;
+    wire        ex_excep_PPI;
+    wire        ex_excep_PME;
 
     // tlb relevant       
     wire [4:0]  ex_tlbsrch_res;    // {s1_found,s1_index} 
@@ -138,15 +145,15 @@ module EXEreg(
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT,ex_excep_esubcode,
+              id_excep_en, id_esubcode, id_ecode,
               ex_tlb_op,ex_srch_conflict,ex_invtlb_op
-              }       <= {237{1'b0}};
+              }       <= 238'b0;
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-             id_excep_en, ex_excep_ADEF, ex_excep_SYSCALL, ex_excep_BRK, ex_excep_INE,ex_excep_INT, ex_excep_esubcode,
+              id_excep_en, id_esubcode, id_ecode,
              ex_tlb_op,ex_srch_conflict,ex_invtlb_op
              }     <= id_to_ex_bus;    
     end
@@ -212,13 +219,8 @@ module EXEreg(
                                 ex_csr_wmask,                // 32 bit
                                 ex_ertn_flush,               // 1 bit
                                 ex_excep_en,                 // 1 bit
-                                ex_excep_ADEF,               // 1 bit
-                                ex_excep_SYSCALL,             // 1 bit
-                                ex_excep_ALE,               // 1 bit
-                                ex_excep_BRK,               // 1 bit
-                                ex_excep_INE,               // 1 bit
-                                ex_excep_INT,               //1 bit
-                                ex_excep_esubcode,          // 9 bit
+                                ex_esubcode,          // 9 bit
+                                ex_ecode,               // 6 bit
                                 ex_vaddr,                     //32bit
                                 ex_mem_req,                  //1 bit 
                                 ex_tlb_op,                  //5 bit
@@ -229,13 +231,29 @@ module EXEreg(
 // 读计数器
     assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
 
-// 地址非对齐异常处理
-    assign ex_excep_ALE = (ex_op_st_ld_h & ex_alu_result[0]) | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0]));     // 记录该条指令是否存在ALE异常
-    assign ex_excep_en = ex_excep_ALE | id_excep_en;
+// 异常处理
+    assign ex_excep_ALE =       (ex_res_from_mem | ex_mem_we) & 
+                                    ((ex_op_st_ld_h & ex_alu_result[0]) 
+                                    | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0])));     // 记录该条指令是否存在ALE异常
+    assign ex_excep_en =        ex_excep_ALE | id_excep_en;
+    assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
+    assign ex_excep_PIL =       (ex_res_from_mem) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+    assign ex_excep_PIS =       (ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+    assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv > csr_crmd_plv);
+    assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv <= csr_crmd_plv) & ~s1_d;
     
-    assign ex_vaddr = {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
-                      {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
-                      {32{~ex_read_counter}} & ex_alu_result;
+    assign ex_vaddr =           {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
+                                {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
+                                {32{~ex_read_counter}} & ex_alu_result;
+    assign ex_esubcode =        (id_excep_en) ? id_ecode
+                                :9'b0;
+    assign ex_ecode =           (id_excep_en) ? id_ecode
+                                :ex_excep_ALE ? 6'h9
+                                :ex_excep_TLBR ?6'h3f     // tlb refill
+                                :ex_excep_PIL ?6'h1
+                                :ex_excep_PIS ?6'h2
+                                :ex_excep_PPI ?6'h0
+                                :6'h4;  // pme
 
 //TLB相关 ---------------------------------------------------------------------------------------------------------------------------
     assign ex_tlb_srch = ex_tlb_op[4];
@@ -248,9 +266,6 @@ module EXEreg(
                                     : ex_alu_result[31:12];     // data_sram_addr
     assign ex_tlbsrch_res = {s1_found,s1_index};
     // addr translate
-    wire [31:0]                 sram_addr_map;
-    wire                        hit_dmw0;
-    wire                        hit_dmw1;
     assign sram_addr_pa =       csr_crmd_pg ? sram_addr_map    // enable mapping
                                 :ex_alu_result;                    // direct translate
                             

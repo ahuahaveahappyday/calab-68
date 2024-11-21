@@ -63,17 +63,11 @@ module WBreg(
     reg  [13:0] wb_csr_num;
     reg  [31:0] wb_csr_wmask;
     reg  [31:0] wb_csr_wvalue;
-    reg         wb_ertn_flush;
-    wire        wb_excep_en;
-    reg         wb_excep_ADEF;
-    reg         wb_excep_SYSCALL;
-    reg         wb_excep_ALE;
-    reg         wb_excep_BRK;
-    reg         wb_excep_INE;
-    reg         wb_excep_INT;
-    reg  [8:0]  wb_excep_esubcode;
 
-    reg        mem_excep_en;
+    reg         wb_ertn_flush;
+    reg  [8:0]  wb_esubcode_reg;
+    reg  [5:0]  wb_ecode_reg;
+    reg         wb_excep_en;
 
     reg [4:0]   wb_tlbsrch_res;
 
@@ -97,13 +91,13 @@ module WBreg(
         if(~resetn) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush
-            ,mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE, wb_excep_INT,wb_excep_esubcode,wb_vaddr,
+            ,wb_excep_en, wb_ecode_reg,wb_esubcode_reg,wb_vaddr,
             wb_tlb_op,wb_srch_conflict, wb_tlbsrch_res} <= 211'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush,
-            mem_excep_en, wb_excep_ADEF, wb_excep_SYSCALL, wb_excep_ALE, wb_excep_BRK, wb_excep_INE,wb_excep_INT, wb_excep_esubcode ,wb_vaddr,
+            wb_excep_en, wb_ecode_reg,wb_esubcode_reg,wb_vaddr,
             wb_tlb_op,wb_srch_conflict, wb_tlbsrch_res} <= mem_to_wb_bus;
         end
     end
@@ -120,8 +114,9 @@ module WBreg(
     assign debug_wb_rf_wnum = wb_rf_waddr;
 //csr_file模块读写信号
     assign csr_re =     wb_csr_re | wb_ex;
-    assign csr_num =    wb_ex ? 14'hc
-                        : wb_csr_num;
+    assign csr_num =    (wb_ex & wb_ecode == 6'h3f) ? 14'h88// CSR_TLBRENTRY
+                        :wb_ex ? 14'hc  // CSR_EENTRY
+                        :wb_csr_num;
 
     assign csr_we = wb_csr_we & wb_valid;
     assign csr_wmask = wb_csr_wmask;
@@ -129,15 +124,9 @@ module WBreg(
 //清空流水线
     assign ertn_flush = wb_ertn_flush & wb_valid;
 // 异常处理
-    assign wb_excep_en = mem_excep_en;
     assign wb_ex =      wb_excep_en & wb_valid;
-    assign wb_ecode =   wb_excep_INT     ? 6'h0 :       //INT 中断
-                        wb_excep_ADEF    ? 6'h8 :       //ADEF
-                        wb_excep_SYSCALL ? 6'hb :       //SYSCALL
-                        wb_excep_BRK     ? 6'hc :       //BRK
-                        wb_excep_INE     ? 6'hd :       //INE
-                        6'h9;                           //ALE                           
-    assign wb_esubcode= wb_excep_esubcode;
+    assign wb_ecode =   wb_ecode_reg;                     
+    assign wb_esubcode= wb_esubcode_reg;
     assign wb_ex_pc =   wb_pc;
 
 //TLB相关
