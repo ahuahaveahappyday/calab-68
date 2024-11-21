@@ -60,9 +60,9 @@
 `define CSR_DMW_VSEG 31:29
 
 // ECODE
-`define ECODE_ADE 5'h8
-`define ECODE_ALE 5'h9
-`define ECODE_TLBR 5'h3f    
+`define ECODE_ADE 6'h8
+`define ECODE_ALE 6'h9
+`define ECODE_TLBR 6'h3f    
 // ESUBCODE
 `define ESUBCODE_ADEF 0
 module CSRfile #(
