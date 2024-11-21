@@ -328,7 +328,7 @@ module mycpu_top
         .wb_refetch_flush   (wb_refetch_flush)
     );
 
-    CSRfile my_csrfild(     // all operation to update csrfile is on wb
+    CSRfile my_csrfile(     // all operation to update csrfile is on wb
         .clk                (aclk),
         .resetn             (aresetn),
         .csr_re             (csr_re),

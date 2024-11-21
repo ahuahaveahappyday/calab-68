@@ -450,7 +450,7 @@ module CSRfile #(
             {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
                 <= {27{tlbrd_valid}} & {tlbrd_v1,tlbrd_d1,tlbrd_plv1,tlbrd_mat1,tlbrd_g,tlbrd_ppn1}; 
         end
-        else if(csr_we && csr_num == `CSR_TLBELO0) begin
+        else if(csr_we && csr_num == `CSR_TLBELO1) begin
             csr_tlbelo1_v <= csr_wmask[`CSR_TLBELO_V] & csr_wvalue[`CSR_TLBELO_V]
                             | ~csr_wmask[`CSR_TLBELO_V] & csr_tlbelo1_v;
             csr_tlbelo1_d <= csr_wmask[`CSR_TLBELO_D] & csr_wvalue[`CSR_TLBELO_D]
