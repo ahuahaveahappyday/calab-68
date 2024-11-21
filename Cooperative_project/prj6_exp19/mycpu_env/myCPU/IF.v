@@ -21,7 +21,8 @@ module IFreg(
     input  wire         flush,
     input  wire [31:0]  wb_flush_entry,
     // 虚实地址转换
-    output wire [31:0]  pre_pc,
+    output wire [18:0] s0_vppn,
+    output wire        s0_va_bit12,
     input wire          csr_crmd_pg,
     input wire          csr_dmw0_plv_met,
     input wire  [2:0]   csr_dmw0_pseg,
@@ -53,6 +54,7 @@ module IFreg(
     wire        to_if_valid;
 
     wire [31:0] seq_pc;
+    wire [31:0] pre_pc;
     wire [31:0] pre_pc_pa;
 
 //branch类指令的信号和目标地址，来自ID模块
@@ -219,6 +221,8 @@ module IFreg(
             if_ir_valid <= 1'b0;
     end
 // =============================================虚实地址转换
+    assign {s0_vppn, s0_va_bit12} = pre_pc[31:12];// output to tlb
+
     wire [31:0]                 pre_pc_map;
     wire                        hit_dmw0;
     wire                        hit_dmw1;
@@ -228,8 +232,8 @@ module IFreg(
     assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == pre_pc[31:29];
     assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == pre_pc[31:29];
 
-    assign pre_pc_map =         hit_dmw0 ? {csr_dmw0_pseg, pre_pc_pa[28:0]}         // dierct map windows 0
-                                :hit_dmw1? {csr_dmw1_pseg, pre_pc_pa[28:0]}         // direct map windows 1
+    assign pre_pc_map =         hit_dmw0 ? {csr_dmw0_pseg, pre_pc[28:0]}         // dierct map windows 0
+                                :hit_dmw1? {csr_dmw1_pseg, pre_pc[28:0]}         // direct map windows 1
                                 :(s0_ps == 6'b010101) ? {s0_ppn[19:9], pre_pc[20:0]}   // tlb map: ps 4Mb
                                 :{s0_ppn,pre_pc[11:0]};                             // tlb map : ps 4kb
 

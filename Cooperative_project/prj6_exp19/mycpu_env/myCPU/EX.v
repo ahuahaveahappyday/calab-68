@@ -46,7 +46,15 @@ module EXEreg(
     input               s1_v,
 
     input  wire [18:0] csr_tlbehi_vppn,
-    input  wire [ 9:0] csr_asid
+    input  wire [ 9:0] csr_asid,
+    // addr translate
+    input wire          csr_crmd_pg,
+    input wire          csr_dmw0_plv_met,
+    input wire  [2:0]   csr_dmw0_pseg,
+    input wire  [2:0]   csr_dmw0_vseg,
+    input wire          csr_dmw1_plv_met,
+    input wire  [2:0]   csr_dmw1_pseg,
+    input wire  [2:0]   csr_dmw1_vseg
 
 );
 //ex模块需要的寄存器，寄存当前时钟周期的信号
@@ -103,7 +111,8 @@ module EXEreg(
     wire        wb_srch_conflict;
     wire        mem_excep_en;
     wire        mem_ertn_flush;
-    wire [31:0] ex_vaddr;            
+    wire [31:0] ex_vaddr; 
+    wire [31:0] sram_addr_pa;      
 
     // tlb relevant       
     wire [4:0]  ex_tlbsrch_res;    // {s1_found,s1_index} 
@@ -153,7 +162,7 @@ module EXEreg(
         .complete       (alu_complete)
     );
 // 发送访存请求----------------------------------------------------------------------------------------------------------------------------------------
-    assign data_sram_addr   =   ex_alu_result;
+    assign data_sram_addr   =   sram_addr_pa;
     assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
                                 |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
                                 |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
@@ -167,7 +176,7 @@ module EXEreg(
                                     |{4{ex_op_st_ld_h}} & (ex_data_sram_addr[1] ? 4'b1100 : 4'b0011)    // st.h
                                     |{4{ex_op_st_ld_w}} & 4'b1111;// st.w
 
-    assign ex_data_sram_addr= ex_alu_result[1:0];
+    assign ex_data_sram_addr= sram_addr_pa[1:0];
     assign ex_mem_req       =   (ex_res_from_mem | ex_mem_we) & ex_valid 
                                 & ~mem_excep_en & ~mem_ertn_flush         // mem级有异常
                                 & ~ex_excep_en  & ~ex_ertn_flush          // ex级有异常
@@ -228,16 +237,29 @@ module EXEreg(
                       {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
                       {32{~ex_read_counter}} & ex_alu_result;
 
-//TLB相关
+//TLB相关 ---------------------------------------------------------------------------------------------------------------------------
     assign ex_tlb_srch = ex_tlb_op[4];
     assign ex_tlb_inv  = ex_tlb_op[0];
     assign invtlb_op   = ex_invtlb_op;
-
     assign s1_asid       =  ex_tlb_inv ?  ex_alu_src1[9:0]  // alu src1 is rj value 
                             : csr_asid;
     assign {s1_vppn, s1_va_bit12} =   ex_tlb_inv ?  ex_rkd_value[31:12]     // rk
                                     : ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0}
                                     : ex_alu_result[31:12];     // data_sram_addr
     assign ex_tlbsrch_res = {s1_found,s1_index};
+    // addr translate
+    wire [31:0]                 sram_addr_map;
+    wire                        hit_dmw0;
+    wire                        hit_dmw1;
+    assign sram_addr_pa =       csr_crmd_pg ? sram_addr_map    // enable mapping
+                                :ex_alu_result;                    // direct translate
+                            
+    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == ex_alu_result[31:29];
+    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == ex_alu_result[31:29];
+
+    assign sram_addr_map =       hit_dmw0 ? {csr_dmw0_pseg, ex_alu_result[28:0]}         // dierct map windows 0
+                                :hit_dmw1? {csr_dmw1_pseg, ex_alu_result[28:0]}         // direct map windows 1
+                                :(s1_ps == 6'b010101) ? {s1_ppn[19:9], ex_alu_result[20:0]}   // tlb map: ps 4Mb
+                                :{s1_ppn,ex_alu_result[11:0]};                             // tlb map : ps 4kb
 
 endmodule

@@ -117,6 +117,9 @@ module mycpu_top
     wire         data_sram_addr_ok;
     wire         data_sram_data_ok;
     wire [31:0]  data_sram_rdata;
+    //--------------------------------------------------output from if ------------------------------------------
+    wire [18:0]                 if_s0_vppn;
+    wire                        if_s0_va_bit12;    
     // ----------------------------------------------   output from ex -------------------------------------------------------------
     // search tlb port 1
     wire [18:0]                 ex_s1_vppn;
@@ -200,8 +203,7 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
-    //--------------------------------------------------------------addr translate ------------------------------------------
-    wire [31:0]                 pre_pc_va;
+
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
@@ -222,7 +224,8 @@ module mycpu_top
         .if_to_id_bus       (if_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .wb_flush_entry     (wb_flush_entry),
-        .pre_pc_va          (pre_pc_va),
+        .s0_vppn            (if_s0_vppn),
+        .s0_va_bit12        (if_s0_va_bit12),    
         .csr_crmd_pg        (csr_output_pg),
         .csr_dmw0_plv_met   (csr_dmw0_plv_met),
         .csr_dmw0_pseg      (csr_output_dmw0_pseg),
@@ -294,7 +297,15 @@ module mycpu_top
         .s1_v               (s1_v),
 
         .csr_tlbehi_vppn    (csr_tlb_vppn),
-        .csr_asid           (csr_tlb_asid)
+        .csr_asid           (csr_tlb_asid),
+
+        .csr_crmd_pg        (csr_output_pg),
+        .csr_dmw0_plv_met   (csr_dmw0_plv_met),
+        .csr_dmw0_pseg      (csr_output_dmw0_pseg),
+        .csr_dmw0_vseg      (csr_output_dmw0_vseg),
+        .csr_dmw1_plv_met   (csr_dmw1_plv_met),
+        .csr_dmw1_pseg      (csr_output_dmw1_pseg),
+        .csr_dmw1_vseg      (csr_output_dmw1_vseg)
     );
 
     MEMreg my_memReg(
@@ -418,8 +429,8 @@ module mycpu_top
     tlb u_tlb(
         .clk                (aclk),
 
-        .s0_vppn            (pre_pc_va[31:13]),
-        .s0_va_bit12        (pre_pc_va[12]),
+        .s0_vppn            (if_s0_vppn),
+        .s0_va_bit12        (if_s0_va_bit12),
         .s0_asid            (csr_tlb_asid),
         .s0_found           (s0_found),
         .s0_index           (s0_index),
