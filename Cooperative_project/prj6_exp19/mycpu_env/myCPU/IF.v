@@ -256,7 +256,7 @@ module IFreg(
                                         :pre_if_excep_PIF? 6'h3 // pif
                                         :6'h7;   // ppi
     assign pre_if_esubcode =            9'b0;
-    assign pre_if_excep_en =            pre_if_excep_ADEF| pre_if_excep_TLBR;
+    assign pre_if_excep_en =            pre_if_excep_ADEF| pre_if_excep_TLBR | pre_if_excep_PIF | pre_if_excep_PPI;
     always @(posedge clk)begin
         if_excep_en  <=                 pre_if_excep_en;
         if_ecode <=                     pre_if_ecode;

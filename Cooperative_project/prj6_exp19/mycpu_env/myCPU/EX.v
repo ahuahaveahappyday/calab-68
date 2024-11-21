@@ -234,10 +234,10 @@ module EXEreg(
     assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
 
 // 异常处理
+    assign ex_excep_en =        ex_excep_ALE | ex_excep_TLBR|ex_excep_PIL| ex_excep_PIS| ex_excep_PPI|ex_excep_PME| id_excep_en;
     assign ex_excep_ALE =       (ex_res_from_mem | ex_mem_we) & 
                                     ((ex_op_st_ld_h & ex_alu_result[0]) 
                                     | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0])));     // 记录该条指令是否存在ALE异常
-    assign ex_excep_en =        ex_excep_ALE | id_excep_en;
     assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
     assign ex_excep_PIL =       (ex_res_from_mem) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
     assign ex_excep_PIS =       (ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
