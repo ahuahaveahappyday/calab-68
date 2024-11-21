@@ -61,7 +61,8 @@
 
 // ECODE
 `define ECODE_ADE 5'h8
-`define ECODE_ALE 5'h9    
+`define ECODE_ALE 5'h9
+`define ECODE_TLBR 5'h3f    
 // ESUBCODE
 `define ESUBCODE_ADEF 0
 module CSRfile #(
@@ -129,12 +130,14 @@ module CSRfile #(
     output wire                      csr_tlb_d1,
     output wire [               1:0] csr_tlb_mat1,
     output wire [               1:0] csr_tlb_plv1,
-    output wire [              19:0] csr_tlb_ppn1
+    output wire [              19:0] csr_tlb_ppn1,
+    // direct translate or mapping translate
+    output wire                      csr_output_pg
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
-    wire                      csr_crmd_da;
-    wire                      csr_crmd_pg;
+    reg                       csr_crmd_da;
+    reg                       csr_crmd_pg;
     wire                      csr_crmd_datf;
     wire                      csr_crmd_datm;
 
@@ -239,10 +242,25 @@ module CSRfile #(
     end
 
     // DA, PG, DATF, DATM
-    assign csr_crmd_da  =   1'b1;
-    assign csr_crmd_pg  =   1'b0;
+    always @(posedge clk)begin
+        if(~resetn)begin
+            csr_crmd_da <= 1'b1;
+            csr_crmd_pg <= 1'b0;
+        end
+        else if(wb_ex && wb_ecode == `ECODE_TLBR && wb_esubcode == 9'b0)begin   // tlb refill exception
+            csr_crmd_da <= 1'b1;
+            csr_crmd_pg <= 1'b0;
+        end
+        else if(ertn_flush && csr_estat_ecode == `ECODE_TLBR) begin
+            csr_crmd_da <= 1'b0;
+            csr_crmd_pg <= 1'b1;
+        end
+    
+    end
     assign csr_crmd_datf  = 2'b00;
     assign csr_crmd_datm  = 2'b00;
+
+    assign csr_output_pg =   csr_crmd_pg;
 
     /*---------------------------PRMD---------------------------------------------------*/
     always @(posedge clk)begin
