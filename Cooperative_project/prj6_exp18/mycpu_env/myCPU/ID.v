@@ -545,7 +545,8 @@ module IDreg(
     assign id_excep_INT     =   has_int;        // 记录中断信号
     assign id_excep_SYSCALL =   inst_syscall;   // 记录该条指令是否存在SYSCALL异常
     assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
-    assign id_excep_INE     =   no_inst;        // 记录该条指令是否存在INE异常
+    assign id_excep_INE     =   no_inst
+                                || (inst_invtlb && id_invtlb_op > 5'h06);        // 记录该条指令是否存在INE异常
     assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
     assign id_excep_esubcode =  9'h0;
 
