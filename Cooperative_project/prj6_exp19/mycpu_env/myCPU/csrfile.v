@@ -131,8 +131,14 @@ module CSRfile #(
     output wire [               1:0] csr_tlb_mat1,
     output wire [               1:0] csr_tlb_plv1,
     output wire [              19:0] csr_tlb_ppn1,
-    // direct translate or mapping translate
-    output wire                      csr_output_pg
+    // address translate
+    output wire                      csr_output_pg,
+    output wire                      csr_dmw0_plv_met,
+    output wire [               2:0] csr_output_dmw0_pseg,
+    output wire [               2:0] csr_output_dmw0_vseg,
+    output wire                      csr_dmw1_plv_met,
+    output wire [               2:0] csr_output_dmw1_pseg,
+    output wire [               2:0] csr_output_dmw1_vseg
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
@@ -556,30 +562,38 @@ module CSRfile #(
             csr_dmw0_vseg <=     csr_wmask[`CSR_DMW_VSEG] & csr_wvalue[`CSR_DMW_VSEG]
                                 | ~csr_wmask[`CSR_DMW_VSEG] & csr_dmw0_vseg;
         end
-end
+    end
 
-    always @(posedge clk)begin
-        if(~resetn)begin
-            csr_dmw1_plv0 <= 1'b0;
-            csr_dmw1_plv3 <= 1'b0;
-            csr_dmw1_mat <= 2'b0;
-            csr_dmw1_pseg <= 3'b0;
-            csr_dmw1_vseg <= 3'b0;
-        end
-        else if(csr_we && csr_num == `CSR_DMW1)begin
-            csr_dmw1_plv0 <=     csr_wmask[`CSR_DMW_PLV0] & csr_wvalue[`CSR_DMW_PLV0]
-                                | ~csr_wmask[`CSR_DMW_PLV0] & csr_dmw1_plv0;
-            csr_dmw1_plv3 <=     csr_wmask[`CSR_DMW_PLV3] & csr_wvalue[`CSR_DMW_PLV3]
-                                | ~csr_wmask[`CSR_DMW_PLV3] & csr_dmw1_plv3;
-            csr_dmw1_mat <=     csr_wmask[`CSR_DMW_MAT] & csr_wvalue[`CSR_DMW_MAT]
-                                | ~csr_wmask[`CSR_DMW_MAT] & csr_dmw1_mat;
-            csr_dmw1_pseg <=     csr_wmask[`CSR_DMW_PSEG] & csr_wvalue[`CSR_DMW_PSEG]
-                                | ~csr_wmask[`CSR_DMW_PSEG] & csr_dmw1_pseg;
-            csr_dmw1_vseg <=     csr_wmask[`CSR_DMW_VSEG] & csr_wvalue[`CSR_DMW_VSEG]
-                                | ~csr_wmask[`CSR_DMW_VSEG] & csr_dmw1_vseg;
-        end
-end
+        always @(posedge clk)begin
+            if(~resetn)begin
+                csr_dmw1_plv0 <= 1'b0;
+                csr_dmw1_plv3 <= 1'b0;
+                csr_dmw1_mat <= 2'b0;
+                csr_dmw1_pseg <= 3'b0;
+                csr_dmw1_vseg <= 3'b0;
+            end
+            else if(csr_we && csr_num == `CSR_DMW1)begin
+                csr_dmw1_plv0 <=     csr_wmask[`CSR_DMW_PLV0] & csr_wvalue[`CSR_DMW_PLV0]
+                                    | ~csr_wmask[`CSR_DMW_PLV0] & csr_dmw1_plv0;
+                csr_dmw1_plv3 <=     csr_wmask[`CSR_DMW_PLV3] & csr_wvalue[`CSR_DMW_PLV3]
+                                    | ~csr_wmask[`CSR_DMW_PLV3] & csr_dmw1_plv3;
+                csr_dmw1_mat <=     csr_wmask[`CSR_DMW_MAT] & csr_wvalue[`CSR_DMW_MAT]
+                                    | ~csr_wmask[`CSR_DMW_MAT] & csr_dmw1_mat;
+                csr_dmw1_pseg <=     csr_wmask[`CSR_DMW_PSEG] & csr_wvalue[`CSR_DMW_PSEG]
+                                    | ~csr_wmask[`CSR_DMW_PSEG] & csr_dmw1_pseg;
+                csr_dmw1_vseg <=     csr_wmask[`CSR_DMW_VSEG] & csr_wvalue[`CSR_DMW_VSEG]
+                                    | ~csr_wmask[`CSR_DMW_VSEG] & csr_dmw1_vseg;
+            end
+    end
 
+    assign csr_dmw0_plv_met =       (csr_crmd_plv == 2'b01) && csr_dmw0_plv0
+                                    || (csr_crmd_plv ==2'b11) && csr_dmw0_plv3; 
+    assign csr_output_dmw0_pseg =   csr_dmw0_pseg;
+    assign csr_output_dmw0_vseg =   csr_dmw0_vseg;
+    assign csr_dmw1_plv_met =       (csr_crmd_plv == 2'b01) && csr_dmw1_plv0
+                                    || (csr_crmd_plv ==2'b11) && csr_dmw1_plv3; 
+    assign csr_output_dmw1_pseg =   csr_dmw1_pseg;
+    assign csr_output_dmw1_vseg =   csr_dmw1_vseg;
 
     // read csr value---------------------------------
     wire [31:0] csr_crmd_rvalue;

@@ -158,12 +158,15 @@ module mycpu_top
     wire [               1:0] csr_tlb_plv1;
     wire [              19:0] csr_tlb_ppn1;
 
-
+    wire                      csr_output_pg;
+    wire                      csr_dmw0_plv_met;
+    wire [               2:0] csr_output_dmw0_pseg;
+    wire [               2:0] csr_output_dmw0_vseg;
+    wire                      csr_dmw1_plv_met;
+    wire [               2:0] csr_output_dmw1_pseg;
+    wire [               2:0] csr_output_dmw1_vseg;
     //----------------------------------------------------- output from tlb --------------------------------------------------------------
     // search port 0 (for fetch)
-    wire [18:0]                 s0_vppn;
-    wire                        s0_va_bit12;
-    wire [9:0]                  s0_asid;
     wire                        s0_found;
     wire [$clog2(TLBNUM)-1:0]   s0_index;
     wire [19:0]                 s0_ppn;
@@ -197,7 +200,8 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
-
+    //--------------------------------------------------------------addr translate ------------------------------------------
+    wire [31:0]                 pre_pc_va;
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
@@ -217,7 +221,22 @@ module mycpu_top
         .if_to_id_valid     (if_to_id_valid),
         .if_to_id_bus       (if_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
-        .wb_flush_entry      (wb_flush_entry)
+        .wb_flush_entry     (wb_flush_entry),
+        .pre_pc_va          (pre_pc_va),
+        .csr_crmd_pg        (csr_output_pg),
+        .csr_dmw0_plv_met   (csr_dmw0_plv_met),
+        .csr_dmw0_pseg      (csr_output_dmw0_pseg),
+        .csr_dmw0_vseg      (csr_output_dmw0_vseg),
+        .csr_dmw1_plv_met   (csr_dmw1_plv_met),
+        .csr_dmw1_pseg      (csr_output_dmw1_pseg),
+        .csr_dmw1_vseg      (csr_output_dmw1_vseg),
+        .s0_found           (s0_found),
+        .s0_ppn             (s0_ppn),
+        .s0_ps              (s0_ps),
+        .s0_plv             (s0_plv),
+        .s0_d               (s0_d),
+        .s0_v               (s0_v)
+    
     );
 
     IDreg my_idReg(
@@ -383,16 +402,25 @@ module mycpu_top
         .csr_tlb_d1         (csr_tlb_d1),
         .csr_tlb_mat1       (csr_tlb_mat1),
         .csr_tlb_plv1       (csr_tlb_plv1),
-        .csr_tlb_ppn1       (csr_tlb_ppn1)
+        .csr_tlb_ppn1       (csr_tlb_ppn1),
+
+        .csr_output_pg      (csr_output_pg),
+        .csr_dmw0_plv_met   (csr_dmw0_plv_met),
+        .csr_output_dmw0_pseg(csr_output_dmw0_pseg),
+        .csr_output_dmw0_vseg(csr_output_dmw0_vseg),
+        .csr_dmw1_plv_met   (csr_dmw1_plv_met),
+        .csr_output_dmw1_pseg(csr_output_dmw1_pseg),
+        .csr_output_dmw1_vseg(csr_output_dmw1_vseg)
+
     );
 
     //----------------------------- TLB ------------------------------------------------------------------------------------
     tlb u_tlb(
         .clk                (aclk),
 
-        .s0_vppn            (s0_vppn),
-        .s0_va_bit12        (s0_va_bit12),
-        .s0_asid            (s0_asid),
+        .s0_vppn            (pre_pc_va[31:13]),
+        .s0_va_bit12        (pre_pc_va[12]),
+        .s0_asid            (csr_tlb_asid),
         .s0_found           (s0_found),
         .s0_index           (s0_index),
         .s0_ppn             (s0_ppn),

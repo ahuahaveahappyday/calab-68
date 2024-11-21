@@ -19,13 +19,29 @@ module IFreg(
     output wire [65:0]  if_to_id_bus,//{if_inst, if_pc}
     //etrn清空流水线
     input  wire         flush,
-    input  wire [31:0]  wb_flush_entry
+    input  wire [31:0]  wb_flush_entry,
+    // 虚实地址转换
+    output wire [31:0]  pre_pc,
+    input wire          csr_crmd_pg,
+    input wire          csr_dmw0_plv_met,
+    input wire  [2:0]   csr_dmw0_pseg,
+    input wire  [2:0]   csr_dmw0_vseg,
+    input wire          csr_dmw1_plv_met,
+    input wire  [2:0]   csr_dmw1_pseg,
+    input wire  [2:0]   csr_dmw1_vseg,
+    input  wire                        s0_found,
+    input  wire [19:0]                 s0_ppn,
+    input  wire [5:0]                  s0_ps,
+    input  wire [1:0]                  s0_plv,
+    input  wire                        s0_d,
+    input  wire                        s0_v
+
 );
     reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
 
     reg  [31:0] if_pc;
 
-    wire [31:0] if_inst;//wire信号，在ID被寄存
+    wire [31:0] if_inst;
 
     reg  [31:0] if_ir;
     reg         if_ir_valid;
@@ -37,7 +53,7 @@ module IFreg(
     wire        to_if_valid;
 
     wire [31:0] seq_pc;
-    wire [31:0] pre_pc;
+    wire [31:0] pre_pc_pa;
 
 //branch类指令的信号和目标地址，来自ID模块
     wire         br_taken;
@@ -59,7 +75,7 @@ module IFreg(
 //----------------------------------------------------------------------------------------------------------------------------------------------
 
     reg         pre_if_reqed_reg;
-    reg  [31:0] pre_if_ir;      // inst_reg
+    reg  [31:0] pre_if_ir;
     reg         pre_if_ir_valid;
 //===============================================流水线控制信号和数据交互
     /* if 级的握手信号*/
@@ -73,7 +89,6 @@ module IFreg(
     end
     assign if_ready_go      =    if_ir_valid
                                 |inst_sram_data_ok;
-                                // |if_allowin & pre_if_readygo & pre_if_ir_valid;  
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 
     assign if_allowin       =   ~if_valid 
@@ -115,7 +130,7 @@ module IFreg(
                                     | if_ir_valid         // 上一个请求已经返回，且未进入id级
                                     | if_allowin)     // 上一个请求已经返回，且已经进入id级
                                 & ~br_stall;        // 转移计算已经完成
-    assign inst_sram_addr   =   pre_pc;
+    assign inst_sram_addr   =   pre_pc_pa;
 
     /* 控制信号和寄存器 */
     assign seq_pc           =   if_pc + 3'h4;  
@@ -203,6 +218,20 @@ module IFreg(
         else if(if_ready_go & id_allowin)
             if_ir_valid <= 1'b0;
     end
+// =============================================虚实地址转换
+    wire [31:0]                 pre_pc_map;
+    wire                        hit_dmw0;
+    wire                        hit_dmw1;
+    assign pre_pc_pa =          csr_crmd_pg ? pre_pc_map    // enable mapping
+                                :pre_pc;                    // direct translate
+                            
+    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == pre_pc[31:29];
+    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == pre_pc[31:29];
+
+    assign pre_pc_map =         hit_dmw0 ? {csr_dmw0_pseg, pre_pc_pa[28:0]}         // dierct map windows 0
+                                :hit_dmw1? {csr_dmw1_pseg, pre_pc_pa[28:0]}         // direct map windows 1
+                                :(s0_ps == 6'b010101) ? {s0_ppn[19:9], pre_pc[20:0]}   // tlb map: ps 4Mb
+                                :{s0_ppn,pre_pc[11:0]};                             // tlb map : ps 4kb
 
 //====================================================取指地址错异常处理
     assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
