@@ -9,7 +9,7 @@ module EXEreg(
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [251:0]ex_to_mem_bus,
+    output wire [250:0]ex_to_mem_bus,
     input  wire [2:0]  mem_to_ex_bus,   // 
     //ex与wb模块交互接口
     input  wire        wb_to_ex_bus,

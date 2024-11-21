@@ -54,7 +54,7 @@ module IFreg(
     reg         if_excep_ADEF;
 
     reg          flush_reg;
-    reg  [ 31:0] excep_entry_reg;
+    reg  [ 31:0] flush_entry_reg;
     reg          inst_cancel;
 //----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ module IFreg(
 
     /* 控制信号和寄存器 */
     assign seq_pc           =   if_pc + 3'h4;  
-    assign pre_pc           =   flush_reg ? excep_entry_reg
+    assign pre_pc           =   flush_reg ? flush_entry_reg
                                 : flush ? wb_flush_entry
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
@@ -141,11 +141,11 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)begin
             flush_reg <= 1'b0;
-            excep_entry_reg <= 32'b0;
+            flush_entry_reg <= 32'b0;
         end
         else if((~inst_sram_req | ~inst_sram_addr_ok) & flush)begin
             flush_reg <= 1'b1;
-            excep_entry_reg <= wb_flush_entry;
+            flush_entry_reg <= wb_flush_entry;
         end
         else if(inst_sram_req & inst_sram_addr_ok)
             flush_reg <= 1'b0;

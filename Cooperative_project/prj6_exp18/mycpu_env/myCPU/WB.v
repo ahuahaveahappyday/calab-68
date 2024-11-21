@@ -31,19 +31,18 @@ module WBreg(
     output reg  [31:0] wb_vaddr,
     //  传给if级的跳转地址
     output wire [31:0] wb_flush_entry,
-
+    // 刷新流水线
     output wire        ertn_flush,
-
+    output wire         wb_refetch_flush,
+    // tlb op
     output wire        wb_tlb_wr,
     output wire        wb_tlb_fill,
     output wire        wb_tlb_rd,
     // tlbsrch
     output wire        wb_tlbsrch_en,
     output wire        wb_tlbsrch_found,
-    output wire [3:0]  wb_tlbsrch_idx,
+    output wire [3:0]  wb_tlbsrch_idx
 
-    // refetch
-    output wire         wb_refetch_flush
 );
     
     wire        wb_ready_go;
@@ -80,7 +79,6 @@ module WBreg(
 
 
     wire [31:0] final_rf_wdata;
-    wire        wb_refetch;
 
 //流水线控制信号
     assign wb_ready_go      = 1'b1;

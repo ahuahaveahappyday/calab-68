@@ -4,7 +4,7 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [251:0]ex_to_mem_bus, 
+    input  wire [250:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
@@ -98,7 +98,7 @@ module MEMreg(
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
              ,mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= 252'b0;
+             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= 251'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
