@@ -114,7 +114,7 @@ module EXEreg(
     assign ex_to_mem_valid  = ex_valid & ex_ready_go;
     assign block            =( ex_tlb_op[4] & mem_srch_conflict) |(ex_tlb_op[4] & wb_srch_conflict);
 
-//EX流水级需要的寄存器，根据clk不断更新
+//EX流水级接受从id级传递的数据----------------------------------------------------------------------------------------------------------------------------------------
     always @(posedge clk) begin
         if(~resetn)
             ex_valid <= 1'b0;
@@ -142,7 +142,7 @@ module EXEreg(
              }     <= id_to_ex_bus;    
     end
 
-//alu的实例化
+//alu的实例化----------------------------------------------------------------------------------------------------------------------------------------
     alu u_alu(
         .clk            (clk       ),
         .resetn         (resetn & ~flush & ~(id_to_ex_valid & ex_allowin)),
@@ -152,15 +152,8 @@ module EXEreg(
         .alu_result     (ex_alu_result),
         .complete       (alu_complete)
     );
-// 来自mem和wb的异常数据
-    assign wb_srch_conflict = wb_to_ex_bus; 
-    assign {mem_excep_en,mem_ertn_flush,mem_srch_conflict} = mem_to_ex_bus;
-// 寄存器写回数据来自wb级
-    assign ex_res_from_wb  = ex_csr_re;
-//模块间通信
-
-    //与内存交互接口定义
-    assign data_sram_addr   =   ex_alu_result;//由于为同步ram，需要两个时钟周期才能读存储器，因此提前一拍将addr发送出去，这样mem阶段才能收到读dram的结果
+// 发送访存请求----------------------------------------------------------------------------------------------------------------------------------------
+    assign data_sram_addr   =   ex_alu_result;
     assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
                                 |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
                                 |{32{ex_op_st_ld_w}} & ex_rkd_value[31:0];
@@ -179,7 +172,12 @@ module EXEreg(
                                 & ~mem_excep_en & ~mem_ertn_flush         // mem级有异常
                                 & ~ex_excep_en  & ~ex_ertn_flush          // ex级有异常
                                 & ~flush;                                 // wb级报出异常
-
+//模块间通信----------------------------------------------------------------------------------------------------------------------------------------
+// 来自mem和wb的异常数据
+    assign wb_srch_conflict = wb_to_ex_bus; 
+    assign {mem_excep_en,mem_ertn_flush,mem_srch_conflict} = mem_to_ex_bus;
+// 寄存器写回数据来自wb级
+    assign ex_res_from_wb  = ex_csr_re;
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
                                 ex_rf_we & ex_valid, 
