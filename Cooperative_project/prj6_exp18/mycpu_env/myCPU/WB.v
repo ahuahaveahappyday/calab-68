@@ -145,9 +145,9 @@ module WBreg(
     assign wb_tlb_fill =  wb_tlb_op[2];
     assign wb_tlb_rd   =  wb_tlb_op[1];
     // tlbsrch
-    assign tlbsrch_en  =  wb_tlb_op[4];
-    assign tlbsrch_found= wb_tlbsrch_res[4];
-    assign tlbsrch_idx =  wb_tlbsrch_res[3:0];
+    assign wb_tlbsrch_en  =  wb_tlb_op[4];
+    assign wb_tlbsrch_found= wb_tlbsrch_res[4];
+    assign wb_tlbsrch_idx =  wb_tlbsrch_res[3:0];
 
 // refetch sign
     assign wb_refetch_flush =   wb_valid && (wb_tlb_op[3]   // inst_tlbwr
