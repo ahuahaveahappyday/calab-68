@@ -159,7 +159,7 @@ module MEMreg(
                             mem_srch_conflict,             //1bit
                             mem_tlbsrch_res             // 5 bit
                             };        
-    assign mem_to_ex_bus  = {(mem_excep_en|| mem_refetch) & mem_valid , mem_ertn_flush, mem_srch_conflict};    
+    assign mem_to_ex_bus  = {(mem_excep_en|| mem_refetch) & mem_valid , mem_ertn_flush, mem_srch_conflict & mem_valid};    
 
 //异常处理
     assign mem_excep_en = ex_excep_en;
