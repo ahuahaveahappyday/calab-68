@@ -39,7 +39,6 @@ module MEMreg(
 
     reg  [4:0]  mem_tlb_op;
     reg         mem_srch_conflict;
-    reg         mem_inst_refetch;
 
     reg         mem_csr_re;
     reg         mem_csr_we;
@@ -98,7 +97,7 @@ module MEMreg(
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE, mem_excep_INT
              ,mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= 251'b0;
+             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= 251'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
@@ -107,7 +106,7 @@ module MEMreg(
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              ex_excep_en, mem_excep_ADEF, mem_excep_SYSCALL, mem_excep_ALE, mem_excep_BRK, mem_excep_INE,mem_excep_INT
              , mem_excep_esubcode,mem_vaddr,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict,mem_inst_refetch, mem_tlbsrch_res} <= ex_to_mem_bus;
+             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= ex_to_mem_bus;
         end
     end
 // 寄存器写回数据来自wb级
