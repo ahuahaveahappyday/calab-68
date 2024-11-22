@@ -622,11 +622,11 @@ module CSRfile #(
             end
     end
 
-    assign csr_dmw0_plv_met =       (csr_crmd_plv == 2'b01) && csr_dmw0_plv0
+    assign csr_dmw0_plv_met =       (csr_crmd_plv == 2'b00) && csr_dmw0_plv0
                                     || (csr_crmd_plv ==2'b11) && csr_dmw0_plv3; 
     assign csr_output_dmw0_pseg =   csr_dmw0_pseg;
     assign csr_output_dmw0_vseg =   csr_dmw0_vseg;
-    assign csr_dmw1_plv_met =       (csr_crmd_plv == 2'b01) && csr_dmw1_plv0
+    assign csr_dmw1_plv_met =       (csr_crmd_plv == 2'b00) && csr_dmw1_plv0
                                     || (csr_crmd_plv ==2'b11) && csr_dmw1_plv3; 
     assign csr_output_dmw1_pseg =   csr_dmw1_pseg;
     assign csr_output_dmw1_vseg =   csr_dmw1_vseg;
