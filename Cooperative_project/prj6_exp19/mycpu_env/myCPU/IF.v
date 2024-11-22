@@ -16,7 +16,7 @@ module IFreg(
     input  wire         id_allowin,
     input  wire [33:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
-    output wire [79:0]  if_to_id_bus,
+    output wire [111:0]  if_to_id_bus,
     //etrn清空流水线
     input  wire         flush,
     input  wire [31:0]  wb_flush_entry,
@@ -51,6 +51,7 @@ module IFreg(
     reg         if_excep_en;
     reg  [ 5:0] if_ecode;
     reg  [ 8:0] if_esubcode;
+    reg  [31:0] if_badv;
 //流水控制信号
     wire        if_ready_go;
     wire        if_allowin;
@@ -106,7 +107,8 @@ module IFreg(
                                                     if_pc,          // 32 bit 
                                                     if_excep_en,    // 1 bit
                                                     if_ecode,       // 6 bit
-                                                    if_esubcode     // 9 bit
+                                                    if_esubcode,     // 9 bit
+                                                    if_badv
                                                     };         
 
     /* 清空流水线时，第一个指令需要丢弃*/
@@ -258,9 +260,18 @@ module IFreg(
     assign pre_if_esubcode =            9'b0;
     assign pre_if_excep_en =            pre_if_excep_ADEF| pre_if_excep_TLBR | pre_if_excep_PIF | pre_if_excep_PPI;
     always @(posedge clk)begin
-        if_excep_en  <=                 pre_if_excep_en;
-        if_ecode <=                     pre_if_ecode;
-        if_esubcode <=                  pre_if_esubcode;
+        if(~resetn)begin
+            if_excep_en  <=                 1'b0;
+            if_ecode <=                     6'b0;
+            if_esubcode <=                  9'b0;
+            if_badv <=                      32'b0;            
+        end
+        else if(if_allowin & pre_if_readygo)begin
+            if_excep_en  <=                 pre_if_excep_en;
+            if_ecode <=                     pre_if_ecode;
+            if_esubcode <=                  pre_if_esubcode;
+            if_badv <=                      pre_pc;
+        end
     end
 
 endmodule

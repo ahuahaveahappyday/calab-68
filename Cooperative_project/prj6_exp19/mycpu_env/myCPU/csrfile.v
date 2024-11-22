@@ -58,11 +58,17 @@
 `define CSR_DMW_MAT 5:4
 `define CSR_DMW_PSEG 27:25
 `define CSR_DMW_VSEG 31:29
+`define CSR_BADV_VADDR 31:0
 
 // ECODE
 `define ECODE_ADE 6'h8
 `define ECODE_ALE 6'h9
-`define ECODE_TLBR 6'h3f    
+`define ECODE_TLBR 6'h3f 
+`define ECODE_PIL 6'h1
+`define ECODE_PIS 6'h2
+`define ECDOE_PIF 6'h3
+`define ECODE_PME 6'h4
+`define ECODE_PPI 6'h7   
 // ESUBCODE
 `define ESUBCODE_ADEF 0
 module CSRfile #(
@@ -86,7 +92,7 @@ module CSRfile #(
     input  wire [               5:0] wb_ecode,
     input  wire [               8:0] wb_esubcode,
     input  wire [              31:0] wb_pc,
-    input  wire [              31:0] wb_vaddr,
+    input  wire [              31:0] wb_badv,
     // inst (ertn) from wb
     input  wire                      ertn_flush,
     // Sampling each interrupt source each clk
@@ -354,12 +360,16 @@ module CSRfile #(
 
 
     /*---------------------------BADV---------------------------------------------------*/
-    wire wb_ex_addr_err = wb_ecode == `ECODE_ADE || wb_ecode == `ECODE_ALE;
+    wire wb_ex_addr_err = wb_ecode == `ECODE_ADE || wb_ecode == `ECODE_ALE || wb_ecode == `ECODE_TLBR || wb_ecode == `ECODE_PIL
+                        || wb_ecode == `ECODE_PIS || wb_ecode == `ECDOE_PIF || wb_ecode == `ECODE_PME || wb_ecode == `ECODE_PPI;
     always @(posedge clk)begin
-        if(wb_ex && wb_ex_addr_err)
-            csr_badv_vaddr <=       (wb_ecode == `ECODE_ADE && wb_esubcode == `ESUBCODE_ADEF) ?
-                                    wb_pc           //  inst fecth error
-                                    :wb_vaddr;      // mem access error and so on
+        if(~resetn)
+            csr_badv_vaddr <=       32'b0;
+        else if(wb_ex && wb_ex_addr_err)
+            csr_badv_vaddr <=   wb_badv;
+        else if(csr_we && csr_num == `CSR_BADV)
+            csr_badv_vaddr <=       csr_wmask[`CSR_BADV_VADDR]  & csr_wvalue[`CSR_BADV_VADDR]
+                                | ~csr_wmask[`CSR_BADV_VADDR]  & csr_badv_vaddr;
     end
 
     /*---------------------------EENTRY---------------------------------------------------*/

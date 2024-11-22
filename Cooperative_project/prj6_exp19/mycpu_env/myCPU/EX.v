@@ -4,7 +4,7 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [237:0] id_to_ex_bus,
+    input wire [269:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -90,6 +90,7 @@ module EXEreg(
     reg  [8:0]  id_esubcode;
     reg  [5:0]  id_ecode;
     reg         id_excep_en;
+    reg [31:0]  id_badv;
     
     wire [31:0] ex_alu_result;
     wire        alu_complete;
@@ -106,7 +107,7 @@ module EXEreg(
     wire        mem_ertn_flush;
     wire        ex_ready_go;
     wire        block;
-    wire [31:0] ex_vaddr; 
+    wire [31:0] ex_badv; 
     wire [31:0] sram_addr_pa;      
     // 虚实地址转换
     wire [31:0]                 sram_addr_map;
@@ -147,15 +148,15 @@ module EXEreg(
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc,
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, id_esubcode, id_ecode,
+              id_excep_en, id_esubcode, id_ecode,id_badv,
               ex_tlb_op,ex_srch_conflict,ex_invtlb_op
-              }       <= 238'b0;
+              }       <= 270'b0;
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
-              id_excep_en, id_esubcode, id_ecode,
+              id_excep_en, id_esubcode, id_ecode,id_badv,
              ex_tlb_op,ex_srch_conflict,ex_invtlb_op
              }     <= id_to_ex_bus;    
     end
@@ -223,7 +224,7 @@ module EXEreg(
                                 ex_excep_en,                 // 1 bit
                                 ex_esubcode,          // 9 bit
                                 ex_ecode,               // 6 bit
-                                ex_vaddr,                     //32bit
+                                ex_badv,                     //32bit
                                 ex_mem_req,                  //1 bit 
                                 ex_tlb_op,                  //5 bit
                                 ex_srch_conflict,            //1 bit
@@ -244,9 +245,8 @@ module EXEreg(
     assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv > csr_crmd_plv);
     assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv <= csr_crmd_plv) & ~s1_d;
     
-    assign ex_vaddr =           {32{ex_read_counter && ~ex_read_counter_low}} & counter[63:32] | 
-                                {32{ex_read_counter && ex_read_counter_low}}  & counter[31: 0] |
-                                {32{~ex_read_counter}} & ex_alu_result;
+    assign ex_badv =            (id_excep_en) ? id_badv
+                                : ex_alu_result;
     assign ex_esubcode =        (id_excep_en) ? id_esubcode
                                 :9'b0;
     assign ex_ecode =           (id_excep_en) ? id_ecode

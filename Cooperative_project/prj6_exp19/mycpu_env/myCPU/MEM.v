@@ -45,7 +45,7 @@ module MEMreg(
     reg [8:0]   mem_esubcode;
     reg [5:0]   mem_ecode;
     reg         mem_excep_en;
-    reg [31:0]  mem_vaddr;
+    reg [31:0]  mem_badv;
     reg [4:0]   mem_tlbsrch_res;
 
 // 流水级控制信号
@@ -85,7 +85,7 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr,
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             mem_excep_en, mem_esubcode, mem_ecode, mem_vaddr,mem_sram_requed,
+             mem_excep_en, mem_esubcode, mem_ecode, mem_badv,mem_sram_requed,
              mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= 251'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
@@ -93,7 +93,7 @@ module MEMreg(
             mem_alu_result,mem_rkd_value, mem_data_sram_addr, 
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
-             mem_excep_en, mem_esubcode, mem_ecode, mem_vaddr,mem_sram_requed,
+             mem_excep_en, mem_esubcode, mem_ecode, mem_badv,mem_sram_requed,
              mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= ex_to_mem_bus;
         end
     end
@@ -137,7 +137,7 @@ module MEMreg(
                             mem_excep_en,               // 1 bit
                             mem_esubcode,          // 9 bit
                             mem_ecode,              // 6 bit
-                            mem_vaddr,                   //32bit
+                            mem_badv,                   //32bit
                             mem_tlb_op,                  //5 bit
                             mem_srch_conflict,             //1bit
                             mem_tlbsrch_res             // 5 bit

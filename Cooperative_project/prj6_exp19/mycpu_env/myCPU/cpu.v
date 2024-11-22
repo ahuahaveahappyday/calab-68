@@ -85,7 +85,7 @@ module mycpu_top
     wire [5:0] wb_ecode;
     wire [8:0] wb_esubcode;
     wire [31:0] wb_pc;
-    wire [31:0] wb_vaddr;
+    wire [31:0] wb_badv;
 
     wire ertn_flush;
     wire [7:0] hw_int_in;
@@ -350,7 +350,7 @@ module mycpu_top
         .wb_ecode           (wb_ecode),
         .wb_esubcode        (wb_esubcode),
         .wb_ex_pc           (wb_pc),
-        .wb_vaddr           (wb_vaddr),
+        .wb_badv           (wb_badv),
         .wb_flush_entry      (wb_flush_entry),
         .wb_tlb_wr          (wb_tlbwr_en),
         .wb_tlb_fill        (wb_tlbfill_en),
@@ -374,7 +374,7 @@ module mycpu_top
         .wb_ecode           (wb_ecode),
         .wb_esubcode        (wb_esubcode),
         .wb_pc              (wb_pc),
-        .wb_vaddr           (wb_vaddr),
+        .wb_badv           (wb_badv),
         .ertn_flush         (ertn_flush),
         .hw_int_in          (hw_int_in),
         .ipi_int_in         (ipi_int_in),

@@ -28,7 +28,7 @@ module WBreg(
     output wire [5:0]  wb_ecode,
     output wire [8:0]  wb_esubcode,
     output wire [31:0] wb_ex_pc,
-    output reg  [31:0] wb_vaddr,
+    output reg  [31:0] wb_badv,
     //  传给if级的跳转地址
     output wire [31:0] wb_flush_entry,
     // 刷新流水线
@@ -91,13 +91,13 @@ module WBreg(
         if(~resetn) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush
-            ,wb_excep_en,wb_esubcode_reg,wb_ecode_reg,wb_vaddr,
+            ,wb_excep_en,wb_esubcode_reg,wb_ecode_reg,wb_badv,
             wb_tlb_op,wb_srch_conflict, wb_tlbsrch_res} <= 211'b0;
         end
         if(mem_to_wb_valid & wb_allowin) begin
             {wb_rf_we, wb_rf_waddr, wb_rf_wdata,wb_pc, wb_read_TID,
             wb_csr_re,wb_csr_we,wb_csr_num, wb_csr_wmask,wb_csr_wvalue, wb_ertn_flush,
-            wb_excep_en,wb_esubcode_reg,wb_ecode_reg,wb_vaddr,
+            wb_excep_en,wb_esubcode_reg,wb_ecode_reg,wb_badv,
             wb_tlb_op,wb_srch_conflict, wb_tlbsrch_res} <= mem_to_wb_bus;
         end
     end

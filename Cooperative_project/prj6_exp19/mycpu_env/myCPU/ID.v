@@ -5,7 +5,7 @@ module IDreg(
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
     output wire [33:0]            id_to_if_bus,//{br_taken, br_target}
-    input  wire [79:0]            if_to_id_bus,
+    input  wire [111:0]            if_to_id_bus,
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
@@ -197,6 +197,7 @@ module IDreg(
     wire        id_excep_INE;
     wire [8:0]  id_esubcode;
     wire [5:0]  id_ecode;
+    reg [31:0] id_badv;
 
     reg        if_excep_en;
     reg  [5:0] if_ecode;
@@ -224,9 +225,9 @@ module IDreg(
     end
     always @(posedge clk) begin
         if(~resetn)
-            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode} <= 80'b0;
+            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode, id_badv} <= 112'b0;
         if(if_to_id_valid & id_allowin) begin
-            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode} <= if_to_id_bus;
+            {id_inst, id_pc, if_excep_en, if_ecode,if_esubcode, id_badv} <= if_to_id_bus;
         end
     end
 
@@ -261,6 +262,7 @@ module IDreg(
                            id_excep_en,          // 1 bit
                            id_esubcode,     // 9 bit
                            id_ecode,        // 6 bit
+                           id_badv,         // 32 bit
                            id_tlb_op,             //5 bit
                            id_srch_conflict,       //1 bit
                            id_invtlb_op             //5 bit
