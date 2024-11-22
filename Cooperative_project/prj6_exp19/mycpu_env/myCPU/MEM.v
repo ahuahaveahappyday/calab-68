@@ -152,6 +152,10 @@ module MEMreg(
                             || mem_tlb_op[2]    // inst_tlbfill
                             || mem_tlb_op[1]    // inst_tlbrd
                             || mem_tlb_op[0]   // inst_invtlb
+                            || (mem_csr_we && (mem_csr_num ==14'h18 // ASID
+                                            || mem_csr_num ==14'h0 // CRMD
+                                            || mem_csr_num ==14'h180// DMW0
+                                            ||mem_csr_num ==14'h181))// DMW1
                             ;
 
 endmodule
