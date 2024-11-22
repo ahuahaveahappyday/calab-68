@@ -252,7 +252,7 @@ module IFreg(
     assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
     assign pre_if_excep_TLBR   =        csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
     assign pre_if_excep_PIF =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
-    assign pre_if_excep_PPI =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (s0_plv > csr_crmd_plv);
+    assign pre_if_excep_PPI =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (csr_crmd_plv > s0_plv);
     assign pre_if_ecode =               pre_if_excep_ADEF?  6'h08   // adef
                                         :pre_if_excep_TLBR?6'h3f  // tlbr
                                         :pre_if_excep_PIF? 6'h3 // pif

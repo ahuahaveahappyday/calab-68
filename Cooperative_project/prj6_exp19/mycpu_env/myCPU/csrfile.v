@@ -483,6 +483,10 @@ module CSRfile #(
             csr_tlbehi_vppn <= 19'b0;
         else if(tlbrd_en)
             csr_tlbehi_vppn <= {19{tlbrd_valid}} & tlbrd_vppn;
+        else if( wb_ex & (wb_ecode == `ECODE_TLBR || wb_ecode == `ECODE_PIL|| wb_ecode == `ECODE_PIS 
+                    || wb_ecode == `ECDOE_PIF || wb_ecode == `ECODE_PME || wb_ecode == `ECODE_PPI))
+            csr_tlbehi_vppn <= wb_badv[31:13];
+
         else if(csr_we && csr_num == `CSR_TLBEHI)
             csr_tlbehi_vppn <=     csr_wmask[`CSR_TLBEHI_VPPN]  & csr_wvalue[`CSR_TLBEHI_VPPN]
                                 | ~csr_wmask[`CSR_TLBEHI_VPPN]  & csr_tlbehi_vppn;  
