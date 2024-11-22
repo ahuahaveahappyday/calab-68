@@ -139,14 +139,15 @@ module WBreg(
     assign wb_tlbsrch_idx =  wb_tlbsrch_res[3:0];
 
 // refetch sign
-    assign wb_refetch_flush =    wb_tlb_op[3]   // inst_tlbwr
+    assign wb_refetch_flush =    wb_valid && 
+                                (wb_tlb_op[3]   // inst_tlbwr
                                 || wb_tlb_op[2]    // inst_tlbfill
                                 || wb_tlb_op[1]    // inst_tlbrd
                                 || wb_tlb_op[0]   // inst_invtlb
                                 || (wb_csr_we && (wb_csr_num ==14'h18 // ASID
                                             || wb_csr_num ==14'h0 // CRMD
                                             || wb_csr_num ==14'h180// DMW0
-                                            ||wb_csr_num ==14'h181));// DMW1
+                                            ||wb_csr_num ==14'h181)));// DMW1
     assign wb_flush_entry =     (wb_ex || ertn_flush) ? csr_rvalue                // Higher priority
                                 :wb_pc + 32'd4;
 endmodule
