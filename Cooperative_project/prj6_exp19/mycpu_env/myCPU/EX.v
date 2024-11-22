@@ -254,7 +254,7 @@ module EXEreg(
                                 :ex_excep_TLBR ?6'h3f     // tlb refill
                                 :ex_excep_PIL ?6'h1
                                 :ex_excep_PIS ?6'h2
-                                :ex_excep_PPI ?6'h0
+                                :ex_excep_PPI ?6'h7
                                 :6'h4;  // pme
 
 //TLB相关 ---------------------------------------------------------------------------------------------------------------------------
