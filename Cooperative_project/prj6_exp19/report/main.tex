@@ -103,14 +103,105 @@ $\bullet$
 $\bullet$
 \textbf{添加TLB相关指令和CSR寄存器}。
 \vspace{1ex}
+\begin{enumerate}
+  \item 添加TLB相关指令和CSR寄存器
+
+\item 
+\end{enumerate}
 
 
 \noindent
 $\bullet$
-\textbf{添加TLB相关例外支持}。
+\textbf{添加TLB相关例外支持，添加虚实地址映射功能}。
 \vspace{1ex}
+\begin{enumerate}
+  \item 为cpu增加虚实映射功能
+  
+  在if和ex级发出访存请求的虚拟地址，同时送往直接地址翻译，直接窗口映射和tlb地址映射翻译三处，同时进行各自的
+  虚实地址转换，然后再根据CSR寄存器中的值进行选择。
+
+  以if级发出指令访存信号为例，通过组合逻辑，在同一个clk内生成三种地址翻译的结果，最后通过多路选择器进行选择。
+
+  访存物理地址pre\_pc\_pa首先根据控制寄存器中的 crmd.pg中的值选择当前为直接地址地址翻译模式（物理地址 = 虚拟地址 = pre\_pc）
+  ，还是映射地址翻译模式(物理地址 = pre\_pc\_map)。
+
+  映射地址翻译（pre\_pc\_map）首先判断是否命中直接映射窗口，若不是，则使用tlb地址映射结构。
+  
+  第一行将虚拟地址 pre\_pc [31:12] 发送到tlb进行tlb地址翻译，tlb中的组合逻辑查找结果s0\_ps, s0\_ppn, s0\_found
+  
+  \begin{lstlisting}[language=verilog]
 
 
+    assign {s0_vppn, s0_va_bit12} = pre_pc[31:12];// output to tlb
+                            
+    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == pre_pc[31:29];
+    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == pre_pc[31:29];
+
+    assign pre_pc_pa =          csr_crmd_pg ? pre_pc_map    // enable mapping
+    :pre_pc;                    // direct translate
+
+    assign pre_pc_map =  hit_dmw0 ? {csr_dmw0_pseg, pre_pc[28:0]}         // dierct map windows 0
+                         :hit_dmw1? {csr_dmw1_pseg, pre_pc[28:0]}         // direct map windows 1
+                         :(s0_ps == 6'b010101) ? {s0_ppn[19:9], pre_pc[20:0]}   // tlb map: ps 4Mb
+                         :{s0_ppn,pre_pc[11:0]};                             // tlb map : ps 4kb
+  \end{lstlisting}
+  
+  \item 为cpu添加tlb相关例外支持
+  
+  在每个流水级中设置excep\_en ， excep\_ecode, excep\_esubdcode分别表示当前流水级是否触发异常，和异常的种类。
+
+  以在ex流水级中为例：
+\begin{lstlisting}[language=verilog]
+  assign ex_excep_en =        ex_excep_ALE | ex_excep_TLBR|ex_excep_PIL| ex_excep_PIS| ex_excep_PPI|ex_excep_PME| id_excep_en;
+
+  assign ex_excep_TLBR =       //TLB 重填例外
+      (ex_res_from_mem | ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;   
+  assign ex_excep_PIL =       // load 操作页无效例外
+      (ex_res_from_mem) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+  assign ex_excep_PIS =       // store 操作页无效例外
+      (ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v; 
+  assign ex_excep_PPI =       // 页特权等级不合规例外
+      (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv < csr_crmd_plv);
+  assign ex_excep_PME =        //页修改例外
+      (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d;
+  
+  assign ex_badv =            (id_excep_en) ? id_badv
+                              : ex_alu_result;
+  assign ex_esubcode =        (id_excep_en) ? id_esubcode
+                              :9'b0;
+  assign ex_ecode =           (id_excep_en) ? id_ecode
+                              :ex_excep_ALE ? 6'h9
+                              :ex_excep_TLBR ?6'h3f     // tlb refill
+                              :ex_excep_PIL ?6'h1
+                              :ex_excep_PIS ?6'h2
+                              :ex_excep_PPI ?6'h7
+                              :6'h4;  // pme
+\end{lstlisting}
+ 所有tlb相关的异常，触发的必要条件都有：当前指令是访存指令（load/store）， 当前虚拟地址翻译模式不是直接
+  地址翻译模式，且不命中直接映射窗口。
+
+
+  即 \verb| (ex_res_from_mem| |\verb| ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1|
+  \begin{enumerate}
+    \item TLB 重填例外 
+    
+    在tlb没有找到对应的页表项，即\verb|s1_found == 0|
+
+    \item load 操作页无效例外, store 操作页无效例外
+    
+    在tlb中找到对应的页表项，但是页表项的有效位为 0， 即\verb |s1_found & ~s1_v|
+    
+    \item  页特权等级不合
+    
+    在tlb中找到对应的页表项，页表项的有效，但当前特权等级为plv3， 但是页表项所需要特权等级为plv0, 
+    即 \verb|s1_found & s1_v & (s1_plv < csr_crmd_plv)|
+
+    \item 页修改例外
+    在tlb中找到对应的页表项，页表项的有效，且特权等级满足要求， 但是页表项脏位为0, 
+    即 \verb|s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d|
+  \end{enumerate}
+  由上面的分析可知，与tlb相关的异常触发条件互斥，不用考虑不同异常间的优先级的问题。
+\end{enumerate}
 
 
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
