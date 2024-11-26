@@ -130,9 +130,8 @@ module IFreg(
     assign pre_if_readygo   =   pre_if_reqed_reg
                                 |inst_sram_req & inst_sram_addr_ok
                                 |pre_if_excep_en;
-                                //| pre_if_ir_valid;
-    assign to_if_valid      =   resetn
-                                & ~((br_taken | flush) & ~(inst_sram_addr_ok & inst_sram_req));  
+
+    assign to_if_valid      =   resetn;
     
     /* 与指令sram交互信号 */
     assign inst_sram_wstrb  =   4'b0;
