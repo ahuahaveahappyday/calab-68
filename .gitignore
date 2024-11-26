@@ -1,2 +1,3 @@
 soc_verify
 tlb_verify
+cache_verify
