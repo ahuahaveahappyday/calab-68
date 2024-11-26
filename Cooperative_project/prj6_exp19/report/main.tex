@@ -634,6 +634,43 @@ $\bullet$
 
 \noindent
 $\bullet$
+\textbf{TLB 搜索match出错}。
+
+TLB测试的过程中发现了一个错误：在TLB的search测试的第一个节点就卡住了，经过仔细排查发现是pagesize出错了，
+后来经仔细看测试数据发现pagesize大页是2MB(大小是21)，这与讲义上的要求4MB不同，我百思不得其解，后来仔细查看指令手册发现了
+一行小字：
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=13cm]{fig/3.png}
+  \end{figure}
+这下恍然大悟，将22改为21之后，然而，测试依然出错。
+仔细追根溯源，发现s0_ppn匹配出错的原因是s0_port的实现出错力，理应是根据s0_vppn[8](有效的最后一位)
+这一位来判断大页的时候选择的是双页中的哪一页，然而这里写成了s0_vppn[9]...将9改为8之后，测试通过。
+\begin{lstlisting}[language=verilog]
+assign s0_port = tlb_ps4MB[s0_index] ? s0_vppn[9] : s0_va_bit12;
+assign s1_port = tlb_ps4MB[s1_index] ? s1_vppn[9] : s1_va_bit12;
+
+assign s0_ppn = s0_port ? tlb_ppn1[s0_index] : tlb_ppn0[s0_index];
+assign s1_ppn = s1_port ? tlb_ppn1[s1_index] : tlb_ppn0[s1_index];
+\end{lstlisting}
+之所以这里会出错，是因为电子版的讲义示例代码出现了错误，如下：
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{fig/4.png}
+  \end{figure}
+这里的匹配就让人误以为是s0_vppn[9]决定了大页的时候选择的是双页中的哪一页，当然，这里的代码也出错了
+具体的修改如下，修改后通过测试。
+\begin{lstlisting}[language=verilog]
+    generate
+    for (i = 0; i < TLBNUM; i = i + 1) begin
+        assign match0[i] = (s0_vppn[18:9]==tlb_vppn[i][18:9]) && (tlb_ps4MB[i] || s0_vppn[8:0]==tlb_vppn[i][8:0]) && ((s0_asid==tlb_asid[i]) || tlb_g[i]);
+        assign match1[i] = (s1_vppn[18:9]==tlb_vppn[i][18:9]) && (tlb_ps4MB[i] || s1_vppn[8:0]==tlb_vppn[i][8:0]) && ((s1_asid==tlb_asid[i]) || tlb_g[i]);
+    end
+endgenerate
+\end{lstlisting}
+
+\noindent
+$\bullet$
 \textbf{if级错误丢弃异常处理函数的第一条指令}。
 
 要求在发生mmu相关异常的时候，不能向总线发出请求，所以在pre\_if级中识别到pc的虚拟地址发生异常，则将 inst\_sram\_req
@@ -667,7 +704,7 @@ $\bullet$
 \vspace{1ex}
 
 \section{小组成员分工合作情况}
-王敬华负责。
+王敬华负责TLB模块实现，部分TLB指令的添加和冲突的处理。
 
 李霄宇负责TLB相关指令的添加，部分冲突的处理，接口连接。
 
