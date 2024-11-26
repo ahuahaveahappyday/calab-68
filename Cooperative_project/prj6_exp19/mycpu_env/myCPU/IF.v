@@ -95,7 +95,8 @@ module IFreg(
             if_valid <=         1'b0;
     end
     assign if_ready_go      =    if_ir_valid
-                                |inst_sram_data_ok;
+                                |inst_sram_data_ok
+                                |if_excep_en;
     assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
 
     assign if_allowin       =   ~if_valid 
@@ -115,8 +116,8 @@ module IFreg(
     always @(posedge clk) begin
         if(~resetn)
             inst_cancel <= 1'b0;
-        else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok  // if正在等待指令返回
-                    |pre_if_reqed_reg & ~inst_sram_data_ok)
+        else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok & ~if_excep_en  // if正在等待指令返回
+                    |pre_if_reqed_reg & ~inst_sram_data_ok)// pre_if 级发出请求，但是数据没有返回，也还没有进入if级
                 & (flush | br_taken))
             inst_cancel <= 1'b1;
         else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
@@ -127,7 +128,8 @@ module IFreg(
 //=================================================pre_IF阶段发出指令请求
     // 与pre-if级的握手信号
     assign pre_if_readygo   =   pre_if_reqed_reg
-                                |inst_sram_req & inst_sram_addr_ok;
+                                |inst_sram_req & inst_sram_addr_ok
+                                |pre_if_excep_en;
                                 //| pre_if_ir_valid;
     assign to_if_valid      =   resetn
                                 & ~((br_taken | flush) & ~(inst_sram_addr_ok & inst_sram_req));  
@@ -142,7 +144,8 @@ module IFreg(
                                 & ( inst_sram_data_ok  // 上一个请求恰好返回  
                                     | if_ir_valid         // 上一个请求已经返回，且未进入id级
                                     | if_allowin)     // 上一个请求已经返回，且已经进入id级
-                                & ~br_stall;        // 转移计算已经完成
+                                & ~br_stall          //  转移计算已经完成
+                                & ~pre_if_excep_en;      
     assign inst_sram_addr   =   pre_pc_pa;
 
     /* 控制信号和寄存器 */
