@@ -289,9 +289,250 @@ $\bullet$
 \textbf{添加TLB相关指令和CSR寄存器}。
 \vspace{1ex}
 \begin{enumerate}
-  \item 添加TLB相关指令和CSR寄存器
+  \item CSR寄存器的添加
 
-\item 
+  按照书上的指示添加 TLBIDX、TLBEHI、TLBELO0、TLBELO1、ASID、TLBRENTRY CSR 寄存器即可。\par
+  \begin{lstlisting}[language=verilog]
+/*------------------------------TLBIDX-------------------------------------------------*/
+    always @(posedge clk) begin
+        if (~resetn) 
+            csr_tlbidx_index <= {($clog2(TLBNUM)) {1'b0}};
+        else if (tlbsrch_en & tlbsrch_found) 
+            csr_tlbidx_index <= tlbsrch_idx;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_index <=   csr_wmask[`CSR_TLBIDX_INDEX]  & csr_wvalue[`CSR_TLBIDX_INDEX]
+                                | ~csr_wmask[`CSR_TLBIDX_INDEX]  & csr_tlbidx_index;       
+    end
+
+    always @(posedge clk)begin
+        if(~resetn)
+            csr_tlbidx_ps <= 6'b0;
+        else if(tlbrd_en)
+            csr_tlbidx_ps <= {6{tlbrd_valid}} & tlbrd_ps;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_ps <=     csr_wmask[`CSR_TLBIDX_PS]  & csr_wvalue[`CSR_TLBIDX_PS]
+                                | ~csr_wmask[`CSR_TLBIDX_PS]  & csr_tlbidx_ps;  
+    end
+
+    always @(posedge clk) begin
+        if(~resetn)
+            csr_tlbidx_ne <= 1'b0;
+        else if(tlbsrch_en)    // not found
+            csr_tlbidx_ne <= ~tlbsrch_found;
+        else if(tlbrd_en)
+            csr_tlbidx_ne <= ~tlbrd_valid;
+        else if(csr_we && csr_num == `CSR_TLBIDX)
+            csr_tlbidx_ne <=     csr_wmask[`CSR_TLBIDX_NE]  & csr_wvalue[`CSR_TLBIDX_NE]
+                                | ~csr_wmask[`CSR_TLBIDX_NE]  & csr_tlbidx_ne;  
+    end
+
+    assign tlbrd_idx = csr_tlbidx_index;
+
+/*--------------------------------TLBEHI------------------------------------------------------------*/
+    always @(posedge clk)begin
+        if(~resetn)
+            csr_tlbehi_vppn <= 19'b0;
+        else if(tlbrd_en)
+            csr_tlbehi_vppn <= {19{tlbrd_valid}} & tlbrd_vppn;
+        else if( wb_ex & (wb_ecode == `ECODE_TLBR || wb_ecode == `ECODE_PIL|| wb_ecode == `ECODE_PIS 
+                    || wb_ecode == `ECDOE_PIF || wb_ecode == `ECODE_PME || wb_ecode == `ECODE_PPI))
+            csr_tlbehi_vppn <= wb_badv[31:13];
+
+        else if(csr_we && csr_num == `CSR_TLBEHI)
+            csr_tlbehi_vppn <=     csr_wmask[`CSR_TLBEHI_VPPN]  & csr_wvalue[`CSR_TLBEHI_VPPN]
+                                | ~csr_wmask[`CSR_TLBEHI_VPPN]  & csr_tlbehi_vppn;  
+    end
+
+    assign wire_csr_tlbehi_vppn = csr_tlbehi_vppn;
+/*--------------------------------TLBELO--------------------------------------------------------*/
+    always @(posedge clk)begin
+        if(~resetn)begin
+            {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
+                <= 27'b0;
+        end
+        else if(tlbrd_en)begin
+            {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_plv,csr_tlbelo0_mat,csr_tlbelo0_g,csr_tlbelo0_ppn} 
+                <= {27{tlbrd_valid}} & {tlbrd_v0,tlbrd_d0,tlbrd_plv0,tlbrd_mat0,tlbrd_g,tlbrd_ppn0}; 
+        end
+        else if(csr_we && csr_num == `CSR_TLBELO0) begin
+            csr_tlbelo0_v <= csr_wmask[`CSR_TLBELO_V] & csr_wvalue[`CSR_TLBELO_V]
+                            | ~csr_wmask[`CSR_TLBELO_V] & csr_tlbelo0_v;
+            csr_tlbelo0_d <= csr_wmask[`CSR_TLBELO_D] & csr_wvalue[`CSR_TLBELO_D]
+                             | ~csr_wmask[`CSR_TLBELO_D] & csr_tlbelo0_d;
+            csr_tlbelo0_plv <= csr_wmask[`CSR_TLBELO_PLV] & csr_wvalue[`CSR_TLBELO_PLV]
+                            | ~csr_wmask[`CSR_TLBELO_PLV] & csr_tlbelo0_plv;
+            csr_tlbelo0_mat <= csr_wmask[`CSR_TLBELO_MAT] & csr_wvalue[`CSR_TLBELO_MAT]
+                            | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo0_mat;
+            csr_tlbelo0_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
+                            | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo0_g;
+            csr_tlbelo0_ppn <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo0_ppn;
+        end
+    end
+
+    always @(posedge clk) begin
+        if(~resetn)begin
+            {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
+                <= 27'b0;
+        end
+        else if(tlbrd_en)begin
+            {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_plv,csr_tlbelo1_mat,csr_tlbelo1_g,csr_tlbelo1_ppn} 
+                <= {27{tlbrd_valid}} & {tlbrd_v1,tlbrd_d1,tlbrd_plv1,tlbrd_mat1,tlbrd_g,tlbrd_ppn1}; 
+        end
+        else if(csr_we && csr_num == `CSR_TLBELO1) begin
+            csr_tlbelo1_v <= csr_wmask[`CSR_TLBELO_V] & csr_wvalue[`CSR_TLBELO_V]
+                            | ~csr_wmask[`CSR_TLBELO_V] & csr_tlbelo1_v;
+            csr_tlbelo1_d <= csr_wmask[`CSR_TLBELO_D] & csr_wvalue[`CSR_TLBELO_D]
+                            | ~csr_wmask[`CSR_TLBELO_D] & csr_tlbelo1_d;
+            csr_tlbelo1_plv <= csr_wmask[`CSR_TLBELO_PLV] & csr_wvalue[`CSR_TLBELO_PLV]
+                            | ~csr_wmask[`CSR_TLBELO_PLV] & csr_tlbelo1_plv;
+            csr_tlbelo1_mat <= csr_wmask[`CSR_TLBELO_MAT] & csr_wvalue[`CSR_TLBELO_MAT]
+                            | ~csr_wmask[`CSR_TLBELO_MAT] & csr_tlbelo1_mat;
+            csr_tlbelo1_g <=    csr_wmask[`CSR_TLBELO_G] & csr_wvalue[`CSR_TLBELO_G]
+                            | ~csr_wmask[`CSR_TLBELO_G] & csr_tlbelo1_g;
+            csr_tlbelo1_ppn <= csr_wmask[`CSR_TLBELO_PPN] & csr_wvalue[`CSR_TLBELO_PPN]
+                            | ~csr_wmask[`CSR_TLBELO_PPN] & csr_tlbelo1_ppn;
+        end
+    end
+/*-------------------------------------ASI0-----------------------------------------------*/
+    always @(posedge clk) begin
+        if(~resetn)
+            csr_asid_asid <= 10'b0;
+        else if(tlbrd_en)
+            csr_asid_asid <= {10{tlbrd_valid}} & tlbrd_asid;
+        else if(csr_we && csr_num == `CSR_ASID)
+            csr_asid_asid <=     csr_wmask[`CSR_ASID_ASID]  & csr_wvalue[`CSR_ASID_ASID]
+                                | ~csr_wmask[`CSR_ASID_ASID]  & csr_asid_asid;  
+    end
+
+    assign csr_asid_asidbits = 6'h0a;   // 10 bit asid
+    assign wire_csr_asid =csr_asid_asid;
+/*----------------------------------TLBRENTRY-----------------------------------------------*/
+    always @(posedge clk)begin
+        if(~resetn)
+            csr_tlbrentry_pa <= 26'b0;
+        else if(csr_we && csr_num == `CSR_TLBRENTRY)
+            csr_tlbrentry_pa <=     csr_wmask[`CSR_TLBRENTRY_PA]  & csr_wvalue[`CSR_TLBRENTRY_PA]
+                                | ~csr_wmask[`CSR_TLBRENTRY_PA]  & csr_tlbrentry_pa; 
+    end
+
+    // tlbwr/tlbfill output
+    assign csr_tlb_ne = (csr_estat_ecode == 6'h3F) ? 0 : csr_tlbidx_ne;
+    assign csr_tlb_index = csr_tlbidx_index;
+    assign csr_tlb_asid = csr_asid_asid;
+    assign csr_tlb_g = csr_tlbelo0_g & csr_tlbelo1_g; // only if the G bit in both TLBELO0 and TLBELO1 is 1
+    assign csr_tlb_ps = csr_tlbidx_ps;
+    assign csr_tlb_vppn = csr_tlbehi_vppn;
+    assign {csr_tlb_v0, csr_tlb_d0, csr_tlb_mat0, csr_tlb_plv0, csr_tlb_ppn0} = 
+        {csr_tlbelo0_v,csr_tlbelo0_d,csr_tlbelo0_mat,csr_tlbelo0_plv,csr_tlbelo0_ppn};
+    assign {csr_tlb_v1, csr_tlb_d1, csr_tlb_mat1, csr_tlb_plv1, csr_tlb_ppn1} = 
+        {csr_tlbelo1_v,csr_tlbelo1_d,csr_tlbelo1_mat,csr_tlbelo1_plv,csr_tlbelo1_ppn};
+  \end{lstlisting}
+  
+  \item TLB相关指令的实现
+
+  需要处理每个指令在对应流水级发出控制信号给TLB模块。\par
+  与TLB相关的指令类型在ID级用id\_tlb\_op的每一位来记录。\par
+  \begin{lstlisting}[language=verilog]
+    assign id_tlb_op = {inst_tlbsrch,inst_tlbwr,inst_tlbfill,inst_tlbrd,inst_invtlb};
+  \end{lstlisting}
+  如果TLBSRCH指令的执行能够复用其中一套查找逻辑就可以避免新增大量查找逻辑，同时希望能确保复用的时候不阻塞其他指令访问TLB模块；INVTLB 指令的源操作数都来自通用寄存器或立即数，并且它需要（部分）复用 TLB 模块中已有 的查找逻辑。所以在EX阶段发送TLBSRCH和INVTLB指令请求。而TLBWR、TLBFILL、TLBRD则考虑到数据冲突的问题选择在WB阶段发送指令请求。\par
+  然后根据这些发送的指令请求以及CSRFILE文件中传出来的部分CSR寄存器的值，来对TLB模块进行接口连接。\par
+  \begin{lstlisting}[language=verilog]
+        tlb u_tlb(
+        .clk                (aclk),
+
+        .s0_vppn            (if_s0_vppn),
+        .s0_va_bit12        (if_s0_va_bit12),
+        .s0_asid            (csr_tlb_asid),
+        .s0_found           (s0_found),
+        .s0_index           (s0_index),
+        .s0_ppn             (s0_ppn),
+        .s0_ps              (s0_ps),
+        .s0_plv             (s0_plv),
+        .s0_mat             (s0_mat),
+        .s0_d               (s0_d),
+        .s0_v               (s0_v),
+
+        .s1_vppn            (ex_s1_vppn),
+        .s1_va_bit12        (ex_s1_va_bit12),
+        .s1_asid            (ex_s1_asid),
+        .s1_found           (s1_found),
+        .s1_index           (s1_index),
+        .s1_ppn             (s1_ppn),
+        .s1_ps              (s1_ps),
+        .s1_plv             (s1_plv),
+        .s1_mat             (s1_mat),
+        .s1_d               (s1_d),
+        .s1_v               (s1_v),
+
+        .invtlb_valid       (ex_invtlb_valid),
+        .invtlb_op          (ex_invtlb_op),
+
+        .we                 (wb_tlbwr_en || wb_tlbfill_en),
+        .w_index            (csr_tlb_index),
+        .w_e                (~csr_tlb_ne),
+        .w_vppn             (csr_tlb_vppn),
+        .w_ps               (csr_tlb_ps),
+        .w_asid             (csr_tlb_asid),
+        .w_g                (csr_tlb_g),
+        .w_ppn0             (csr_tlb_ppn0),
+        .w_plv0             (csr_tlb_plv0),
+        .w_mat0             (csr_tlb_mat0),
+        .w_d0               (csr_tlb_d0),
+        .w_v0               (csr_tlb_v0),
+        .w_ppn1             (csr_tlb_ppn1),
+        .w_plv1             (csr_tlb_plv1),
+        .w_mat1             (csr_tlb_mat1),
+        .w_d1               (csr_tlb_d1),
+        .w_v1               (csr_tlb_v1),
+
+        .r_index            (csr_tlb_index),
+        .r_e                (r_e),
+        .r_vppn             (r_vppn),
+        .r_ps               (r_ps),
+        .r_asid             (r_asid),
+        .r_g                (r_g),
+        .r_ppn0             (r_ppn0),
+        .r_plv0             (r_plv0),
+        .r_mat0             (r_mat0),
+        .r_d0               (r_d0),
+        .r_v0               (r_v0),
+        .r_ppn1             (r_ppn1),
+        .r_plv1             (r_plv1),
+        .r_mat1             (r_mat1),
+        .r_d1               (r_d1),
+        .r_v1               (r_v1)
+    );
+  \end{lstlisting}
+  另外，这些新增指令还需要进行冲突处理。\par
+  对于TLBSRCH引起的冲突，使用阻塞的方法来进行处理。
+  \begin{lstlisting}[language=verilog]
+    assign ex_ready_go      = ~block & alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
+    assign block            =( ex_tlb_op[4] & mem_srch_conflict) |(ex_tlb_op[4] & wb_srch_conflict);
+  \end{lstlisting}
+  其他指令引起的冲突，则使用重取方式做处理。其中wb\_refetch\_flush信号用于刷新流水线，mem\_refetch记录是否需要重取。
+  \begin{lstlisting}[language=verilog]
+    assign mem_refetch =    mem_tlb_op[3]   // inst_tlbwr
+                            || mem_tlb_op[2]    // inst_tlbfill
+                            || mem_tlb_op[1]    // inst_tlbrd
+                            || mem_tlb_op[0]   // inst_invtlb
+                            || (mem_csr_we && (mem_csr_num ==14'h18 // ASID
+                                            || mem_csr_num ==14'h0 // CRMD
+                                            || mem_csr_num ==14'h180// DMW0
+                                            ||mem_csr_num ==14'h181))// DMW1
+                            ;
+    assign wb_refetch_flush =    wb_valid && 
+                                (wb_tlb_op[3]   // inst_tlbwr
+                                || wb_tlb_op[2]    // inst_tlbfill
+                                || wb_tlb_op[1]    // inst_tlbrd
+                                || wb_tlb_op[0]   // inst_invtlb
+                                || (wb_csr_we && (wb_csr_num ==14'h18 // ASID
+                                            || wb_csr_num ==14'h0 // CRMD
+                                            || wb_csr_num ==14'h180// DMW0
+                                            ||wb_csr_num ==14'h181)));// DMW1
+  \end{lstlisting}
+
 \end{enumerate}
 
 
@@ -426,9 +667,9 @@ $\bullet$
 \vspace{1ex}
 
 \section{小组成员分工合作情况}
-王敬华负责ex级访存添加类sram总线支持。
+王敬华负责。
 
-李霄宇负责部分debug工作。
+李霄宇负责TLB相关指令的添加，部分冲突的处理，接口连接。
 
 艾华春负责添加TLB相关寄存器和TLB相关的例外支持，为cpu增加虚实映射功能。
 
