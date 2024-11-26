@@ -208,7 +208,33 @@ $\bullet$
 
 \noindent
 $\bullet$
-\textbf{清空流水线或跳转指令将指令缓存置无效bug}。
+\textbf{if级错误丢弃异常处理函数的第一条指令}。
+
+要求在发生mmu相关异常的时候，不能向总线发出请求，所以在pre\_if级中识别到pc的虚拟地址发生异常，则将 inst\_sram\_req
+拉低。
+
+但是导致了异常传到wb级时，发出更新流水线信号flush时，将if级误判为还在等待指令返回（实际上pre\_if级没有发出请求），则
+将inst_cancel信号（表示要丢弃接收到的第一条指令）拉高，导致丢弃了异常处理含数的第一条指令。
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=15cm]{fig/fig1.png}
+  \caption{错误拉高inst\_cancel}
+\end{figure}
+修改：在inst\_cancel拉高的逻辑中，判断if级是否有异常，若有，则说明if级没有已经发出请求，但是没有接受到的总线事务，
+不用拉高inst\_cancel。
+\begin{lstlisting}[language=verilog]
+  /* 清空流水线时，第一个指令需要丢弃*/
+  always @(posedge clk) begin
+      if(~resetn)
+          inst_cancel <= 1'b0;
+      else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok & ~if_excep_en  // if正在等待指令返回， 加入if级是否有异常的判断
+                  |pre_if_reqed_reg & ~inst_sram_data_ok) // pre_if 级发出请求，但是数据没有返回，也还没有进入if级
+              & (flush | br_taken))
+          inst_cancel <= 1'b1;
+      else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
+          inst_cancel <= 1'b0;
+  end
+\end{lstlisting}
 
 
       
