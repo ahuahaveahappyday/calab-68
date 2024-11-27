@@ -27,5 +27,68 @@ module cache(
     output[127:0] wr_data,       
     input         wr_rdy
 );
+    parameter IDLE 		= 5'b00001;
+    parameter LOOKUP 	= 5'b00010;
+    parameter MISS 		= 5'b00100;
+    parameter REPLACE 	= 5'b01000;
+    parameter REFILL 	= 5'b10000; 
+    parameter WR_IDLE   = 2'b01;
+    parameter WR_WRITE  = 2'b10;
+
+    reg [4:0] main_current_state;
+    reg [4:0] main_next_state;
+    reg [1:0] wr_current_state;
+    reg [1:0] wr_next_state;
+
+    wire hit_write_conflict;//hit write 冲突信号，暂时先放着，还没实现
+
+//main state machine
+    always @(posedge clk) begin
+        if(~resetn) begin
+            main_current_state <= IDLE;
+        end
+        else begin
+            main_current_state <= main_next_state;
+        end
+    end
+
+    always @(*) begin
+        case (main_current_state)
+            IDLE: 
+                if(valid & ~hit_write_conflict)
+                    main_next_state = LOOKUP;
+                else
+                    main_next_state = IDLE;
+
+            LOOKUP:
+                if(cache_hit &  hit_write_conflict)
+                    main_next_state = IDLE;
+                else if(~cache_hit)
+                    main_next_state = MISS;
+                else
+                    main_next_state = LOOKUP;
+
+            MISS:
+                if(~wr_rdy)
+                    main_next_state = MISS;
+                else
+                    main_next_state = REPLACE;
+
+            REPLACE:
+                if(~rd_rdy)
+                    main_next_state = REPLACE;
+                else
+                    main_next_state = REFILL;
+
+            REFILL:
+                if(ret_valid & ret_last[0])
+                    main_next_state = IDLE;
+                else
+                    main_next_state = REFILL;
+
+            default: 
+                main_next_state = IDLE;
+        endcase
+    end
 
 endmodule
