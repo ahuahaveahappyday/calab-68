@@ -1,21 +1,18 @@
 module d_regfile(
-	input                             clk,
-	input  [                     7:0] waddr,
-	input  [                     7:0] raddr,
-	input                             wen,
-	input                             wdata,
-	output                            rdata
+	input wire         clk,
+	input wire [  7:0] addr,
+	input wire         wen,
+	input wire         wdata,
+	output wire        rdata
 );
-
 	reg  [255 : 0] array;
-	
 	always @(posedge clk)
 	begin
 		if(wen)
-			array[waddr] <= wdata;
+			array[addr] <= wdata;
 	end
 
-assign rdata = array[raddr];
+assign rdata = array[addr];
 
 endmodule
 module cache(
@@ -117,59 +114,128 @@ module cache(
     /*--------------------------------------------INSTANTIATION table of reg and ram ----------------------------------------------*/
     genvar i;
     // data table
+    wire [31:0] way0_data [3:0];
     generate
         for (i = 0; i < 4; i = i + 1)begin: data_way0
             data_bank_ram data_way0(
                 .clka   (clk),    // input wire clka
                 .wea    (),      // input wire [3 : 0] wea
-                .addra  (),  // input wire [7 : 0] addra
+                .addra  (index),  // input wire [7 : 0] addra
                 .dina   (),    // input wire [31 : 0] dina
-                .douta  ()  // output wire [31 : 0] douta
+                .douta  (way0_data[i])  // output wire [31 : 0] douta
             );
         end
     endgenerate
+    wire [31:0] way1_data [3:0];
     generate
         for (i = 0; i < 4; i = i + 1)begin: data_way1
             data_bank_ram data_way1(
                 .clka   (clk),    // input wire clka
                 .wea    (),      // input wire [3 : 0] wea
-                .addra  (),  // input wire [7 : 0] addra
+                .addra  (index),  // input wire [7 : 0] addra
                 .dina   (),    // input wire [31 : 0] dina
-                .douta  ()  // output wire [31 : 0] douta
+                .douta  (way1_data[i])  // output wire [31 : 0] douta
             );
         end
     endgenerate
     // tag, v table
+    wire            way0_v;
+    wire [19:0]     way0_tag;
     tagv_ram tagv_ram_way0 (
         .clka   (clk),    // input wire clka
         .wea    (),      // input wire [2 : 0] wea
-        .addra  (),  // input wire [7 : 0] addra
+        .addra  (index),  // input wire [7 : 0] addra
         .dina   (),    // input wire [23 : 0] dina
-        .douta  ()  // output wire [23 : 0] douta
+        .douta  ({3'b0,way0_tag,way0_v})  // output wire [23 : 0] douta
     );
+    wire            way1_v;
+    wire [19:0]     way1_tag;
     tagv_ram tagv_ram_way1 (
         .clka   (clk),    // input wire clka
         .wea    (),      // input wire [2 : 0] wea
-        .addra  (),  // input wire [7 : 0] addra
+        .addra  (index),  // input wire [7 : 0] addra
         .dina   (),    // input wire [23 : 0] dina
-        .douta  ()  // output wire [23 : 0] douta
+        .douta  ({3'b0,way1_tag,way1_v})  // output wire [23 : 0] douta
     );
     // dtable
     d_regfile d_way0(
         .clk        (),
-        .waddr      (),
-        .raddr      (),
+        .addr      (),
         .wen        (),
         .wdata      (),
         .rdata      ()
     );
     d_regfile d_way1(
         .clk        (),
-        .waddr      (),
-        .raddr      (),
+        .addr      (),
         .wen        (),
         .wdata      (),
         .rdata      ()
     );
+    /*------------------------------------------other data path -------------------------------------------------------------------*/
+    // requeset buffer
+    reg         req_op;
+    reg [7:0]   req_index;
+    reg [19:0]  req_tag;
+    reg [3:0]   req_offset;
+    reg [3:0]   req_wstrb;
+    reg [31:0]  req_wdata;
+
+    always @(posedge clk)begin
+        if(~resetn) begin
+            req_op <=       1'b0;
+            req_index <=    8'b0;
+            req_tag <=      20'b0;
+            req_offset <=   4'b0;
+            req_wstrb <=    4'b0;
+            req_wdata <=    32'b0;
+        end
+        else if(valid)begin
+            req_op <=       op;
+            req_index <=    index;
+            req_tag <=      tag;
+            req_offset <=   offset;
+            req_wstrb <=    wstrb;
+            req_wdata <=    wdata;       
+        end
+    end
+    // tag compare
+    wire        way0_hit;
+    wire        way1_hit;
+    assign way0_hit = way0_v && (way0_tag == req_tag);
+    assign way1_hit = way1_v && (way1_tag == req_tag);
+    assign cache_hit = way0_hit || way1_hit;
+    // data select
+    wire [31:0]     way0_load_word;
+    wire [31:0]     way1_load_word;
+    wire [31:0]     load_res;
+    wire [255:0]    replace_data;
+    wire            replace_way;
+
+    assign way0_load_word = way0_data[offset[3:2]];
+    assign way1_load_word = way1_data[offset[3:2]];
+
+    assign load_res =   {32{way0_hit}} & way0_load_word
+                        |{32{way1_hit}} & way1_load_word;
+    assign replace_data =   replace_way ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]} 
+                            :{way1_data[3], way1_data[2], way1_data[1], way1_data[0]}  ;
+    // miss buffer
+
+    // LFSR
+    reg [7:0]   lfsr;
+    wire feedback;
+    assign feedback = lfsr[7] ^ lfsr[5] ^ lfsr[4] ^ lfsr[3];
+
+    always @(posedge clk)begin
+        if(~resetn)
+            lfsr <= 8'b00000001;
+        else
+            lfsr <= {lfsr[6:0], feedback};
+    end
+    // write buffer
+
+
+
 
 endmodule
+
