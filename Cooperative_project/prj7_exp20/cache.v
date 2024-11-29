@@ -1,5 +1,6 @@
 module d_regfile(
 	input wire         clk,
+    input wire         resetn,
 	input wire [  7:0] addr,
 	input wire         wen,
 	input wire         wdata,
@@ -8,7 +9,9 @@ module d_regfile(
 	reg  [255 : 0] array;
 	always @(posedge clk)
 	begin
-		if(wen)
+        if(~resetn)
+            array <= 256'b0;
+		else if(wen)
 			array[addr] <= wdata;
 	end
 
@@ -285,6 +288,7 @@ module cache(
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
         .clk        (clk),
+        .resetn     (resetn),
         .addr       (d_way0_index),
         .wen        (d_way0_wen),
         .wdata      (d_way0_wdata),
@@ -297,6 +301,7 @@ module cache(
     assign d_way1_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way1(
         .clk        (clk),
+        .resetn     (resetn),
         .addr       (d_way1_index),
         .wen        (d_way1_wen),
         .wdata      (d_way1_wdata),
