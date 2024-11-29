@@ -293,7 +293,7 @@ module cache(
     // dtable
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
                             : index;
-    assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
+    assign d_way0_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
                             |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
