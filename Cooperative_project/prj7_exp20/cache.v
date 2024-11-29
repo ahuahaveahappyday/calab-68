@@ -92,16 +92,22 @@ module cache(
     wire [31:0] way1_data [3:0];
     wire [7:0]  data_way1_index [3:0];
 // tag, v table
+    wire [7:0]      tagv_way0_index;
     wire            tagv_way0_wen;
     wire            way0_v;
     wire [19:0]     way0_tag;
     wire [20:0]     tagv_way0_wdata;
+    wire [7:0]      tagv_way1_index;
     wire            tagv_way1_wen;
     wire            way1_v;
+    wire [19:0]     way1_tag;
+    wire [20:0]     tagv_way1_wdata;
 // dtable
+    wire d_way0_index;
     wire d_way0_wen;
     wire d_way0_wdata;
     wire way0_d;
+    wire d_way1_index;
     wire d_way1_wen;
     wire d_way1_wdata;
     wire way1_d;
@@ -235,40 +241,50 @@ module cache(
         end
     endgenerate
     // tag, v table
-    assign tagv_way0_wen = 0;
+    assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
+                                :req_buffer_index;      // replace and refill;
+    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last[0];
+    assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
     tagv_ram tagv_ram_way0 (
         .clka   (clk), 
         .wea    (tagv_way0_wen),
-        .addra  (index),
-        .dina   (),
-        .douta  ({3'b0,way0_tag,way0_v})// output when lookup
+        .addra  (tagv_way0_index),
+        .dina   ({3'b0, tagv_way0_wdata}),
+        .douta  ({3'b0, way0_tag,way0_v})// output when lookup
     );
 
-    assign           tagv_way1_wen = 0;
-    wire [19:0]     way1_tag;
+    assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
+                                :req_buffer_index;      // replace and refill;
+    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last[0];
+    assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
     tagv_ram tagv_ram_way1 (
         .clka   (clk),
         .wea    (tagv_way1_wen),  
-        .addra  (index), 
-        .dina   (),
-        .douta  ({3'b0,way1_tag,way1_v})// output when lookup
+        .addra  (tagv_way1_index), 
+        .dina   ({3'b0, tagv_way1_wdata}),
+        .douta  ({3'b0, way1_tag,way1_v})// output when lookup
     );
     // dtable
-    assign d_way0_wen = wr_current_state == WR_WRITE && w_buffer_way == 0;
-    assign d_way0_wdata =  wr_current_state == WR_WRITE;
+    assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
+                            : index;
+    assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
+                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last[0];
+    assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
         .clk        (clk),
-        .addr       (),
+        .addr       (d_way0_index),
         .wen        (d_way0_wen),
         .wdata      (d_way0_wdata),
         .rdata      (way0_d)
     );
-
-    assign d_way1_wen = wr_current_state == WR_WRITE && w_buffer_way == 1;
-    assign d_way1_wdata =  wr_current_state == WR_WRITE;
+    assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
+                            : index;
+    assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 1
+                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last[0];
+    assign d_way1_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way1(
         .clk        (clk),
-        .addr       (),
+        .addr       (d_way1_index),
         .wen        (d_way1_wen),
         .wdata      (d_way1_wdata),
         .rdata      (way1_d)
