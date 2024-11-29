@@ -81,6 +81,12 @@ module cache(
     wire [255:0]    replace_data;
     wire            replace_way;
     wire            replace_d;
+// miss buffer
+    // reg          miss_buffer_d;
+    // reg [7:0]    miss_buffer_tag;
+    // reg [255:0]  miss_buffer_data;
+    reg [1:0]    miss_buffer_cnt;
+    reg          first_clk_of_replace;
 
 // data table
     wire [3:0]  data_way0_wen;
@@ -111,10 +117,6 @@ module cache(
     wire d_way1_wen;
     wire d_way1_wdata;
     wire way1_d;
-
-
-
-
 
     wire hit_write_conflict;//hit write 冲突信号，暂时先放着，还没实现
     wire cache_hit;
@@ -211,7 +213,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way0_wen[i] =   wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i
-                                        |main_current_state == REFILL & replace_way ==0 & ret_valid;
+                                        |main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i;
             data_bank_ram data_way0(
                 .clka   (clk),
                 .wea    (data_way0_wen[i]),   
@@ -230,7 +232,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way1_wen[i] =   wr_current_state == WR_WRITE & w_buffer_way == 1 & w_buffer_bank == i
-                                        |main_current_state == REFILL & replace_way == 1 & ret_valid;
+                                        |main_current_state == REFILL & replace_way == 1 & ret_valid & miss_buffer_cnt == i;
             data_bank_ram data_way1(
                 .clka   (clk),
                 .wea    (data_way1_wen[i]),
@@ -326,29 +328,51 @@ module cache(
     assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
                             :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
     assign replace_d =  replace_data ? way1_d: way0_d;
+    assign replace_tag = replace_way ? way1_tag : way0_tag;
     // miss buffer
-    reg [31:0]   miss_buffer_data [3:0];
-    reg [1:0]    miss_buffer_cnt;
+    // always @(posedge clk)begin
+    //     if(~resetn)begin
+    //         miss_buffer_d <= 1'b0;
+    //         miss_buffer_tag <= 8'b0;
+    //         miss_buffer_data <= 256'b0;
+    //     end
+    //     else if(first_clk_of_replace)begin   // next state == replace
+    //         miss_buffer_d <=    replace_d;
+    //         miss_buffer_tag <=  replace_tag;
+    //         miss_buffer_data <= replace_data;
+    //     end
+    // end
     always @(posedge clk)begin
         if(~resetn)begin
             miss_buffer_cnt <= 2'b0;
-            miss_buffer_data[0] <= 32'b0;
-            miss_buffer_data[1] <= 32'b0;
-            miss_buffer_data[2] <= 32'b0;
-            miss_buffer_data[3] <= 32'b0;
         end
-        else if(ret_valid)begin
-            miss_buffer_data[miss_buffer_cnt] <= ret_data;
+        else if(main_current_state == REFILL & ret_valid)begin
             miss_buffer_cnt <= miss_buffer_cnt + 1;
         end
+        else if(main_current_state == REFILL & ret_valid & ret_last[0])begin
+            miss_buffer_cnt <= 2'b0;
+        end
     end
-    assign wr_req =     (main_current_state == MISS) & replace_d & wr_rdy;
+    always @(posedge clk)begin
+        if(~resetn)begin
+            first_clk_of_replace <= 1'b0;
+        end
+        else if(main_current_state == MISS & wr_rdy)begin
+            first_clk_of_replace <= 1'b1;
+        end
+        else begin
+            first_clk_of_replace <= 1'b0;
+        end
+    end
+
+    assign wr_req =     first_clk_of_replace & replace_d & wr_rdy;
     assign wr_data =    replace_data;
-    assign wr_addr =    {req_buffer_tag, req_buffer_index, 4'b0};
+    assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
     assign wr_type =    3'b100;
     
 
-    assign rd_req =     main_current_state == MISS & (wr_rdy | replace_d);    // next_state == replace
+    assign rd_req =     main_current_state == REPLACE;    // next_state == replace
+    assign rd_addr =    {req_buffer_tag, req_buffer_index, 4'b0};
     assign rd_type =    3'b100;
 
     // LFSR
@@ -363,6 +387,7 @@ module cache(
             lfsr <= {lfsr[6:0], feedback};
     end
     assign replace_way =    lfsr[0];
+
     // write buffer
     always @(posedge clk)begin
         if(~resetn) begin
