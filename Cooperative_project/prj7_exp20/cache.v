@@ -341,6 +341,7 @@ module cache(
     // tag compare
     wire        way0_hit;
     wire        way1_hit;
+    wire [19:0] replace_tag;
 
     assign way0_hit = way0_v && (way0_tag == req_buffer_tag);
     assign way1_hit = way1_v && (way1_tag == req_buffer_tag);
