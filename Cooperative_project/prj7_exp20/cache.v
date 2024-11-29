@@ -90,11 +90,11 @@ module cache(
     reg          first_clk_of_replace;
 
 // data table
-    wire [3:0]  data_way0_wen;
+    wire [3:0]  data_way0_wen[3:0];
     wire [31:0] data_way0_wdata;
     wire [31:0] way0_data [3:0];
     wire [7:0]  data_way0_index [3:0];
-    wire [3:0]  data_way1_wen;
+    wire [3:0]  data_way1_wen[3:0];
     wire [31:0] data_way1_wdata;
     wire [31:0] way1_data [3:0];
     wire [7:0]  data_way1_index [3:0];
@@ -110,14 +110,14 @@ module cache(
     wire [19:0]     way1_tag;
     wire [20:0]     tagv_way1_wdata;
 // dtable
-    wire d_way0_index;
-    wire d_way0_wen;
-    wire d_way0_wdata;
-    wire way0_d;
-    wire d_way1_index;
-    wire d_way1_wen;
-    wire d_way1_wdata;
-    wire way1_d;
+    wire [7:0]      d_way0_index;
+    wire            d_way0_wen;
+    wire            d_way0_wdata;
+    wire            way0_d;
+    wire [7:0]      d_way1_index;
+    wire            d_way1_wen;
+    wire            d_way1_wdata;
+    wire            way1_d;
 
     wire hit_write_conflict;//hit write 冲突信号，暂时先放着，还没实现
     wire cache_hit;
@@ -213,8 +213,9 @@ module cache(
             assign data_way0_index[i] = (wr_current_state == WR_WRITE && w_buffer_bank == i) ? w_buffer_index //hit write 
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
-            assign data_way0_wen[i] =   wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i
-                                        |main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i;
+            assign data_way0_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i)? w_buffer_wstrb
+                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i) ? 4'b1111
+                                        :4'b0000;
             data_bank_ram data_way0(
                 .clka   (clk),
                 .wea    (data_way0_wen[i]),   
@@ -232,8 +233,9 @@ module cache(
             assign data_way1_index[i] = (wr_current_state == WR_WRITE && w_buffer_bank == i) ? w_buffer_index //hit write 
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
-            assign data_way1_wen[i] =   wr_current_state == WR_WRITE & w_buffer_way == 1 & w_buffer_bank == i
-                                        |main_current_state == REFILL & replace_way == 1 & ret_valid & miss_buffer_cnt == i;
+            assign data_way1_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 1 & w_buffer_bank == i) ? w_buffer_wstrb
+                                        :(main_current_state == REFILL & replace_way ==1 & ret_valid & miss_buffer_cnt == i) ? 4'b1111
+                                        :4'b0000;
             data_bank_ram data_way1(
                 .clka   (clk),
                 .wea    (data_way1_wen[i]),
@@ -252,8 +254,8 @@ module cache(
         .clka   (clk), 
         .wea    (tagv_way0_wen),
         .addra  (tagv_way0_index),
-        .dina   ({3'b0, tagv_way0_wdata}),
-        .douta  ({3'b0, way0_tag,way0_v})// output when lookup
+        .dina   ({tagv_way0_wdata}),
+        .douta  ({way0_tag,way0_v})// output when lookup
     );
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
@@ -264,8 +266,8 @@ module cache(
         .clka   (clk),
         .wea    (tagv_way1_wen),  
         .addra  (tagv_way1_index), 
-        .dina   ({3'b0, tagv_way1_wdata}),
-        .douta  ({3'b0, way1_tag,way1_v})// output when lookup
+        .dina   ({tagv_way1_wdata}),
+        .douta  ({way1_tag,way1_v})// output when lookup
     );
     // dtable
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
