@@ -210,7 +210,7 @@ module cache(
                 else
                     wr_next_state <= WR_IDLE;
             default: 
-                main_next_state = WR_IDLE;
+                wr_next_state = WR_IDLE;
         endcase
     end
 
