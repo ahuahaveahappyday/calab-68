@@ -78,7 +78,7 @@ module cache(
 // data select
     wire [31:0]     way0_load_word;
     wire [31:0]     way1_load_word;
-    wire [31:0]     load_res;
+    wire [31:0]     load_hit_res;
     wire [255:0]    replace_data;
     wire            replace_way;
     wire            replace_d;
@@ -86,6 +86,7 @@ module cache(
     // reg          miss_buffer_d;
     // reg [7:0]    miss_buffer_tag;
     // reg [255:0]  miss_buffer_data;
+    reg [31:0]   load_miss_res;
     reg [1:0]    miss_buffer_cnt;
     reg          first_clk_of_replace;
 
@@ -127,7 +128,14 @@ module cache(
                                     |(wr_current_state == WR_WRITE & ~op
                                         & offset[3:2] == req_buffer_offset[3:2]);
 
-
+    assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
+                        |main_current_state == IDLE & ~hit_write_conflict;
+    assign data_ok =    main_current_state == REFILL & ret_valid & ret_last         // miss
+                        |main_current_state == LOOKUP & cache_hit & ~op;             // read hit
+    assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
+                        :req_buffer_offset[3:2] == 2'd3 ? ret_data       // read miss
+                        :load_miss_res;                                 // read miss
+    
 //main state machine
     always @(posedge clk) begin
         if(~resetn) begin
@@ -326,8 +334,8 @@ module cache(
     assign way0_load_word = way0_data[offset[3:2]];
     assign way1_load_word = way1_data[offset[3:2]];
 
-    assign load_res =   {32{way0_hit}} & way0_load_word
-                        |{32{way1_hit}} & way1_load_word;
+    assign load_hit_res =   {32{way0_hit}} & way0_load_word
+                            |{32{way1_hit}} & way1_load_word;
     assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
                             :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
     assign replace_d =  replace_data ? way1_d: way0_d;
@@ -345,6 +353,14 @@ module cache(
     //         miss_buffer_data <= replace_data;
     //     end
     // end
+    always@(posedge clk)begin
+        if(~resetn)begin
+            load_miss_res <= 32'b0;
+        end
+        else if(main_current_state == MISS & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2])begin
+            load_miss_res <= ret_data;
+        end
+    end
     always @(posedge clk)begin
         if(~resetn)begin
             miss_buffer_cnt <= 2'b0;
