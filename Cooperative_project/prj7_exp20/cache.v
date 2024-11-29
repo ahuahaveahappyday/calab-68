@@ -41,6 +41,7 @@ module cache(
     input wire [31:0]   ret_data,
     // asi write req
     output wire         wr_req,
+    output wire [2:0]   wr_type,
     output wire [31:0]  wr_addr,
     output wire [127:0] wr_data,
     // axi write ret
@@ -66,7 +67,12 @@ module cache(
     reg [3:0]   req_buffer_offset;
     reg [3:0]   req_buffer_wstrb;
     reg [31:0]  req_buffer_wdata;
-
+// write buffer
+    reg  [7:0]  w_buffer_index;
+    reg         w_buffer_way;
+    reg  [3:0]  w_buffer_wstrb;
+    reg  [31:0] w_buffer_wdata;
+    reg  [1:0]  w_buffer_bank;
 
 
 
@@ -84,6 +90,11 @@ module cache(
 
     wire hit_write_conflict;//hit write 冲突信号，暂时先放着，还没实现
     wire cache_hit;
+
+    assign hit_write_conflict =     (main_current_state == LOOKUP & ~op
+                                        & {tag, index, offset[3:2]} == {req_buffer_tag, req_buffer_index, req_buffer_offset[3:2]})
+                                    |(wr_current_state == WR_WRITE & ~op
+                                        & offset[3:2] == req_buffer_offset[3:2]);
 
 
 //main state machine
@@ -163,63 +174,94 @@ module cache(
     /*--------------------------------------------INSTANTIATION table of reg and ram ----------------------------------------------*/
     genvar i;
     // data table
+    wire [3:0]  data_way0_wen;
+    wire [31:0] data_way0_wdata;
     wire [31:0] way0_data [3:0];
+    wire [7:0]  data_way0_index;
+
+    assign data_way0_wen = (wr_current_state == WR_WRITE && w_buffer_way == 0) ? (4'b1 << w_buffer_bank) : 4'b0;
+    assign data_way0_wdata =  w_buffer_wdata;
+    assign data_way0_index = (wr_current_state == WR_WRITE) ? w_buffer_index : index;
     generate
         for (i = 0; i < 4; i = i + 1)begin: data_way0
             data_bank_ram data_way0(
                 .clka   (clk),
-                .wea    (),   
+                .wea    (data_way0_wen[i]),   
                 .addra  (index),
-                .dina   (),
+                .dina   (data_way0_wdata),
                 .douta  (way0_data[i])  // output when lookup
             );
         end
     endgenerate
+    wire [3:0]  data_way1_wen;
+    wire [31:0] data_way1_wdata;
     wire [31:0] way1_data [3:0];
+
+    assign data_way1_wen = (wr_current_state == WR_WRITE && w_buffer_way == 1) ? (4'b1 << w_buffer_bank) : 4'b0;
+    assign data_way1_wdata =  w_buffer_wdata;
     generate
         for (i = 0; i < 4; i = i + 1)begin: data_way1
             data_bank_ram data_way1(
                 .clka   (clk),
-                .wea    (),
+                .wea    (data_way1_wen[i]),
                 .addra  (index),
-                .dina   (),
+                .dina   (data_way1_wdata),
                 .douta  (way1_data[i])  // output when lookup
             );
         end
     endgenerate
     // tag, v table
+    wire            tagv_way0_wen;
     wire            way0_v;
     wire [19:0]     way0_tag;
+    wire [20:0]     tagv_way0_wdata;
+
+    assign tagv_way0_wen = 0;
     tagv_ram tagv_ram_way0 (
         .clka   (clk), 
-        .wea    (),
+        .wea    (tagv_way0_wen),
         .addra  (index),
         .dina   (),
         .douta  ({3'b0,way0_tag,way0_v})// output when lookup
     );
+    wire            tagv_way1_wen;
     wire            way1_v;
+
+    assign           tagv_way1_wen = 0;
     wire [19:0]     way1_tag;
     tagv_ram tagv_ram_way1 (
         .clka   (clk),
-        .wea    (),  
+        .wea    (tagv_way1_wen),  
         .addra  (index), 
         .dina   (),
         .douta  ({3'b0,way1_tag,way1_v})// output when lookup
     );
     // dtable
+    wire d_way0_wen;
+    wire d_way0_wdata;
+    wire way0_d;
+
+    assign d_way0_wen = wr_current_state == WR_WRITE && w_buffer_way == 0;
+    assign d_way0_wdata =  wr_current_state == WR_WRITE;
     d_regfile d_way0(
-        .clk        (),
-        .addr      (index),
-        .wen        (),
-        .wdata      (),
-        .rdata      ()  // output when lookup
+        .clk        (clk),
+        .addr       (),
+        .wen        (d_way0_wen),
+        .wdata      (d_way0_wdata),
+        .rdata      (way0_d)
     );
+    wire d_way1_wen;
+    wire d_way1_wdata;
+    wire way1_d;
+
+    assign d_way1_wen = wr_current_state == WR_WRITE && w_buffer_way == 1;
+    assign d_way1_wdata =  wr_current_state == WR_WRITE;
     d_regfile d_way1(
-        .clk        (),
-        .addr      (index),
-        .wen        (),
-        .wdata      (),
-        .rdata      ()  // output when lookup
+        .clk        (clk),
+        .addr       (),
+        .wen        (d_way1_wen),
+        .wdata      (d_way1_wdata),
+        .rdata      (way1_d)
     );
     /*------------------------------------------other data path -------------------------------------------------------------------*/
     // requeset buffer
@@ -232,7 +274,8 @@ module cache(
             req_buffer_wstrb <=    4'b0;
             req_buffer_wdata <=    32'b0;
         end
-        else if(valid)begin
+        else if(main_current_state == IDLE & valid & ~hit_write_conflict 
+                | main_current_state == LOOKUP & cache_hit & valid & ~hit_write_conflict)begin      // next_state == LOOKUP
             req_buffer_op <=       op;
             req_buffer_index <=    index;
             req_buffer_tag <=      tag;
@@ -253,15 +296,38 @@ module cache(
     wire [31:0]     load_res;
     wire [255:0]    replace_data;
     wire            replace_way;
+    wire            replace_d;
 
     assign way0_load_word = way0_data[offset[3:2]];
     assign way1_load_word = way1_data[offset[3:2]];
 
     assign load_res =   {32{way0_hit}} & way0_load_word
                         |{32{way1_hit}} & way1_load_word;
-    assign replace_data =   replace_way ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]} 
-                            :{way1_data[3], way1_data[2], way1_data[1], way1_data[0]}  ;
+    assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
+                            :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
+    assign replace_d =  replace_data ? way1_d: way0_d;
     // miss buffer
+    reg [31:0]   miss_buffer_data [3:0];
+    reg [1:0]    miss_buffer_cnt;
+    always @(posedge clk)begin
+        if(~resetn)begin
+            miss_buffer_cnt <= 2'b0;
+            miss_buffer_data[0] <= 32'b0;
+            miss_buffer_data[1] <= 32'b0;
+            miss_buffer_data[2] <= 32'b0;
+            miss_buffer_data[3] <= 32'b0;
+        end
+        else if(main_current_state == MISS)
+            ;
+    
+    end
+    assign wr_req =     (main_current_state == MISS) & replace_d & wr_rdy;
+    assign wr_data =    replace_data;
+    assign wr_addr =    {req_buffer_tag, req_buffer_index, 4'b0};
+    
+
+    assign rd_req =     main_current_state == MISS & wr_rdy;    // next_state == replace
+    assign rd_type =    3'b100;
 
     // LFSR
     reg [7:0]   lfsr;
@@ -271,15 +337,11 @@ module cache(
     always @(posedge clk)begin
         if(~resetn)
             lfsr <= 8'b00000001;
-        else
+        else if(main_current_state == REFILL & ret_valid & ret_last[0] )
             lfsr <= {lfsr[6:0], feedback};
     end
+    assign replace_way =    lfsr[0];
     // write buffer
-    reg  [7:0]  w_buffer_index;
-    reg         w_buffer_way;
-    reg  [3:0]  w_buffer_wstrb;
-    reg  [31:0] w_buffer_wdata;
-    reg  [1:0]  w_buffer_bank;
     always @(posedge clk)begin
         if(~resetn) begin
             w_buffer_index <= 8'b0;
@@ -294,7 +356,6 @@ module cache(
             w_buffer_bank <= req_buffer_offset[3:2];
         end
     end
-    
 
 
 
