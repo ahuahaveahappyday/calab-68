@@ -219,7 +219,7 @@ module cache(
     // data table
     wire [31:0] store_res;
     wire [31:0] store_mask;
-    assign store_mask = {{4{req_buffer_wstrb[3]}}, {4{req_buffer_wstrb[2]}}, {4{req_buffer_wstrb[1]}}, {4{req_buffer_wstrb[0]}}};
+    assign store_mask = {{8{req_buffer_wstrb[3]}}, {8{req_buffer_wstrb[2]}}, {8{req_buffer_wstrb[1]}}, {8{req_buffer_wstrb[0]}}};
     assign store_res =      store_mask & req_buffer_wdata
                             | ~store_mask & ret_data; 
 
@@ -247,6 +247,7 @@ module cache(
     endgenerate
 
     assign data_way1_wdata =        wr_current_state == WR_WRITE ? w_buffer_wdata
+                                    : (miss_buffer_cnt == req_buffer_offset[3:2] & req_buffer_op) ? store_res 
                                     : ret_data;
     generate
         for (i = 0; i < 4; i = i + 1)begin: data_way1
@@ -372,7 +373,7 @@ module cache(
         if(~resetn)begin
             load_miss_res <= 32'b0;
         end
-        else if(main_current_state == MISS & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2])begin
+        else if(main_current_state == REFILL & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2])begin
             load_miss_res <= ret_data;
         end
     end
