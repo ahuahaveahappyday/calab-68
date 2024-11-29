@@ -37,12 +37,13 @@ module cache(
     input wire          rd_rdy,
     // axi read ret
     input wire          ret_valid,
-    input wire [1:0]    ret_last,
+    input wire          ret_last,
     input wire [31:0]   ret_data,
     // asi write req
     output wire         wr_req,
     output wire [2:0]   wr_type,
     output wire [31:0]  wr_addr,
+    output wire [3:0]   wr_wstrb,
     output wire [127:0] wr_data,
     // axi write ret
     input wire          wr_rdy
@@ -166,7 +167,7 @@ module cache(
                     main_next_state = REFILL;
 
             REFILL:
-                if(ret_valid & ret_last[0])
+                if(ret_valid & ret_last)
                     main_next_state = IDLE;
                 else
                     main_next_state = REFILL;
@@ -245,7 +246,7 @@ module cache(
     // tag, v table
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last[0];
+    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
     assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
     tagv_ram tagv_ram_way0 (
         .clka   (clk), 
@@ -257,7 +258,7 @@ module cache(
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last[0];
+    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
     assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
     tagv_ram tagv_ram_way1 (
         .clka   (clk),
@@ -270,7 +271,7 @@ module cache(
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
                             : index;
     assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
-                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last[0];
+                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
         .clk        (clk),
@@ -282,7 +283,7 @@ module cache(
     assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
                             : index;
     assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 1
-                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last[0];
+                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
     assign d_way1_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way1(
         .clk        (clk),
@@ -349,7 +350,7 @@ module cache(
         else if(main_current_state == REFILL & ret_valid)begin
             miss_buffer_cnt <= miss_buffer_cnt + 1;
         end
-        else if(main_current_state == REFILL & ret_valid & ret_last[0])begin
+        else if(main_current_state == REFILL & ret_valid & ret_last)begin
             miss_buffer_cnt <= 2'b0;
         end
     end
@@ -369,6 +370,7 @@ module cache(
     assign wr_data =    replace_data;
     assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
     assign wr_type =    3'b100;
+    assign wr_wstrb =    4'b1111;
     
 
     assign rd_req =     main_current_state == REPLACE;    // next_state == replace
@@ -383,7 +385,7 @@ module cache(
     always @(posedge clk)begin
         if(~resetn)
             lfsr <= 8'b00000001;
-        else if(main_current_state == REFILL & ret_valid & ret_last[0] )
+        else if(main_current_state == REFILL & ret_valid & ret_last)
             lfsr <= {lfsr[6:0], feedback};
     end
     assign replace_way =    lfsr[0];
