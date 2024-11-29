@@ -85,6 +85,7 @@ module cache(
     wire [255:0]    replace_data;
     wire            replace_way;
     wire            replace_d;
+    wire            replace_v;
 // miss buffer
     // reg          miss_buffer_d;
     // reg [7:0]    miss_buffer_tag;
@@ -134,7 +135,7 @@ module cache(
     assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
                         |main_current_state == IDLE & ~hit_write_conflict;
     assign data_ok =    main_current_state == REFILL & ret_valid & ret_last         // miss
-                        |main_current_state == LOOKUP & cache_hit & ~op;             // read hit
+                        |main_current_state == LOOKUP & cache_hit;             // hit
     assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
                         :req_buffer_offset[3:2] == 2'd3 ? ret_data       // read miss
                         :load_miss_res;                                 // read miss
@@ -202,12 +203,12 @@ module cache(
                 if(main_current_state == LOOKUP && req_buffer_op && cache_hit)
                     wr_next_state <= WR_WRITE;
                 else
-                    wr_next_state <= wr_current_state;
+                    wr_next_state <= WR_IDLE;
             WR_WRITE:
                 if(main_current_state == LOOKUP && req_buffer_op && cache_hit)
                     wr_next_state <= WR_WRITE;
                 else
-                    wr_next_state <= wr_current_state;
+                    wr_next_state <= WR_IDLE;
             default: 
                 main_next_state = WR_IDLE;
         endcase
@@ -216,7 +217,15 @@ module cache(
     /*--------------------------------------------INSTANTIATION table of reg and ram ----------------------------------------------*/
     genvar i;
     // data table
+    wire [31:0] store_res;
+    wire [31:0] store_mask;
+    assign store_mask = {{4{req_buffer_wstrb[3]}}, {4{req_buffer_wstrb[2]}}, {4{req_buffer_wstrb[1]}}, {4{req_buffer_wstrb[0]}}};
+    assign store_res =      store_mask & req_buffer_wdata
+                            | ~store_mask & ret_data; 
+
+
     assign data_way0_wdata =        wr_current_state == WR_WRITE ? w_buffer_wdata
+                                    : (miss_buffer_cnt == req_buffer_offset[3:2] & req_buffer_op) ? store_res 
                                     : ret_data;
 
     generate
@@ -345,6 +354,7 @@ module cache(
                             :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
     assign replace_d =  replace_data ? way1_d: way0_d;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
+    assign replace_v =  replace_way ? way1_v : way0_v;
     // miss buffer
     // always @(posedge clk)begin
     //     if(~resetn)begin
@@ -389,7 +399,7 @@ module cache(
         end
     end
 
-    assign wr_req =     first_clk_of_replace & replace_d & wr_rdy;
+    assign wr_req =     first_clk_of_replace & replace_d & replace_v & wr_rdy;
     assign wr_data =    replace_data;
     assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
     assign wr_type =    3'b100;
@@ -420,6 +430,7 @@ module cache(
             w_buffer_way <= 1'b0;
             w_buffer_wstrb <= 4'b0;
             w_buffer_wdata <= 32'b0;
+            w_buffer_bank <= 2'b0;
         end else if(main_current_state == LOOKUP && req_buffer_op && cache_hit) begin
             w_buffer_index <= req_buffer_index;
             w_buffer_way <= way0_hit ? 0 : 1;
