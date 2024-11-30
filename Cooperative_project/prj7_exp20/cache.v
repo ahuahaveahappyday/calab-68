@@ -291,8 +291,8 @@ module cache(
         .douta  ({way1_tag,way1_v})// output when lookup
     );
     // dtable
-    assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
-                            : index;
+    assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
+                            : req_buffer_index;     // replace and refill
     assign d_way0_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
                             |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
@@ -304,8 +304,8 @@ module cache(
         .wdata      (d_way0_wdata),
         .rdata      (way0_d)
     );
-    assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index
-                            : index;
+    assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
+                            : req_buffer_index;         // replace and refill
     assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 1
                             |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
     assign d_way1_wdata =   wr_current_state == WR_WRITE;
