@@ -134,8 +134,8 @@ module cache(
 
     assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
                         |main_current_state == IDLE & ~hit_write_conflict;
-    assign data_ok =    main_current_state == REFILL & ret_valid & ret_last         // miss
-                        |main_current_state == LOOKUP & cache_hit;             // hit
+    assign data_ok =    (main_current_state == REFILL & ret_valid & ret_last & ~req_buffer_op)         // read miss
+                        |(main_current_state == LOOKUP & (cache_hit | req_buffer_op));             // hit or write
     assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
                         :req_buffer_offset[3:2] == 2'd3 ? ret_data       // read miss
                         :load_miss_res;                                 // read miss
