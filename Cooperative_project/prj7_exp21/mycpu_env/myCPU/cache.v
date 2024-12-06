@@ -18,6 +18,35 @@ module d_regfile(
 assign rdata = array[addr];
 
 endmodule
+module tagv_regfile(
+    input wire         clka,
+    input wire         resetn,
+	input wire [  7:0] addra,
+	input wire         wea,
+	input wire [20:0]  dina,
+	output reg [20:0]  douta
+);
+	reg  [20 : 0] array [255:0];
+    integer i;
+    always @(posedge clka) begin
+        if (~resetn) begin
+            // 复位时清零整个数组
+            for (i = 0; i < 256; i = i + 1) begin
+                array[i] <= 21'b0;
+            end
+        end else if (wea) begin
+            // 写操作
+            array[addra] <= dina;
+        end
+    end
+    always @(posedge clka)begin
+        if(~resetn)
+            douta <= 21'b0;
+        else
+            douta <= array[addra];
+    end
+
+endmodule
 module cache(
     input wire          clk,
     input wire          resetn,
@@ -271,24 +300,26 @@ module cache(
                                 :req_buffer_index;      // replace and refill;
     assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
     assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
-    tagv_ram tagv_ram_way0 (
-        .clka   (clk), 
+    tagv_regfile tagv_ram_way0 (
+        .clka   (clk),
+        .resetn  (resetn),
         .wea    (tagv_way0_wen),
         .addra  (tagv_way0_index),
         .dina   ({tagv_way0_wdata}),
-        .douta  ({way0_tag,way0_v})
+        .douta  ({way0_tag,way0_v})// output when lookup
     );
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
     assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
     assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
-    tagv_ram tagv_ram_way1 (
+    tagv_regfile tagv_ram_way1 (
         .clka   (clk),
+        .resetn (resetn),
         .wea    (tagv_way1_wen),  
         .addra  (tagv_way1_index), 
         .dina   ({tagv_way1_wdata}),
-        .douta  ({way1_tag,way1_v})
+        .douta  ({way1_tag,way1_v})// output when lookup
     );
     // dtable
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
@@ -446,4 +477,3 @@ module cache(
 
 
 endmodule
-
