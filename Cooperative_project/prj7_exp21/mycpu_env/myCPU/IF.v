@@ -90,6 +90,8 @@ module IFreg(
     always @(posedge clk) begin         // 表示if级当前正在等待指令返回，或者if级的指令缓存有效
         if(~resetn)
             if_valid <=         1'b0;
+        else if(pre_if_reqed_reg & pre_if_ir_valid & (br_taken | flush)) // pre_if级缓存有数据，需要丢弃
+            if_valid <=         1'b0;
         else if(pre_if_readygo & if_allowin)
             if_valid <=         to_if_valid;
         else if(if_ready_go && id_allowin)
@@ -118,7 +120,7 @@ module IFreg(
         if(~resetn)
             inst_cancel <= 1'b0;
         else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok & ~if_excep_en  // if正在等待指令返回
-                    |pre_if_reqed_reg & ~inst_sram_data_ok)// pre_if 级发出请求，但是数据没有返回，也还没有进入if级
+                    |pre_if_reqed_reg & ~pre_if_ir_valid & ~inst_sram_data_ok)// pre_if 级发出请求，但是数据没有返回，也还没有进入if级
                 & (flush | br_taken))
             inst_cancel <= 1'b1;
         else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
@@ -224,7 +226,7 @@ module IFreg(
             if_ir <=        32'b0;
         end
         else if(    (inst_sram_data_ok & ~pre_if_reqed_reg & ~if_ir_valid & ~id_allowin        // if级当前返回的指令不能进入id级   
-                    | pre_if_readygo & if_allowin & (pre_if_ir_valid        // pre_if缓存的指令必须先进入if级的缓存，不能直接进入id级
+                    | pre_if_readygo & if_allowin & ~(flush | br_taken) & (pre_if_ir_valid        // pre_if缓存的指令必须先进入if级的缓存，不能直接进入id级
                                                 | inst_sram_data_ok & pre_if_reqed_reg)) ) begin// pre_if返回的指令必须先进入if级的缓存，不能直接进入id级
             if_ir_valid <=  1'b1;
             if_ir <=        inst_sram_data_ok ? inst_sram_rdata

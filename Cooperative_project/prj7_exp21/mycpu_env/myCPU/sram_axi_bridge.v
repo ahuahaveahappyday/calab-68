@@ -60,8 +60,8 @@ module sram_axi_bridge(
     output wire                 wvalid    ,
     input wire                  wready    ,
     // write respond
-    input wire                  bid       , // ignore
-    input wire                  bresp     , // ignore
+    input wire [3:0]            bid       , // ignore
+    input wire [1:0]            bresp     , // ignore
     input wire                  bvalid    ,
     output wire                 bready    
 );

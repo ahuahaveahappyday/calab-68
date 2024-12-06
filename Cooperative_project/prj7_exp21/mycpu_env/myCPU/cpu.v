@@ -42,8 +42,8 @@ module mycpu_top
     output wire                 wvalid,
     input  wire                 wready,
     // write respond
-    input  wire                 bid,
-    input  wire                 bresp,
+    input  wire [3:0]           bid,
+    input  wire [1:0]           bresp,
     input  wire                 bvalid,
     output wire                 bready,
     // debug signals
