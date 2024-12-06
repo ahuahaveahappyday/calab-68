@@ -38,7 +38,7 @@ module sram_axi_bridge(
     input wire  [3:0]           rid       ,
     input wire  [31:0]          rdata     ,
     input wire  [1:0]           rresp     ,     // ignore
-    input wire                  rlast     ,     // ignore
+    input wire                  rlast     ,
     input wire                  rvalid    ,
     output wire                 rready    ,
     // write request
@@ -180,53 +180,72 @@ assign arvalid = (ar_current_state == AR_DATA_SEND) || (ar_current_state == AR_I
 assign araddr = ar_current_state == AR_DATA_SEND ? data_req_addr_reg
                                                 : inst_req_addr_reg;
 /*-------------------------------------------------read respond chanel------------------------------------------------------*/
-reg [31:0]          rdata_reg;
-reg                 rid_reg;
+// reg [31:0]          inst_rdata_reg[3:0];
+// reg [1:0]           inst_rdata_cnt;
+// reg                 rid_reg;
 
-always @(posedge clk)begin
-    if(~resetn)
-        r_current_state <= R_WAIT;
-    else 
-        r_current_state <= r_next_state;
-end
+// always @(posedge clk)begin
+//     if(~resetn)
+//         r_current_state <= R_WAIT;
+//     else 
+//         r_current_state <= r_next_state;
+// end
 // ---------------------next_state generate
-always @(*)begin
-    case(r_current_state)
-        R_WAIT:begin
-            if(rvalid)
-                r_next_state = R_RECIEVE;
-            else
-                r_next_state = R_WAIT;
-        end
-        R_RECIEVE:begin
-            r_next_state = R_WAIT;
-        end
-    endcase
-end
+// always @(*)begin
+//     case(r_current_state)
+//         R_WAIT:begin
+//             if(rvalid)
+//                 r_next_state = R_RECIEVE;
+//             else
+//                 r_next_state = R_WAIT;
+//         end
+//         R_SEND:begin
+//             if(rlast)
+//                 r_next_state = R_WAIT;
+//             else 
+//                 r_next_state = R_RECIEVE;   
+//         end
+//     endcase
+// end
 // --------------------axi master
-assign rready = r_current_state == R_WAIT;
+assign rready = 1'b1;
+// always @(posedge clk)begin
+//     if(~resetn)begin
+//         inst_rdata_cnt <= 2'b0;
+//     end
+//     else if(rvalid & rid == 3'b0)begin
+//         inst_rdata_reg[inst_rdata_cnt] <= rdata;
+//         inst_rdata_cnt <= inst_rdata_cnt + 1;
+//     end
+// end
+
+
+
+
+
 // --------------------sram slave
-always @(posedge clk)begin
-    if(~resetn)begin
-        rdata_reg <= 32'b0;
-        rid_reg <= 1'b0;
-    end
-    else if(r_current_state == R_WAIT && rvalid)begin
-        rdata_reg <= rdata;
-        rid_reg  <= rid;
-    end
-    else if(r_current_state ==R_RECIEVE)begin
-        rdata_reg <= 32'b0;
-        rid_reg <= 1'b0;
-    end
-end
+// always @(posedge clk)begin
+//     if(~resetn)begin
+//         rdata_reg <= 32'b0;
+//         rid_reg <= 1'b0;
+//     end
+//     else if(r_current_state == R_WAIT && rvalid)begin
+//         rdata_reg <= rdata;
+//         rid_reg  <= rid;
+//     end
+//     else if(r_current_state ==R_RECIEVE)begin
+//         rdata_reg <= 32'b0;
+//         rid_reg <= 1'b0;
+//     end
+// end
 // inst_sram
-assign inst_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b0);
-assign inst_sram_rdata = rdata_reg;
+assign inst_sram_data_ok = (rvalid && rid == 4'b0);
+assign inst_sram_rdata = rdata;
+assign inst_sram_last = rlast;
 // data_sram
-assign data_sram_data_ok = (r_current_state == R_RECIEVE && rid_reg == 4'b1)
+assign data_sram_data_ok = (rvalid && rid == 4'b1)
                            |(b_current_state == B_REC);
-assign data_sram_rdata = rdata_reg;
+assign data_sram_rdata = rdata;
 
 /*----------------------------------------------------write data and request chanel----------------------------------------*/
 reg [31:0]      awaddr_reg;
