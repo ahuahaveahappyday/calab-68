@@ -124,7 +124,7 @@ module cache(
     wire            d_way1_wdata;
     wire            way1_d;
 
-    wire hit_write_conflict;//hit write 冲突信号，暂时先放着，还没实现
+    wire hit_write_conflict;
     wire cache_hit;
 
     assign hit_write_conflict =     (main_current_state == LOOKUP & ~op
@@ -134,11 +134,11 @@ module cache(
 
     assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
                         |main_current_state == IDLE & ~hit_write_conflict;
-    assign data_ok =    main_current_state == REFILL & ret_valid & ret_last         // miss
-                        |main_current_state == LOOKUP & cache_hit;             // hit
+    assign data_ok =    (main_current_state == REFILL & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2] & ~req_buffer_op)         // read miss
+                        |(main_current_state == LOOKUP & (cache_hit | req_buffer_op));             // hit or write
     assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
-                        :req_buffer_offset[3:2] == 2'd3 ? ret_data       // read miss
-                        :load_miss_res;                                 // read miss
+                        : ret_data;       // read miss
+
     
 //main state machine
     always @(posedge clk) begin
@@ -241,7 +241,7 @@ module cache(
                 .wea    (data_way0_wen[i]),   
                 .addra  (data_way0_index[i]),
                 .dina   (data_way0_wdata),
-                .douta  (way0_data[i])  // output when lookup
+                .douta  (way0_data[i])  
             );
         end
     endgenerate
@@ -262,7 +262,7 @@ module cache(
                 .wea    (data_way1_wen[i]),
                 .addra  (data_way1_index[i]),
                 .dina   (data_way1_wdata),
-                .douta  (way1_data[i])  // output when lookup
+                .douta  (way1_data[i])  
             );
         end
     endgenerate
@@ -276,7 +276,7 @@ module cache(
         .wea    (tagv_way0_wen),
         .addra  (tagv_way0_index),
         .dina   ({tagv_way0_wdata}),
-        .douta  ({way0_tag,way0_v})// output when lookup
+        .douta  ({way0_tag,way0_v})
     );
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
@@ -288,7 +288,7 @@ module cache(
         .wea    (tagv_way1_wen),  
         .addra  (tagv_way1_index), 
         .dina   ({tagv_way1_wdata}),
-        .douta  ({way1_tag,way1_v})// output when lookup
+        .douta  ({way1_tag,way1_v})
     );
     // dtable
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
@@ -401,7 +401,7 @@ module cache(
         end
     end
 
-    assign wr_req =     first_clk_of_replace & replace_d & replace_v & wr_rdy;
+    assign wr_req =     first_clk_of_replace & replace_d & replace_v;
     assign wr_data =    replace_data;
     assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
     assign wr_type =    3'b100;

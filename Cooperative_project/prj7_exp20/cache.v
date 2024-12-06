@@ -241,7 +241,7 @@ module cache(
                 .wea    (data_way0_wen[i]),   
                 .addra  (data_way0_index[i]),
                 .dina   (data_way0_wdata),
-                .douta  (way0_data[i])  // output when lookup
+                .douta  (way0_data[i])  
             );
         end
     endgenerate
@@ -262,7 +262,7 @@ module cache(
                 .wea    (data_way1_wen[i]),
                 .addra  (data_way1_index[i]),
                 .dina   (data_way1_wdata),
-                .douta  (way1_data[i])  // output when lookup
+                .douta  (way1_data[i])  
             );
         end
     endgenerate
@@ -276,7 +276,7 @@ module cache(
         .wea    (tagv_way0_wen),
         .addra  (tagv_way0_index),
         .dina   ({tagv_way0_wdata}),
-        .douta  ({way0_tag,way0_v})// output when lookup
+        .douta  ({way0_tag,way0_v})
     );
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
@@ -288,7 +288,7 @@ module cache(
         .wea    (tagv_way1_wen),  
         .addra  (tagv_way1_index), 
         .dina   ({tagv_way1_wdata}),
-        .douta  ({way1_tag,way1_v})// output when lookup
+        .douta  ({way1_tag,way1_v})
     );
     // dtable
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
@@ -401,7 +401,7 @@ module cache(
         end
     end
 
-    assign wr_req =     first_clk_of_replace & replace_d & replace_v & wr_rdy;
+    assign wr_req =     first_clk_of_replace & replace_d & replace_v;
     assign wr_data =    replace_data;
     assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
     assign wr_type =    3'b100;
