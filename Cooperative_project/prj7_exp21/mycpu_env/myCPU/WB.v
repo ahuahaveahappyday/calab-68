@@ -118,7 +118,7 @@ module WBreg(
                         :wb_ex ? 14'hc  // CSR_EENTRY
                         :wb_csr_num;
 
-    assign csr_we = wb_csr_we & wb_valid;
+    assign csr_we = wb_csr_we & wb_valid & ~wb_ex;
     assign csr_wmask = wb_csr_wmask;
     assign csr_wvalue = wb_csr_wvalue;
 //清空流水线
