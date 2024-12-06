@@ -100,7 +100,6 @@ module mycpu_top
 
     wire         inst_sram_req;
     wire         inst_sram_wr;
-    wire [1:0]   inst_sram_size;
     wire [3:0]   inst_sram_wstrb;
     wire [31:0]  inst_sram_addr;
     wire [31:0]  inst_sram_wdata;
@@ -120,6 +119,8 @@ module mycpu_top
     //--------------------------------------------------output from if ------------------------------------------
     wire [18:0]                 if_s0_vppn;
     wire                        if_s0_va_bit12;    
+    wire [7:0]                  inst_vindex;
+    wire [3:0]                  inst_voffset;
     // ----------------------------------------------   output from ex -------------------------------------------------------------
     // search tlb port 1
     wire [18:0]                 ex_s1_vppn;
@@ -204,21 +205,32 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
+    // ----------------------------------------------------------------icache--------------------------------------------------------------
+    wire                      icache_rd_req;
+    wire [2:0]                icache_rd_type;
+    wire [31:0]               icache_rd_addr;
+    wire                      icache_rd_rdy;
+    wire                      icache_ret_valid;
+    wire [31:0]               icache_ret_data;
+    wire                      icache_ret_last;
 
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
         .clk                (aclk),
         .resetn             (aresetn),
+
         .inst_sram_req      (inst_sram_req),
         .inst_sram_wr       (inst_sram_wr),
-        .inst_sram_size     (inst_sram_size),
         .inst_sram_wstrb    (inst_sram_wstrb),
         .inst_sram_addr     (inst_sram_addr),
+        .inst_vindex        (inst_vindex),
+        .inst_voffset       (inst_voffset),
         .inst_sram_wdata    (inst_sram_wdata),
         .inst_sram_addr_ok  (inst_sram_addr_ok),
         .inst_sram_data_ok  (inst_sram_data_ok),
         .inst_sram_rdata    (inst_sram_rdata),
+        
         .id_allowin         (id_allowin),
         .id_to_if_bus       (id_to_if_bus),
         .if_to_id_valid     (if_to_id_valid),
@@ -506,15 +518,16 @@ module mycpu_top
     sram_axi_bridge my_sram_axi_bridge(
         .clk                (aclk),
         .resetn             (aresetn),
-        .inst_sram_req      (inst_sram_req),
-        .inst_sram_wr       (inst_sram_wr),
-        .inst_sram_size     (inst_sram_size),
-        .inst_sram_wstrb    (inst_sram_wstrb),
-        .inst_sram_addr     (inst_sram_addr),
-        .inst_sram_wdata    (inst_sram_wdata),
-        .inst_sram_addr_ok  (inst_sram_addr_ok),
-        .inst_sram_data_ok  (inst_sram_data_ok),
-        .inst_sram_rdata    (inst_sram_rdata),
+        // req from icache
+        .inst_sram_req      (icache_rd_req),
+        .inst_sram_addr     (icache_rd_addr),
+        .inst_sram_type     (icache_rd_type),
+        .inst_sram_addr_ok  (icache_rd_rdy),
+        // respond to icache
+        .inst_sram_data_ok  (icache_ret_valid),
+        .inst_sram_rdata    (icache_ret_data),
+        .inst_sram_last     (icache_ret_last),
+        // input from dcache
         .data_sram_req      (data_sram_req),
         .data_sram_wr       (data_sram_wr),
         .data_sram_size     (data_sram_size),
@@ -561,5 +574,40 @@ module mycpu_top
         .bvalid             (bvalid),
         .bready             (bready)
     );
+
+    cache icache(
+        .clk                (aclk), 
+        .resetn             (aresetn),
+        // input from cpu
+        .valid             (inst_sram_req),
+        .op                (inst_sram_wr),
+        .index             (inst_vindex),
+        .tag               (inst_sram_addr[31:12]),
+        .offset            (inst_voffset),
+        .wstrb             (inst_sram_wstrb),
+        .wdata             (inst_sram_wdata),
+        // output to cpu
+        .addr_ok           (inst_sram_addr_ok),
+        .data_ok           (inst_sram_data_ok),
+        .rdata             (inst_sram_rdata),
+        // axi read req
+        .rd_req            (icache_rd_req),
+        .rd_type           (icache_rd_type),
+        .rd_addr           (icache_rd_addr),
+        .rd_rdy            (icache_rd_rdy),
+        // axi read ret
+        .ret_valid        (icache_ret_valid),
+        .ret_data         (icache_ret_data),
+        .ret_last         (icache_ret_last),
+        // axi write req
+        .wr_req            (),
+        .wr_type           (),
+        .wr_addr           (),
+        .wr_data           (),
+        .wr_strb           (),
+        // axi write ret
+        .wr_rdy            (1'b1)
+    );
+
 
 endmodule

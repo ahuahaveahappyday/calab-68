@@ -1,26 +1,24 @@
 module sram_axi_bridge(
     input wire          clk,
     input wire          resetn,
-    //if模块与指令存储器的交互接口
-    input wire         inst_sram_req,
-    input wire         inst_sram_wr,
-    input wire [1:0]   inst_sram_size,
-    input wire [3:0]   inst_sram_wstrb,
-    input wire [31:0]  inst_sram_addr,
-    input wire [31:0]  inst_sram_wdata,
-    
-    output wire          inst_sram_addr_ok,
-    output wire          inst_sram_data_ok,
-    output wire  [31:0]  inst_sram_rdata,
+    // req from icache
+    input wire              inst_sram_req,
+    input wire [31:0]       inst_sram_addr,
+    input wire [2:0]        inst_sram_type,
+    output wire             inst_sram_addr_ok,
+    // response to icache
+    output wire             inst_sram_data_ok,
+    output wire  [31:0]     inst_sram_rdata,
+    output wire             inst_sram_last,
     
     //ex模块与数据存储器交互
-    input wire         data_sram_req,
-    input wire         data_sram_wr,
-    input wire [1:0]   data_sram_size,
-    input wire [3:0]   data_sram_wstrb,
-    input wire [31:0]  data_sram_addr,
-    input wire [31:0]  data_sram_wdata,
-    output wire          data_sram_addr_ok,
+    input wire              data_sram_req,
+    input wire              data_sram_wr,
+    input wire [1:0]        data_sram_size,
+    input wire [3:0]        data_sram_wstrb,
+    input wire [31:0]       data_sram_addr,
+    input wire [31:0]       data_sram_wdata,
+    output wire             data_sram_addr_ok,
     //mem与dram交互接口
     output wire          data_sram_data_ok,
     output wire  [31:0]  data_sram_rdata,
@@ -96,12 +94,11 @@ reg [2:0]       b_current_state;
 reg [2:0]       b_next_state;
 
 /*--------------------------------------read request chanel---------------------------------------------------*/
-reg [31:0]      araddr_reg;
-reg [2:0]       arsize_reg;
-reg             arvalid_reg;
-
-reg             ar_inst_addr_valid;
-reg [31:0]      ar_inst_addr_reg;
+reg   [31:0]    inst_req_addr_reg;
+reg   [2:0]     inst_req_type_reg;
+reg             inst_req_valid_reg;
+reg   [31:0]    data_req_addr_reg;
+reg   [2:0]     data_req_type_reg;
 
 always @(posedge clk)begin
     if(~resetn)
@@ -115,13 +112,13 @@ always @( * )begin
         AR_WAIT:begin
             if(data_sram_req & data_sram_addr_ok & ~data_sram_wr)// data fetch, higher priority
                 ar_next_state =         AR_DATA_SEND;
-            else if( inst_sram_req & inst_sram_addr_ok & ~inst_sram_wr)      // inst fetch
+            else if( inst_sram_req & inst_sram_addr_ok)      // inst fetch
                 ar_next_state   =       AR_INST_SEND;
             else 
                 ar_next_state =         AR_WAIT;
         end
         AR_DATA_SEND: begin
-            if  (arready & ar_inst_addr_valid)
+            if  (arready & inst_req_valid_reg)
                 ar_next_state = AR_INST_SEND;
             else if (arready)
                 ar_next_state = AR_WAIT;
@@ -140,45 +137,48 @@ end
 //---------------------------sram_like slave 
 assign inst_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
 assign data_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
+always @(posedge clk)begin
+    if(~resetn)begin
+        inst_req_addr_reg <= 32'b0;
+        inst_req_type_reg <= 3'b0;
+        inst_req_valid_reg <= 1'b0;
+    end
+    else if(ar_current_state == AR_WAIT && inst_sram_req && inst_sram_addr_ok)begin
+        inst_req_addr_reg <= inst_sram_addr;
+        inst_req_type_reg <= inst_sram_type;
+        inst_req_valid_reg <= 1'b1;
+    end
+    else if(ar_current_state == AR_INST_SEND && arready)begin
+        inst_req_valid_reg <= 1'b0;
+    end
+end
+always @(posedge clk)begin
+    if(~resetn)begin
+        data_req_addr_reg <= 32'b0;
+        data_req_type_reg <= 3'b0;
+    end
+    else if(ar_current_state == AR_WAIT && data_sram_req && data_sram_addr_ok && ~data_sram_wr)begin
+        data_req_addr_reg <= data_sram_addr;
+        data_req_type_reg <= 3'b0;
+    end
+end
 // --------------------------axi master
-assign arlen =      8'b0;
 assign arburst =    2'b01;
 assign arlock =     2'b0;
 assign arcache =    4'b0;
 assign arprot =     3'b0;
 assign arsize =     3'b010; // 32 bit per time
+
+// arlen
+assign arlen =      ar_current_state == AR_DATA_SEND ?  8'b0 
+                                                        : inst_req_type_reg == 3'b100 ? 8'd3: 8'd0;
 // arid
 assign arid = {2'b0,{ar_current_state == AR_DATA_SEND}};
 // arvalid
 assign arvalid = (ar_current_state == AR_DATA_SEND) || (ar_current_state == AR_INST_SEND);
 // araddr
-always @(posedge clk)begin
-    if(~resetn) begin
-        ar_inst_addr_reg<= 32'b0;
-        ar_inst_addr_valid <= 1'b0;
-    end
-    else if(ar_current_state == AR_WAIT && inst_sram_req && inst_sram_addr_ok && ~inst_sram_wr
-                                        && data_sram_req && data_sram_addr_ok && ~data_sram_wr )     // Inst fetch and data fetch request at the same time
-    begin
-        ar_inst_addr_reg<= inst_sram_addr;
-        ar_inst_addr_valid <= 1'b1;
-    end
-    else if(ar_current_state == AR_INST_SEND && arready)begin
-        ar_inst_addr_reg<= 32'b0;
-        ar_inst_addr_valid <= 1'b0; 
-    end
-end
-always @(posedge clk)begin
-    if(~resetn)
-        araddr_reg <= 32'b0;
-    else if(ar_current_state == AR_WAIT && data_sram_req && data_sram_addr_ok && ~data_sram_wr)
-        araddr_reg <= data_sram_addr;
-    else if(ar_current_state == AR_WAIT && inst_sram_req && inst_sram_addr_ok && ~inst_sram_wr)   // Inst fetch
-        araddr_reg <= inst_sram_addr;
-    else if(ar_current_state == AR_DATA_SEND && arready && ar_inst_addr_valid)
-        araddr_reg <= ar_inst_addr_reg;
-end
-assign araddr = araddr_reg;
+assign araddr = ar_current_state == AR_DATA_SEND ? data_req_addr_reg
+                                                : inst_req_addr_reg;
 /*-------------------------------------------------read respond chanel------------------------------------------------------*/
 reg [31:0]          rdata_reg;
 reg                 rid_reg;

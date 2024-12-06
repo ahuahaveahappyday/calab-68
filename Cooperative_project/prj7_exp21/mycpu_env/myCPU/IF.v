@@ -4,9 +4,10 @@ module IFreg(
     //if模块与指令存储器的交互接口
     output wire         inst_sram_req,
     output wire         inst_sram_wr,
-    output wire [1:0]   inst_sram_size,
     output wire [3:0]   inst_sram_wstrb,
     output wire [31:0]  inst_sram_addr,
+    output wire [7:0]   inst_vindex,
+    output wire [3:0]   inst_voffset,
     output wire [31:0]  inst_sram_wdata,
     
     input wire          inst_sram_addr_ok,
@@ -136,7 +137,6 @@ module IFreg(
     /* 与指令sram交互信号 */
     assign inst_sram_wstrb  =   4'b0;
     assign inst_sram_wr     =   1'b0;
-    assign inst_sram_size   =   2'h2;
     assign inst_sram_wdata  =   32'b0;
 
     assign inst_sram_req    =   resetn & ~pre_if_reqed_reg        // pre if 没有已经发出请求的指令 
@@ -235,6 +235,8 @@ module IFreg(
     end
 // =============================================虚实地址转换
     assign {s0_vppn, s0_va_bit12} = pre_pc[31:12];// output to tlb
+    assign inst_vindex = pre_pc[11:4];
+    assign inst_voffset = pre_pc[3:0];
 
     wire [31:0]                 pre_pc_map;
     wire                        hit_dmw0;
