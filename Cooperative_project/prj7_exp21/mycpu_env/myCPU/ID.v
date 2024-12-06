@@ -500,7 +500,7 @@ module IDreg(
                               | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu                           //添加blt等指令
                               | inst_st_w | inst_sll_w| inst_srl_w | inst_sra_w | inst_mul_w 
                               | inst_mulh_w | inst_mulh_wu | inst_mod_w | inst_mod_wu | inst_div_w |inst_div_wu
-                              | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg;
+                              | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_invtlb;
                               //需要使用（读）源寄存器2（rk/rd）的指令
 
     //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
