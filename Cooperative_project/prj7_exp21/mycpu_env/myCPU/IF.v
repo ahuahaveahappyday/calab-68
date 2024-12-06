@@ -90,7 +90,7 @@ module IFreg(
     always @(posedge clk) begin         // 表示if级当前正在等待指令返回，或者if级的指令缓存有效
         if(~resetn)
             if_valid <=         1'b0;
-        else if(pre_if_reqed_reg & pre_if_ir_valid & (br_taken | flush)) // pre_if级缓存有数据，需要丢弃
+        else if(~(inst_sram_req & inst_sram_addr_ok) & (br_taken | flush)) // 排除跳转目的的pc值下一个周期就返回
             if_valid <=         1'b0;
         else if(pre_if_readygo & if_allowin)
             if_valid <=         to_if_valid;
