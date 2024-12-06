@@ -100,7 +100,7 @@ module IFreg(
     assign if_ready_go      =    if_ir_valid
                                 |inst_sram_data_ok
                                 |if_excep_en;
-    assign if_to_id_valid   =   if_ready_go & ~inst_cancel;
+    assign if_to_id_valid   =   if_ready_go & ~inst_cancel & if_valid;
 
     assign if_allowin       =   ~if_valid 
                                 | if_ready_go & id_allowin ;   
