@@ -604,7 +604,7 @@ module mycpu_top
         .wr_type           (),
         .wr_addr           (),
         .wr_data           (),
-        .wr_strb           (),
+        .wr_wstrb           (),
         // axi write ret
         .wr_rdy            (1'b1)
     );

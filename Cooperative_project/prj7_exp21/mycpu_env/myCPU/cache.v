@@ -347,8 +347,8 @@ module cache(
     assign way1_hit = way1_v && (way1_tag == req_buffer_tag);
     assign cache_hit = way0_hit || way1_hit;
     // data select
-    assign way0_load_word = way0_data[offset[3:2]];
-    assign way1_load_word = way1_data[offset[3:2]];
+    assign way0_load_word = way0_data[req_buffer_offset[3:2]];
+    assign way1_load_word = way1_data[req_buffer_offset[3:2]];
 
     assign load_hit_res =   {32{way0_hit}} & way0_load_word
                             |{32{way1_hit}} & way1_load_word;
