@@ -129,6 +129,9 @@ module mycpu_top
     // invtlb
     wire                        ex_invtlb_valid;
     wire [4:0]                  ex_invtlb_op;
+    //dcache
+    wire [7:0]                  data_vindex;
+    wire [3:0]                  data_voffset;
 
     // -----------------------------------------------  output from wb ---------------------------------------------------------------
     // tlbsrch
@@ -214,6 +217,21 @@ module mycpu_top
     wire [31:0]               icache_ret_data;
     wire                      icache_ret_last;
 
+    // ----------------------------------------------------------------dcache--------------------------------------------------------------
+    wire                      dcache_rd_req;
+    wire [2:0]                dcache_rd_type;
+    wire [31:0]               dcache_rd_addr;
+    wire                      dcache_rd_rdy;
+    wire                      dcache_ret_valid;
+    wire [31:0]               dcache_ret_data;
+    wire                      dcache_ret_last;
+    wire                      dcache_wr_req;
+    wire [2:0]                dcache_wr_type;
+    wire [31:0]               dcache_wr_addr;
+    wire [3:0]                dcache_wr_wsrb;
+    wire [127:0]              dcache_wr_data;
+    wire                      dcache_wr_rdy;
+
     //--------------------------------------------------------------------------------------------------------------------------------
 
     IFreg my_ifReg(
@@ -291,6 +309,8 @@ module mycpu_top
         .data_sram_wstrb    (data_sram_wstrb),
         .data_sram_addr     (data_sram_addr),
         .data_sram_wdata    (data_sram_wdata),
+        .data_vindex        (data_vindex),
+        .data_voffset       (data_voffset),
         .data_sram_addr_ok  (data_sram_addr_ok),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .counter            (counter),
@@ -527,7 +547,23 @@ module mycpu_top
         .inst_sram_data_ok  (icache_ret_valid),
         .inst_sram_rdata    (icache_ret_data),
         .inst_sram_last     (icache_ret_last),
-        // input from dcache
+        // req from dcache
+        .data_sram_req      (dcache_rd_req),
+        .data_sram_addr     (dcache_rd_addr),
+        .data_sram_type     (dcache_rd_type),
+        .data_sram_addr_ok  (dcache_rd_rdy),
+        // respond to dcache
+        .data_sram_data_ok  (dcache_ret_valid),
+        .data_sram_rdata    (dcache_ret_data),
+        .data_sram_last     (dcache_ret_last),
+        // wdata from dcache
+        .data_sram_wr_req   (dcache_wr_req),
+        .data_sram_wr_type  (dcache_wr_type),
+        .data_sram_wr_addr  (dcache_wr_addr),
+        .data_sram_wr_data  (dcache_wr_data),
+        .data_sram_wr_wstrb (dcache_wr_wsrb),
+
+        /* input from dcache
         .data_sram_req      (data_sram_req),
         .data_sram_wr       (data_sram_wr),
         .data_sram_size     (data_sram_size),
@@ -536,7 +572,8 @@ module mycpu_top
         .data_sram_wdata    (data_sram_wdata),
         .data_sram_addr_ok  (data_sram_addr_ok),
         .data_sram_data_ok  (data_sram_data_ok),
-        .data_sram_rdata    (data_sram_rdata),
+        .data_sram_rdata    (data_sram_rdata),*/
+
         .arid               (arid),
         .araddr             (araddr),
         .arlen              (arlen),
@@ -608,6 +645,39 @@ module mycpu_top
         // axi write ret
         .wr_rdy            (1'b1)
     );
-
+ 
+    cache dcache(
+        .clk                (aclk), 
+        .resetn             (aresetn),
+        // input from cpu
+        .valid             (data_sram_req),
+        .op                (data_sram_wr),
+        .index             (data_vindex),
+        .tag               (data_sram_addr[31:12]),
+        .offset            (data_voffset),
+        .wstrb             (data_sram_wstrb),
+        .wdata             (data_sram_wdata),
+        // output to cpu
+        .addr_ok           (data_sram_addr_ok),
+        .data_ok           (data_sram_data_ok),
+        .rdata             (data_sram_rdata),
+        // axi read req
+        .rd_req            (dcache_rd_req),
+        .rd_type           (dcache_rd_type),
+        .rd_addr           (dcache_rd_addr),
+        .rd_rdy            (dcache_rd_rdy),
+        // axi read ret
+        .ret_valid        (dcache_ret_valid),
+        .ret_data         (dcache_ret_data),
+        .ret_last         (dcache_ret_last),
+        // axi write req
+        .wr_req            (dcache_wr_req),
+        .wr_type           (dcache_wr_type),
+        .wr_addr           (dcache_wr_addr),
+        .wr_data           (dcache_wr_data),
+        .wr_wstrb           (dcache_wr_wsrb),
+        // axi write ret
+        .wr_rdy            (dcache_wr_rdy)
+    );
 
 endmodule

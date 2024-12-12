@@ -21,6 +21,8 @@ module EXEreg(
     output wire [3:0]   data_sram_wstrb,
     output wire [31:0]  data_sram_addr,
     output wire [31:0]  data_sram_wdata,
+    output wire [7:0]   data_vindex,
+    output wire [3:0]   data_voffset,
     input wire          data_sram_addr_ok,
     
     input  wire         flush,
