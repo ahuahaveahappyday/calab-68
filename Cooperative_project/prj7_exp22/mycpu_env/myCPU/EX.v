@@ -269,6 +269,8 @@ module EXEreg(
                                     : ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0}
                                     : ex_alu_result[31:12];     // data_sram_addr
     assign ex_tlbsrch_res = {s1_found,s1_index};
+    assign data_vindex = ex_alu_result[11:4];
+    assign data_voffset = ex_alu_result[3:0];
     // addr translate
     assign sram_addr_pa =       csr_crmd_pg ? sram_addr_map    // enable mapping
                                 :ex_alu_result;                    // direct translate
