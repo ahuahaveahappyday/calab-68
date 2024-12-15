@@ -57,7 +57,10 @@ module EXEreg(
     input wire  [2:0]   csr_dmw0_vseg,
     input wire          csr_dmw1_plv_met,
     input wire  [2:0]   csr_dmw1_pseg,
-    input wire  [2:0]   csr_dmw1_vseg
+    input wire  [2:0]   csr_dmw1_vseg,
+
+    output wire         hit_dmw0,
+    output wire         hit_dmw1
 
 );
 //ex reg 从id级接受数据
@@ -113,8 +116,6 @@ module EXEreg(
     wire [31:0] sram_addr_pa;      
     // 虚实地址转换
     wire [31:0]                 sram_addr_map;
-    wire                        hit_dmw0;
-    wire                        hit_dmw1;
     // 异常相关
     wire        ex_excep_en;
     wire [5:0]  ex_ecode;

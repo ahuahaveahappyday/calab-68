@@ -58,6 +58,7 @@ module cache(
     input wire [3:0]    offset,
     input wire [3:0]    wstrb,
     input wire [31:0]   wdata,
+    input wire          type,
     // output to cpu
     output wire         addr_ok,
     output wire         data_ok,
@@ -188,9 +189,9 @@ module cache(
                     main_next_state = IDLE;
 
             LOOKUP:
-                if(cache_hit & (~valid | hit_write_conflict))
+                if(cache_hit & (~valid | hit_write_conflict) & type)
                     main_next_state = IDLE;
-                else if(~cache_hit)
+                else if(~cache_hit | ~type)
                     main_next_state = MISS;
                 else
                     main_next_state = LOOKUP;

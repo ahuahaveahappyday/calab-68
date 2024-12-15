@@ -145,7 +145,14 @@ module CSRfile #(
     output wire [               2:0] csr_output_dmw0_vseg,
     output wire                      csr_dmw1_plv_met,
     output wire [               2:0] csr_output_dmw1_pseg,
-    output wire [               2:0] csr_output_dmw1_vseg
+    output wire [               2:0] csr_output_dmw1_vseg,
+    //cache type
+    input  wire                      hit_dmw0,
+    input  wire                      hit_dmw1,
+    input  wire                      s0_mat,
+    input  wire                      s1_mat,
+    output wire                      inst_type,
+    output wire                      data_type
 );
     reg  [               1:0] csr_crmd_plv;
     reg                       csr_crmd_ie;
@@ -259,6 +266,8 @@ module CSRfile #(
         if(~resetn)begin
             csr_crmd_da <= 1'b1;
             csr_crmd_pg <= 1'b0;
+            csr_crmd_datf <=     2'b0;
+            csr_crmd_datm <=     2'b0;  
         end
         else if(wb_ex && wb_ecode == `ECODE_TLBR && wb_esubcode == 9'b0)begin   // tlb refill exception
             csr_crmd_da <= 1'b1;
@@ -267,6 +276,8 @@ module CSRfile #(
         else if(ertn_flush && csr_estat_ecode == `ECODE_TLBR) begin
             csr_crmd_da <= 1'b0;
             csr_crmd_pg <= 1'b1;
+            csr_crmd_datf <=     2'b01;
+            csr_crmd_datm <=     2'b01;  
         end
         else if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
             csr_crmd_da <=      csr_wmask[`CSR_CRMD_DA] & csr_wvalue[`CSR_CRMD_DA]
@@ -274,13 +285,7 @@ module CSRfile #(
             csr_crmd_pg <=      csr_wmask[`CSR_CRMD_PG] & csr_wvalue[`CSR_CRMD_PG]
                                 | ~csr_wmask[`CSR_CRMD_PG] & csr_crmd_pg;
         end
-    end
-    always @(posedge clk)begin
-        if(~resetn)begin
-            csr_crmd_datf <=     2'b0;
-            csr_crmd_datm <=     2'b0;    
-        end
-        else if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
+        if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
             csr_crmd_datf <=     csr_wmask[`CSR_CRMD_DATF] & csr_wvalue[`CSR_CRMD_DATF]
                                 | ~csr_wmask[`CSR_CRMD_DATF] & csr_crmd_datf;
             csr_crmd_datm <=     csr_wmask[`CSR_CRMD_DATM] & csr_wvalue[`CSR_CRMD_DATM]
@@ -703,5 +708,16 @@ module CSRfile #(
                             |{32{csr_num == `CSR_TLBRENTRY}} & csr_tlbrentry_rvalue
                             |{32{csr_num == `CSR_DMW0}}& csr_dmw0_rvalue
                             |{32{csr_num == `CSR_DMW1}} & csr_dmw1_rvalue;
+
+/*------------------------------------CACHE---------------------------------------------------------*/
+
+    assign inst_type = (~csr_crmd_pg) ? (csr_crmd_datf==2'b01 ? 1'b1 : 1'b0) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01 ? 1'b1 : 1'b0) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01 ? 1'b1 : 1'b0) :
+                       s0_mat;
+    assign data_type = (~csr_crmd_pg) ? (csr_crmd_datm==2'b01 ? 1'b1 : 1'b0) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01 ? 1'b1 : 1'b0) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01 ? 1'b1 : 1'b0) :
+                       s1_mat;
 
 endmodule

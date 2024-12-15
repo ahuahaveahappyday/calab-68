@@ -106,6 +106,7 @@ module mycpu_top
     wire         inst_sram_addr_ok;
     wire         inst_sram_data_ok;
     wire [31:0]  inst_sram_rdata;
+    wire         inst_type;
 
     wire         data_sram_req;
     wire         data_sram_wr;
@@ -116,6 +117,7 @@ module mycpu_top
     wire         data_sram_addr_ok;
     wire         data_sram_data_ok;
     wire [31:0]  data_sram_rdata;
+    wire         data_type;
     //--------------------------------------------------output from if ------------------------------------------
     wire [18:0]                 if_s0_vppn;
     wire                        if_s0_va_bit12;    
@@ -132,6 +134,9 @@ module mycpu_top
     //dcache
     wire [7:0]                  data_vindex;
     wire [3:0]                  data_voffset;
+
+    wire                        hit_dmw0;
+    wire                        hit_dmw1;
 
     // -----------------------------------------------  output from wb ---------------------------------------------------------------
     // tlbsrch
@@ -340,7 +345,10 @@ module mycpu_top
         .csr_dmw0_vseg      (csr_output_dmw0_vseg),
         .csr_dmw1_plv_met   (csr_dmw1_plv_met),
         .csr_dmw1_pseg      (csr_output_dmw1_pseg),
-        .csr_dmw1_vseg      (csr_output_dmw1_vseg)
+        .csr_dmw1_vseg      (csr_output_dmw1_vseg),
+
+        .hit_dmw0           (hit_dmw0),
+        .hit_dmw1           (hit_dmw1)
     );
 
     MEMreg my_memReg(
@@ -457,7 +465,14 @@ module mycpu_top
         .csr_output_dmw0_vseg(csr_output_dmw0_vseg),
         .csr_dmw1_plv_met   (csr_dmw1_plv_met),
         .csr_output_dmw1_pseg(csr_output_dmw1_pseg),
-        .csr_output_dmw1_vseg(csr_output_dmw1_vseg)
+        .csr_output_dmw1_vseg(csr_output_dmw1_vseg),
+
+        .hit_dmw0           (hit_dmw0),
+        .hit_dmw1           (hit_dmw1),
+        .s0_mat             (s0_mat),
+        .s1_mat             (s1_mat),
+        .inst_type          (inst_type),
+        .data_type          (data_type)
 
     );
 
@@ -613,6 +628,7 @@ module mycpu_top
         .offset            (inst_voffset),
         .wstrb             (inst_sram_wstrb),
         .wdata             (inst_sram_wdata),
+        .type              (inst_type),
         // output to cpu
         .addr_ok           (inst_sram_addr_ok),
         .data_ok           (inst_sram_data_ok),
@@ -647,6 +663,7 @@ module mycpu_top
         .offset            (data_voffset),
         .wstrb             (data_sram_wstrb),
         .wdata             (data_sram_wdata),
+        .type              (data_type),
         // output to cpu
         .addr_ok           (data_sram_addr_ok),
         .data_ok           (data_sram_data_ok),
