@@ -547,33 +547,23 @@ module mycpu_top
         .inst_sram_data_ok  (icache_ret_valid),
         .inst_sram_rdata    (icache_ret_data),
         .inst_sram_last     (icache_ret_last),
-        // req from dcache
-        .data_sram_req      (dcache_rd_req),
-        .data_sram_addr     (dcache_rd_addr),
-        .data_sram_type     (dcache_rd_type),
-        .data_sram_addr_ok  (dcache_rd_rdy),
+        // read req from dcache
+        .data_sram_rd_req       (dcache_rd_req),
+        .data_sram_rd_addr      (dcache_rd_addr),
+        .data_sram_rd_type      (dcache_rd_type),
+        .data_sram_rd_addr_ok   (dcache_rd_rdy),
+        // wirte req from dcache
+        .data_sram_wr_req       (dcache_wr_req),
+        .data_sram_wr_type      (dcache_wr_type),
+        .data_sram_wr_addr      (dcache_wr_addr),
+        .data_sram_wr_data      (dcache_wr_data),
+        .data_sram_wr_wstrb     (dcache_wr_wsrb),
+        .data_sram_wr_addr_ok   (dcache_wr_rdy),
         // respond to dcache
-        .data_sram_data_ok  (dcache_ret_valid),
-        .data_sram_rdata    (dcache_ret_data),
-        .data_sram_last     (dcache_ret_last),
-        // wdata from dcache
-        .data_sram_wr_req   (dcache_wr_req),
-        .data_sram_wr_type  (dcache_wr_type),
-        .data_sram_wr_addr  (dcache_wr_addr),
-        .data_sram_wr_data  (dcache_wr_data),
-        .data_sram_wr_wstrb (dcache_wr_wsrb),
-
-        /* input from dcache
-        .data_sram_req      (data_sram_req),
-        .data_sram_wr       (data_sram_wr),
-        .data_sram_size     (data_sram_size),
-        .data_sram_wstrb    (data_sram_wstrb),
-        .data_sram_addr     (data_sram_addr),
-        .data_sram_wdata    (data_sram_wdata),
-        .data_sram_addr_ok  (data_sram_addr_ok),
-        .data_sram_data_ok  (data_sram_data_ok),
-        .data_sram_rdata    (data_sram_rdata),*/
-
+        .data_sram_data_ok      (dcache_ret_valid),
+        .data_sram_rdata        (dcache_ret_data),
+        .data_sram_last         (dcache_ret_last),
+    
         .arid               (arid),
         .araddr             (araddr),
         .arlen              (arlen),

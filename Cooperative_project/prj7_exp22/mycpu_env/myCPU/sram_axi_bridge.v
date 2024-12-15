@@ -11,17 +11,23 @@ module sram_axi_bridge(
     output wire  [31:0]     inst_sram_rdata,
     output wire             inst_sram_last,
     
-    //ex模块与数据存储器交互
-    input wire              data_sram_req,
-    input wire              data_sram_wr,
-    input wire [1:0]        data_sram_size,
-    input wire [3:0]        data_sram_wstrb,
-    input wire [31:0]       data_sram_addr,
-    input wire [31:0]       data_sram_wdata,
-    output wire             data_sram_addr_ok,
-    //mem与dram交互接口
-    output wire          data_sram_data_ok,
-    output wire  [31:0]  data_sram_rdata,
+    // read req from dcache
+    input wire              data_sram_rd_req,
+    input wire  [31:0]       data_sram_rd_addr,
+    input wire  [2:0]       data_sram_type,
+    output wire             data_sram_rd_addr_ok,
+    // write req from dcache
+    input wire              data_sram_wr_req,
+    input wire   [31:0]       data_sram_wr_addr,
+    input wire   [2:0]       data_sram_wr_type,
+    input wire  [127:0]       data_sram_wdata,
+    input wire  [3:0]        data_sram_wstrb,
+    output wire             data_sram_wr_addr_ok,
+    // response to dcache
+    output wire             data_sram_data_ok,
+    output wire  [31:0]     data_sram_rdata,
+    output wire             data_sram_last,
+
 
     // read request
     output wire  [3:0]          arid      ,
@@ -110,7 +116,7 @@ end
 always @( * )begin
     case (ar_current_state)
         AR_WAIT:begin
-            if(data_sram_req & data_sram_addr_ok & ~data_sram_wr)// data fetch, higher priority
+            if(data_sram_rd_req & data_sram_rd_addr_ok)// data fetch, higher priority
                 ar_next_state =         AR_DATA_SEND;
             else if( inst_sram_req & inst_sram_addr_ok)      // inst fetch
                 ar_next_state   =       AR_INST_SEND;
@@ -135,8 +141,8 @@ always @( * )begin
 end
 
 //---------------------------sram_like slave 
-assign inst_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
-assign data_sram_addr_ok = ar_current_state == AR_WAIT && aw_current_state == AW_WAIT;
+assign inst_sram_addr_ok = ar_current_state == AR_WAIT;
+assign data_sram_rd_addr_ok = ar_current_state == AR_WAIT;
 always @(posedge clk)begin
     if(~resetn)begin
         inst_req_addr_reg <= 32'b0;
@@ -157,8 +163,8 @@ always @(posedge clk)begin
         data_req_addr_reg <= 32'b0;
         data_req_type_reg <= 3'b0;
     end
-    else if(ar_current_state == AR_WAIT && data_sram_req && data_sram_addr_ok && ~data_sram_wr)begin
-        data_req_addr_reg <= data_sram_addr;
+    else if(ar_current_state == AR_WAIT && data_sram_rd_req && data_sram_rd_addr_ok)begin
+        data_req_addr_reg <= data_sram_rd_addr;
         data_req_type_reg <= 3'b0;
     end
 end
@@ -243,14 +249,15 @@ assign inst_sram_data_ok = (rvalid && rid == 4'b0);
 assign inst_sram_rdata = rdata;
 assign inst_sram_last = rlast;
 // data_sram
-assign data_sram_data_ok = (rvalid && rid == 4'b1)
-                           |(b_current_state == B_REC);
+assign data_sram_data_ok = (rvalid && rid == 4'b1);
 assign data_sram_rdata = rdata;
+assign data_sram_last = rlast;
 
 /*----------------------------------------------------write data and request chanel----------------------------------------*/
 reg [31:0]      awaddr_reg;
 reg [3:0]       wstrb_reg;
-reg [31:0]      wdata_reg;
+reg [127:0]      wdata_reg;
+reg [2:0]       awtype_reg;
 always @(posedge clk)begin
     if(~resetn)
         aw_current_state <= AW_WAIT;
@@ -261,7 +268,7 @@ end
 always @(*)begin
     case(aw_current_state)
         AW_WAIT:begin
-            if(data_sram_wr && data_sram_req && data_sram_addr_ok)   // data write request
+            if(data_sram_wr_req && data_sram_wr_addr_ok)   // data write request
                 aw_next_state = AW_SEND_ADDR;
             else 
                 aw_next_state = AW_WAIT;
@@ -282,17 +289,19 @@ always @(*)begin
 end
 /*----------------------------------write request chanel------------------------*/
 // ---------------------------sram_like slave
-// data_sram_addr_ok is defined in read req chanel
+assign data_sram_wr_addr_ok = aw_current_state == AW_WAIT;
 always @(posedge clk)begin
     if(~resetn)begin
         awaddr_reg <= 32'b0;
         wstrb_reg <= 4'b0;
         wdata_reg <= 32'b0;
+        awtype_reg <= 3'b0;
     end
-    else if(aw_current_state == AW_WAIT && data_sram_addr_ok && data_sram_req && data_sram_wr)begin
-        awaddr_reg <= data_sram_addr;
+    else if(aw_current_state == AW_WAIT && data_sram_wr_req && data_sram_wr_addr_ok)begin
+        awaddr_reg <= data_sram_wr_addr;
         wstrb_reg <= data_sram_wstrb;
         wdata_reg <= data_sram_wdata;
+        awtype_reg <= data_sram_wr_type;
     end
 end
 // ---------------------------axi master
