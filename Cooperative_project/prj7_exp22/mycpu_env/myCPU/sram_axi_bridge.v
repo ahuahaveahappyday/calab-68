@@ -14,7 +14,7 @@ module sram_axi_bridge(
     // read req from dcache
     input wire              data_sram_rd_req,
     input wire  [31:0]       data_sram_rd_addr,
-    input wire  [2:0]       data_sram_type,
+    input wire  [2:0]       data_sram_rd_type,
     output wire             data_sram_rd_addr_ok,
     // write req from dcache
     input wire              data_sram_wr_req,
@@ -165,7 +165,7 @@ always @(posedge clk)begin
     end
     else if(ar_current_state == AR_WAIT && data_sram_rd_req && data_sram_rd_addr_ok)begin
         data_req_addr_reg <= data_sram_rd_addr;
-        data_req_type_reg <= 3'b0;
+        data_req_type_reg <= data_sram_rd_type;
     end
 end
 // --------------------------axi master
@@ -176,7 +176,7 @@ assign arprot =     3'b0;
 assign arsize =     3'b010; // 32 bit per time
 
 // arlen
-assign arlen =      ar_current_state == AR_DATA_SEND ?  8'b0 
+assign arlen =      ar_current_state == AR_DATA_SEND ?  data_sram_rd_type == 3'b100 ? 8'd3: 8'd0
                                                         : inst_req_type_reg == 3'b100 ? 8'd3: 8'd0;
 // arid
 assign arid = {2'b0,{ar_current_state == AR_DATA_SEND}};
@@ -258,6 +258,8 @@ reg [31:0]      awaddr_reg;
 reg [3:0]       wstrb_reg;
 reg [127:0]      wdata_reg;
 reg [2:0]       awtype_reg;
+
+reg [1:0]       wdata_cnt;
 always @(posedge clk)begin
     if(~resetn)
         aw_current_state <= AW_WAIT;
@@ -280,7 +282,7 @@ always @(*)begin
                 aw_next_state = AW_SEND_ADDR;
         end
         AW_SEND_DATA:begin
-            if(wready)
+            if(wready && wlast)
                 aw_next_state = AW_WAIT;
             else
                 aw_next_state = AW_SEND_DATA;
@@ -305,7 +307,7 @@ always @(posedge clk)begin
     end
 end
 // ---------------------------axi master
-assign awlen =      8'b0;
+assign awlen =      awtype_reg == 3'b100 ? 8'd3 : 8'd0;
 assign awsize =     3'b010; // 32 bit per time
 assign awburst =    2'b01;
 assign awlock =     2'b0;
@@ -318,14 +320,23 @@ assign awaddr = awaddr_reg;
 // awvalid
 assign awvalid = aw_current_state == AW_SEND_ADDR;
 /*----------------------------------write data chanel------------------------*/
+always @(posedge clk)begin
+    if(~resetn)begin
+        wdata_cnt <= 2'b0;
+    end
+    else if(aw_current_state == AW_SEND_DATA && wready)begin
+        wdata_cnt <= wdata_cnt + 1;
+    end
+end
 // -----------------------------axi master
-assign wlast =  1'b1;
+assign wlast =      awtype_reg == 3'b100 ?wdata_cnt == 2'b11
+                    :1'b1;
 // wid
 assign wid =    4'b1;
 // wstrb
 assign wstrb = wstrb_reg;
 // wdata
-assign wdata = wdata_reg;
+assign wdata =      wdata_reg[32*wdata_cnt +: 32];
 // wvalid
 assign wvalid = aw_current_state == AW_SEND_DATA;
 /*----------------------------------------------------write respond chanel----------------------------------------*/
