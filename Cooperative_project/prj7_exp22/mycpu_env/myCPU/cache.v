@@ -101,6 +101,7 @@ module cache(
     reg [3:0]   req_buffer_offset;
     reg [3:0]   req_buffer_wstrb;
     reg [31:0]  req_buffer_wdata;
+    reg         req_buffer_type;
 // write buffer
     reg  [7:0]  w_buffer_index;
     reg         w_buffer_way;
@@ -164,7 +165,7 @@ module cache(
 
     assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
                         |main_current_state == IDLE & ~hit_write_conflict;
-    assign data_ok =    (main_current_state == REFILL & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2] & ~req_buffer_op)         // read miss
+    assign data_ok =    (main_current_state == REFILL & ret_valid & (((miss_buffer_cnt == req_buffer_offset[3:2]) & req_buffer_type) | ~req_buffer_type) & ~req_buffer_op)         // read miss
                         |(main_current_state == LOOKUP & (cache_hit | req_buffer_op));             // hit or write
     assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
                         : ret_data;       // read miss
@@ -189,9 +190,9 @@ module cache(
                     main_next_state = IDLE;
 
             LOOKUP:
-                if(cache_hit & (~valid | hit_write_conflict) & type)
+                if(cache_hit & (~valid | hit_write_conflict))
                     main_next_state = IDLE;
-                else if(~cache_hit | ~type)
+                else if(~cache_hit)
                     main_next_state = MISS;
                 else
                     main_next_state = LOOKUP;
@@ -209,7 +210,7 @@ module cache(
                     main_next_state = REFILL;
 
             REFILL:
-                if(ret_valid & ret_last)
+                if((ret_valid & ret_last) | ~req_buffer_type)
                     main_next_state = IDLE;
                 else
                     main_next_state = REFILL;
@@ -264,7 +265,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way0_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i)? w_buffer_wstrb
-                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i) ? 4'b1111
+                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i & req_buffer_type) ? 4'b1111
                                         :4'b0000;
             data_bank_ram data_way0(
                 .clka   (clk),
@@ -285,7 +286,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way1_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 1 & w_buffer_bank == i) ? w_buffer_wstrb
-                                        :(main_current_state == REFILL & replace_way ==1 & ret_valid & miss_buffer_cnt == i) ? 4'b1111
+                                        :(main_current_state == REFILL & replace_way ==1 & ret_valid & miss_buffer_cnt == i & req_buffer_type) ? 4'b1111
                                         :4'b0000;
             data_bank_ram data_way1(
                 .clka   (clk),
@@ -299,7 +300,7 @@ module cache(
     // tag, v table
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
+    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type;
     assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
     tagv_regfile tagv_ram_way0 (
         .clka   (clk),
@@ -312,7 +313,7 @@ module cache(
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
+    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type;
     assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
     tagv_regfile tagv_ram_way1 (
         .clka   (clk),
@@ -326,7 +327,7 @@ module cache(
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
                             : req_buffer_index;     // replace and refill
     assign d_way0_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
-                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last;
+                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type;
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
         .clk        (clk),
@@ -339,7 +340,7 @@ module cache(
     assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
                             : req_buffer_index;         // replace and refill
     assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 1
-                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last;
+                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type;
     assign d_way1_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way1(
         .clk        (clk),
@@ -359,6 +360,7 @@ module cache(
             req_buffer_offset <=   4'b0;
             req_buffer_wstrb <=    4'b0;
             req_buffer_wdata <=    32'b0;
+            req_buffer_type  =     1'b0;
         end
         else if(main_current_state == IDLE & valid & ~hit_write_conflict 
                 | main_current_state == LOOKUP & cache_hit & valid & ~hit_write_conflict)begin      // next_state == LOOKUP
@@ -367,7 +369,8 @@ module cache(
             req_buffer_tag <=      tag;
             req_buffer_offset <=   offset;
             req_buffer_wstrb <=    wstrb;
-            req_buffer_wdata <=    wdata;       
+            req_buffer_wdata <=    wdata;
+            req_buffer_type  <=    type;       
         end
     end
     // tag compare
@@ -377,7 +380,7 @@ module cache(
 
     assign way0_hit = way0_v && (way0_tag == req_buffer_tag);
     assign way1_hit = way1_v && (way1_tag == req_buffer_tag);
-    assign cache_hit = way0_hit || way1_hit;
+    assign cache_hit = (way0_hit || way1_hit) && req_buffer_type;
     // data select
     assign way0_load_word = way0_data[req_buffer_offset[3:2]];
     assign way1_load_word = way1_data[req_buffer_offset[3:2]];
@@ -425,7 +428,7 @@ module cache(
         if(~resetn)begin
             first_clk_of_replace <= 1'b0;
         end
-        else if(main_current_state == MISS & wr_rdy)begin
+        else if(main_current_state == MISS & wr_rdy & ~req_buffer_type)begin
             first_clk_of_replace <= 1'b1;
         end
         else begin
@@ -434,15 +437,15 @@ module cache(
     end
 
     assign wr_req =     first_clk_of_replace & replace_d & replace_v;
-    assign wr_data =    replace_data;
-    assign wr_addr =    {replace_tag, req_buffer_index, 4'b0};
-    assign wr_type =    3'b100;
-    assign wr_wstrb =    4'b1111;
+    assign wr_data =    req_buffer_type ? replace_data : {4{req_buffer_wdata}};
+    assign wr_addr =    req_buffer_type ? {replace_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign wr_type =    req_buffer_type ? 3'b100 : 3'b010;
+    assign wr_wstrb =   req_buffer_type ? 4'b1111 : req_buffer_wstrb;
     
 
-    assign rd_req =     main_current_state == REPLACE;    // next_state == replace
-    assign rd_addr =    {req_buffer_tag, req_buffer_index, 4'b0};
-    assign rd_type =    3'b100;
+    assign rd_req =     (main_current_state == REPLACE) & req_buffer_type;    // next_state == replace
+    assign rd_addr =    req_buffer_type ? {req_buffer_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign rd_type =    req_buffer_type ? 3'b100 : 3'b010;
 
     // LFSR
     reg [7:0]   lfsr;
