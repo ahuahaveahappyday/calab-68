@@ -276,8 +276,8 @@ module CSRfile #(
         else if(ertn_flush && csr_estat_ecode == `ECODE_TLBR) begin
             csr_crmd_da <= 1'b0;
             csr_crmd_pg <= 1'b1;
-            csr_crmd_datf <=     2'b01;
-            csr_crmd_datm <=     2'b01;  
+            // csr_crmd_datf <=     2'b01;
+            // csr_crmd_datm <=     2'b01;  
         end
         else if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
             csr_crmd_da <=      csr_wmask[`CSR_CRMD_DA] & csr_wvalue[`CSR_CRMD_DA]
@@ -709,13 +709,13 @@ module CSRfile #(
 
 /*------------------------------------CACHE---------------------------------------------------------*/
 
-    assign inst_type = (~csr_crmd_pg) ? (csr_crmd_datf==2'b01 ? 1'b1 : 1'b0) :
-                       hit_dmw0 ? (csr_dmw0_mat==2'b01 ? 1'b1 : 1'b0) :
-                       hit_dmw1 ? (csr_dmw1_mat==2'b01 ? 1'b1 : 1'b0) :
+    assign inst_type = (~csr_crmd_pg) ? (csr_crmd_datf==2'b01) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01) :
                        s0_mat;
-    assign data_type = (~csr_crmd_pg) ? (csr_crmd_datm==2'b01 ? 1'b1 : 1'b0) :
-                       hit_dmw0 ? (csr_dmw0_mat==2'b01 ? 1'b1 : 1'b0) :
-                       hit_dmw1 ? (csr_dmw1_mat==2'b01 ? 1'b1 : 1'b0) :
+    assign data_type = (~csr_crmd_pg) ? (csr_crmd_datm==2'b01) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01) :
                        s1_mat;
 
 endmodule
