@@ -436,15 +436,19 @@ module cache(
         end
     end
 
-    assign wr_req =     first_clk_of_replace & replace_d & replace_v;
+    assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
+                                            : req_buffer_op);   // non-cache write
     assign wr_data =    req_buffer_type ? replace_data : {4{req_buffer_wdata}};
-    assign wr_addr =    req_buffer_type ? {replace_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign wr_addr =    req_buffer_type ? {replace_tag, req_buffer_index, 4'b0} 
+                                        : {req_buffer_tag, req_buffer_index, req_buffer_offset};
     assign wr_type =    req_buffer_type ? 3'b100 : 3'b010;
     assign wr_wstrb =   req_buffer_type ? 4'b1111 : req_buffer_wstrb;
     
 
-    assign rd_req =     (main_current_state == REPLACE) & ~(~req_buffer_type & req_buffer_op);    // next_state == replace
-    assign rd_addr =    (req_buffer_type | req_buffer_op) ? {req_buffer_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign rd_req =     (main_current_state == REPLACE) & (req_buffer_type? 1'b1 
+                                                                        : ~req_buffer_op);    // non-cache read
+    assign rd_addr =    req_buffer_type ? {req_buffer_tag, req_buffer_index, 4'b0} 
+                                        : {req_buffer_tag, req_buffer_index, req_buffer_offset};
     assign rd_type =    req_buffer_type ? 3'b100 : 3'b010;
 
     // LFSR
