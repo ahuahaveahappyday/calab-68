@@ -569,8 +569,8 @@ module mycpu_top
         .data_sram_rd_addr_ok   (dcache_rd_rdy),
         // wirte req from dcache
         .data_sram_wr_req       (dcache_wr_req),
-        .data_sram_wr_type      (dcache_wr_type),
         .data_sram_wr_addr      (dcache_wr_addr),
+        .data_sram_wr_type      (dcache_wr_type),
         .data_sram_wr_data      (dcache_wr_data),
         .data_sram_wr_wstrb     (dcache_wr_wsrb),
         .data_sram_wr_addr_ok   (dcache_wr_rdy),

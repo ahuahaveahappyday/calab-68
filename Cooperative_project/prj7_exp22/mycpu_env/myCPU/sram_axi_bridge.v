@@ -20,8 +20,8 @@ module sram_axi_bridge(
     input wire              data_sram_wr_req,
     input wire   [31:0]       data_sram_wr_addr,
     input wire   [2:0]       data_sram_wr_type,
-    input wire  [127:0]       data_sram_wdata,
-    input wire  [3:0]        data_sram_wstrb,
+    input wire  [127:0]       data_sram_wr_data,
+    input wire  [3:0]        data_sram_wr_wstrb,
     output wire             data_sram_wr_addr_ok,
     // response to dcache
     output wire             data_sram_data_ok,
@@ -301,8 +301,8 @@ always @(posedge clk)begin
     end
     else if(aw_current_state == AW_WAIT && data_sram_wr_req && data_sram_wr_addr_ok)begin
         awaddr_reg <= data_sram_wr_addr;
-        wstrb_reg <= data_sram_wstrb;
-        wdata_reg <= data_sram_wdata;
+        wstrb_reg <= data_sram_wr_wstrb;
+        wdata_reg <= data_sram_wr_data;
         awtype_reg <= data_sram_wr_type;
     end
 end
