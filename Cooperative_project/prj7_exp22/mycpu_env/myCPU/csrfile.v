@@ -284,8 +284,6 @@ module CSRfile #(
                                 | ~csr_wmask[`CSR_CRMD_DA] & csr_crmd_da;
             csr_crmd_pg <=      csr_wmask[`CSR_CRMD_PG] & csr_wvalue[`CSR_CRMD_PG]
                                 | ~csr_wmask[`CSR_CRMD_PG] & csr_crmd_pg;
-        end
-        if(csr_we && csr_num == `CSR_CRMD)begin     // inst access
             csr_crmd_datf <=     csr_wmask[`CSR_CRMD_DATF] & csr_wvalue[`CSR_CRMD_DATF]
                                 | ~csr_wmask[`CSR_CRMD_DATF] & csr_crmd_datf;
             csr_crmd_datm <=     csr_wmask[`CSR_CRMD_DATM] & csr_wvalue[`CSR_CRMD_DATM]
