@@ -246,12 +246,12 @@ assign rready = 1'b1;
 // end
 // inst_sram
 assign inst_sram_data_ok = (rvalid && rid == 4'b0);
-assign inst_sram_rdata = rdata;
-assign inst_sram_last = rlast;
+assign inst_sram_rdata = rdata & {32{rid == 4'b0}};
+assign inst_sram_last = rlast & (rid == 4'b0);
 // data_sram
 assign data_sram_data_ok = (rvalid && rid == 4'b1);
-assign data_sram_rdata = rdata;
-assign data_sram_last = rlast;
+assign data_sram_rdata = rdata & {32{rid == 4'b1}};
+assign data_sram_last = rlast & (rid == 4'b1);
 
 /*----------------------------------------------------write data and request chanel----------------------------------------*/
 reg [31:0]      awaddr_reg;

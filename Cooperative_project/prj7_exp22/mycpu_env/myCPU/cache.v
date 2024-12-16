@@ -420,9 +420,9 @@ module cache(
         else if(main_current_state == REFILL & ret_valid)begin
             miss_buffer_cnt <= miss_buffer_cnt + 1;
         end
-        else if(main_current_state == REFILL & ret_valid & ret_last)begin
-            miss_buffer_cnt <= 2'b0;
-        end
+        // else if(main_current_state == REFILL & ret_valid & ret_last)begin
+        //     miss_buffer_cnt <= 2'b0;
+        // end
     end
     always @(posedge clk)begin
         if(~resetn)begin
