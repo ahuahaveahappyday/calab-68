@@ -574,8 +574,8 @@ module mycpu_top
         .data_sram_wr_data      (dcache_wr_data),
         .data_sram_wr_wstrb     (dcache_wr_wsrb),
         .data_sram_wr_addr_ok   (dcache_wr_rdy),
-        // respond to dcache
-        .data_sram_data_ok      (dcache_ret_valid),
+        //  read respond to dcache
+        .data_sram_rd_data_ok      (dcache_ret_valid),
         .data_sram_rdata        (dcache_ret_data),
         .data_sram_last         (dcache_ret_last),
     

@@ -23,11 +23,10 @@ module sram_axi_bridge(
     input wire  [127:0]       data_sram_wr_data,
     input wire  [3:0]        data_sram_wr_wstrb,
     output wire             data_sram_wr_addr_ok,
-    // response to dcache
-    output wire             data_sram_data_ok,
+    // read response to dcache
+    output wire             data_sram_rd_data_ok,
     output wire  [31:0]     data_sram_rdata,
     output wire             data_sram_last,
-
 
     // read request
     output wire  [3:0]          arid      ,
@@ -249,8 +248,7 @@ assign inst_sram_data_ok = (rvalid && rid == 4'b0);
 assign inst_sram_rdata = rdata & {32{rid == 4'b0}};
 assign inst_sram_last = rlast & (rid == 4'b0);
 // data_sram
-assign data_sram_data_ok = (rvalid && rid == 4'b1)
-                            |(b_current_state == B_REC);
+assign data_sram_rd_data_ok = (rvalid && rid == 4'b1);
 assign data_sram_rdata = rdata & {32{rid == 4'b1}};
 assign data_sram_last = rlast & (rid == 4'b1);
 
@@ -364,7 +362,7 @@ always @(*)begin
 end
 
 // -------------------------------sram_like slave
-// data_sram_data_ok is defined in read respond chanel
+// ignore
 // -------------------------------axi master
 // bready
 assign bready = (b_current_state == B_WAIT);
