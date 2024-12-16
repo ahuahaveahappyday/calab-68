@@ -236,6 +236,7 @@ module mycpu_top
     wire [3:0]                dcache_wr_wsrb;
     wire [127:0]              dcache_wr_data;
     wire                      dcache_wr_rdy;
+    wire                      dcache_wr_bvalid;  
 
     //--------------------------------------------------------------------------------------------------------------------------------
 
@@ -578,6 +579,8 @@ module mycpu_top
         .data_sram_rd_data_ok      (dcache_ret_valid),
         .data_sram_rdata        (dcache_ret_data),
         .data_sram_last         (dcache_ret_last),
+        // write respond to dcache
+        .data_sram_wr_data_ok    (dcache_wr_bvalid),
     
         .arid               (arid),
         .araddr             (araddr),
@@ -648,8 +651,9 @@ module mycpu_top
         .wr_addr           (),
         .wr_data           (),
         .wr_wstrb           (),
+        .wr_rdy            (1'b1),
         // axi write ret
-        .wr_rdy            (1'b1)
+        .wr_bvalid          (1'b0)
     );
  
     cache dcache(
@@ -683,8 +687,9 @@ module mycpu_top
         .wr_addr           (dcache_wr_addr),
         .wr_data           (dcache_wr_data),
         .wr_wstrb           (dcache_wr_wsrb),
+        .wr_rdy            (dcache_wr_rdy),
         // axi write ret
-        .wr_rdy            (dcache_wr_rdy)
+        .wr_bvalid          (dcache_wr_bvalid)
     );
 
 endmodule

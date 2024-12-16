@@ -78,8 +78,9 @@ module cache(
     output wire [31:0]  wr_addr,
     output wire [3:0]   wr_wstrb,
     output wire [127:0] wr_data,
+    input wire          wr_rdy,
     // axi write ret
-    input wire          wr_rdy
+    input wire          wr_bvalid
 );
 
     parameter IDLE 		= 5'b00001;
@@ -154,6 +155,19 @@ module cache(
     wire            d_way1_wen;
     wire            d_way1_wdata;
     wire            way1_d;
+// non-cache write
+    reg            non_cache_wreq;
+// stop the mem visit before non_cache write finish
+    always @(posedge clk)begin
+        if(~resetn)
+            non_cache_wreq <= 1'b0;
+        else if(main_current_state == REPLACE & ~req_buffer_type & req_buffer_op)
+            non_cache_wreq <= 1'b1;
+        else if(wr_bvalid)
+            non_cache_wreq <= 1'b0;
+    end
+
+
 
     wire hit_write_conflict;
     wire cache_hit;
@@ -163,8 +177,8 @@ module cache(
                                     |(wr_current_state == WR_WRITE & ~op
                                         & offset[3:2] == req_buffer_offset[3:2]);
 
-    assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
-                        |main_current_state == IDLE & ~hit_write_conflict;
+    assign addr_ok =    (main_current_state == LOOKUP & cache_hit & ~hit_write_conflict
+                        |main_current_state == IDLE & ~hit_write_conflict) & ~non_cache_wreq;
     assign data_ok =    (main_current_state == REFILL & ret_valid & (((miss_buffer_cnt == req_buffer_offset[3:2]) & req_buffer_type) | ~req_buffer_type) & ~req_buffer_op)         // read miss
                         |(main_current_state == LOOKUP & (cache_hit | req_buffer_op));             // hit or write
     assign rdata =      main_current_state == LOOKUP & cache_hit ? load_hit_res     // read hit
@@ -184,13 +198,13 @@ module cache(
     always @(*) begin
         case (main_current_state)
             IDLE: 
-                if(valid & ~hit_write_conflict)
+                if(valid & addr_ok)
                     main_next_state = LOOKUP;
                 else
                     main_next_state = IDLE;
 
             LOOKUP:
-                if(cache_hit & (~valid | hit_write_conflict))
+                if(cache_hit & (~valid | ~addr_ok))
                     main_next_state = IDLE;
                 else if(~cache_hit)
                     main_next_state = MISS;
@@ -362,8 +376,7 @@ module cache(
             req_buffer_wdata <=    32'b0;
             req_buffer_type  =     1'b0;
         end
-        else if(main_current_state == IDLE & valid & ~hit_write_conflict 
-                | main_current_state == LOOKUP & cache_hit & valid & ~hit_write_conflict)begin      // next_state == LOOKUP
+        else if(addr_ok & valid)begin      // next_state == LOOKUP
             req_buffer_op <=       op;
             req_buffer_index <=    index;
             req_buffer_tag <=      tag;

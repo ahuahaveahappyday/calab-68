@@ -27,6 +27,8 @@ module sram_axi_bridge(
     output wire             data_sram_rd_data_ok,
     output wire  [31:0]     data_sram_rdata,
     output wire             data_sram_last,
+    // write response to dcache
+    output wire             data_sram_wr_data_ok,
 
     // read request
     output wire  [3:0]          arid      ,
@@ -362,7 +364,7 @@ always @(*)begin
 end
 
 // -------------------------------sram_like slave
-// ignore
+assign data_sram_wr_data_ok = b_current_state == B_WAIT;
 // -------------------------------axi master
 // bready
 assign bready = (b_current_state == B_WAIT);
