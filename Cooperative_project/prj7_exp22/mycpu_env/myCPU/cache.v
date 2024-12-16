@@ -210,7 +210,7 @@ module cache(
                     main_next_state = REFILL;
 
             REFILL:
-                if((ret_valid & ret_last) | ~req_buffer_type)
+                if((ret_valid & ret_last) | (~req_buffer_type & req_buffer_op))
                     main_next_state = IDLE;
                 else
                     main_next_state = REFILL;
@@ -428,7 +428,7 @@ module cache(
         if(~resetn)begin
             first_clk_of_replace <= 1'b0;
         end
-        else if(main_current_state == MISS & wr_rdy & ~req_buffer_type)begin
+        else if(main_current_state == MISS & wr_rdy & (~req_buffer_type & req_buffer_op))begin
             first_clk_of_replace <= 1'b1;
         end
         else begin
@@ -443,8 +443,8 @@ module cache(
     assign wr_wstrb =   req_buffer_type ? 4'b1111 : req_buffer_wstrb;
     
 
-    assign rd_req =     (main_current_state == REPLACE) & req_buffer_type;    // next_state == replace
-    assign rd_addr =    req_buffer_type ? {req_buffer_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign rd_req =     (main_current_state == REPLACE) & ~(~req_buffer_type & req_buffer_op);    // next_state == replace
+    assign rd_addr =    (req_buffer_type | req_buffer_op) ? {req_buffer_tag, req_buffer_index, 4'b0} : {req_buffer_tag, req_buffer_index, req_buffer_offset};
     assign rd_type =    req_buffer_type ? 3'b100 : 3'b010;
 
     // LFSR
