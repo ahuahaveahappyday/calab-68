@@ -249,7 +249,8 @@ assign inst_sram_data_ok = (rvalid && rid == 4'b0);
 assign inst_sram_rdata = rdata & {32{rid == 4'b0}};
 assign inst_sram_last = rlast & (rid == 4'b0);
 // data_sram
-assign data_sram_data_ok = (rvalid && rid == 4'b1);
+assign data_sram_data_ok = (rvalid && rid == 4'b1)
+                            |(b_current_state == B_REC);
 assign data_sram_rdata = rdata & {32{rid == 4'b1}};
 assign data_sram_last = rlast & (rid == 4'b1);
 
