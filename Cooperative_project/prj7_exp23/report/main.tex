@@ -213,15 +213,24 @@ end
 读操作直接返回Cache命中的数据。
 
 否则进入miss状态。
-
-如果是写操作，不管是否命中，都将向cpu返回data\_ok信号，表示请求已经接受。
-
 \begin{lstlisting}[language=verilog]
 // 请求的tag和Cache返回的tag比较，判断是否命中
     assign way0_hit = way0_v && (way0_tag == req_buffer_tag);
     assign way1_hit = way1_v && (way1_tag == req_buffer_tag);
     assign cache_hit = (way0_hit || way1_hit) && req_buffer_type;
 \end{lstlisting}
+为了在连续的cache命中时，保证ipc为1，则
+如果在lookup命中，且接受到流水线的有效的访存请求，则直接在当前lookup状态下，向cache的发起对下一个请求的查询，将对应的Cache行的数据(tag, v, data)在下一拍读出来
+，并在下一拍直接进入lookup状态，进行比较。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig/fig4.png}
+    \caption{连续cache命中时的状态机}
+    \label{fig:4}
+\end{figure}
+如图\ref{fig:4}
+所示，当连续发生命中的时候，Cache的状态机不会进入idle状态，而是一直处于lookup状态，在当前的lookup状态对cache发起对下一个请求的查询。
 
 \item miss状态
 
@@ -332,7 +341,23 @@ end
 
 \noindent
 $\bullet$
-\textbf{TLB 搜索match出错}。
+\textbf{Cache模块时向cpu的data\_ok信号设置}。
+最初，由于下意识认为cpu是串行工作，所以不论是读还是写，都等到Cache的状态机走完一圈后，返回idle状态，再向cpu返回data\_ok信号。
+
+但是，实际上，流水线和Cache是并行工作的，所以只要Cache可以返回读数据或者接受了写数据，就可以向cpu返回data\_ok信号，让流水线可以继续工作。
+
+至于要保证Cache采用
+阻塞式设计（即一旦发生缺失，Cache就不再接受新的请求，直到缺失的数据返回），需要用addr\_ok信号来控制，等到Cache的状态机走完一圈后，接受完缺失的数据，再接受新的请求。
+
+\begin{lstlisting}[language=verilog]
+assign addr_ok =    main_current_state == LOOKUP & cache_hit & ~hit_write_conflict      // 如果发生数据缺失，Cache拉低add_ok，不接受新的请求
+                    |main_current_state == IDLE & ~hit_write_conflict;
+assign data_ok =    
+(main_current_state == REFILL & ret_valid & miss_buffer_cnt == req_buffer_offset[3:2] & ~req_buffer_op) 
+ // 读缺失时，在refill状态下，等到返回cpu请求的数据时，即可向cpu返回data_ok信号
+|(main_current_state == LOOKUP & (cache_hit | req_buffer_op)); 
+// 写操作，不管是否命中，都将向cpu返回data_ok信号，表示请求已经接受
+\end{lstlisting}
 
 
       
@@ -343,7 +368,7 @@ $\bullet$
 
 李霄宇负责TLB相关指令的添加，部分冲突的处理，接口连接。
 
-艾华春负责添加TLB相关寄存器和TLB相关的例外支持，为cpu增加虚实映射功能。
+艾华春负责Cache模块设计，集成iCache到cpu中。
 
 实验报告为根据每人负责代码的部分，写相应部分的报告。
 \end{document}

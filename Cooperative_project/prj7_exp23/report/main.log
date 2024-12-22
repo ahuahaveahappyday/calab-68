@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999996 (TeX Live 2024) (preloaded format=xelatex 2024.8.29)  22 DEC 2024 11:13
+This is XeTeX, Version 3.141592653-2.6-0.999996 (TeX Live 2024) (preloaded format=xelatex 2024.8.29)  22 DEC 2024 14:53
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1266,22 +1266,25 @@ Package fontspec Info: Font family 'FangSong(0)' created for font 'FangSong'
 ]
 File: fig/fig2.png Graphic file (type bmp)
 <fig/fig2.png>
- [2] [3]
+ [2]
+File: fig/fig4.png Graphic file (type bmp)
+<fig/fig4.png>
+ [3] [4]
 File: fig/fig3.png Graphic file (type bmp)
 <fig/fig3.png>
- [4] [5] [6] (./main.aux)
+ [5] [6] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2022/08/05>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 46200 strings out of 474773
- 1150328 string characters out of 5761289
- 2034567 words of memory out of 5000000
- 67688 multiletter control sequences out of 15000+600000
+ 46211 strings out of 474773
+ 1150499 string characters out of 5761289
+ 2032610 words of memory out of 5000000
+ 67698 multiletter control sequences out of 15000+600000
  564942 words of font info for 93 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 108i,6n,115p,470b,2014s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 108i,6n,115p,470b,2042s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on main.pdf (6 pages).
