@@ -83,7 +83,8 @@ module cache(
     input wire          wr_bvalid,
     //cacop inst
     input               cacop,
-    input       [ 4:0]  code
+    input       [ 4:0]  code, 
+    output              cache_write
 );
 
     parameter IDLE 		= 5'b00001;
@@ -343,7 +344,7 @@ module cache(
     assign tagv_way1_wdata =    {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 1 & req_buffer_type}}
                                 | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 1 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
                                 | {21'b0} & {21{cacop & offset[0] == 1 & code[4:3] == 2'b00}};
-                                
+
     tagv_regfile tagv_ram_way1 (
         .clka   (clk),
         .resetn (resetn),
@@ -550,6 +551,39 @@ module cache(
         end 
     end
 
+
+    wire   cache_write_new;
+    assign cache_write_new = (offset[0] ? way1_d : way0_d) & (offset[0] ? {way1_tag,way1_v} : {way0_tag,way0_v} ) & cacop & code[4:3] == 2'b01
+                            | way0_d & way0_v & cacop & code[4:3] == 2'b10 & way0_hit 
+                            | way1_d & way1_v & cacop & code[4:3] == 2'b10 & way1_hit;
+    
+    reg cache_write_reg;
+    always @(posedge clk) begin
+        if (!resetn) begin
+            cache_write_reg <= 1'b0;
+        end
+        else if (cache_write_new) begin
+             cache_write_reg <= 1'b1;
+        end
+        else if (~cacop) begin
+            cache_write_reg <= 1'b0;
+        end
+    end
+
+    reg cacop_hit;
+    always @(posedge clk) begin
+        if (!resetn) begin
+            cacop_hit <= 1'b0;
+        end
+        else if (cacop & cache_write) begin
+            cacop_hit <= 1'b1;
+        end
+        else if (~cacop) begin
+            cacop_hit <= 1'b0;
+        end
+    end
+
+    assign cache_write = (cache_write_reg | cache_write_new) & cacop & (code[4:3] == 2'b01 | code[4:3] == 2'b10 & (cacop_hit | cache_hit));
 
 
 
