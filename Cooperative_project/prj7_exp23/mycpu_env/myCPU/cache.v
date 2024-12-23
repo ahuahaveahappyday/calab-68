@@ -118,7 +118,8 @@ module cache(
     wire [31:0]     way0_load_word;
     wire [31:0]     way1_load_word;
     wire [31:0]     load_hit_res;
-    wire [255:0]    replace_data;
+    wire [127:0]    replace_data;
+    wire [127:0]    replace_data_final;
     wire            replace_way;
     wire            replace_d;
     wire            replace_v;
@@ -418,6 +419,13 @@ module cache(
                             |{32{way1_hit}} & way1_load_word;
     assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
                             :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
+
+    assign replace_data_final = cacop & code[4:3] == 2'b01 & offset[0] ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]}
+                                :cacop & code[4:3] == 2'b01 & ~offset[0] ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]}
+                                :cacop & code[4:3] == 2'b10 & dcacop_hit0 ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]}
+                                :cacop & code[4:3] == 2'b10 & dcacop_hit1 ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]}
+                                :replace_data;
+
     assign replace_d =  replace_way ? way1_d: way0_d;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
     assign replace_v =  replace_way ? way1_v : way0_v;
@@ -468,7 +476,7 @@ module cache(
     assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
                                                                 : (cacop & code[4:3] == 2'b01 & (req_buffer_offset[0] ? way1_d:way0_d) & reg_tagv_dcacop[0] |cacop & code[4:3] == 2'b10 & cache_write) ? 1
                                                                 : req_buffer_op);   // non-cache write
-    assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
+    assign wr_data =    req_buffer_type | cacop  ? replace_data_final : {4{req_buffer_wdata}};
     assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
                                         : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}:
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
@@ -588,6 +596,24 @@ module cache(
     end
 
     assign cache_write = (cache_write_reg | cache_write_new) & cacop & (code[4:3] == 2'b01 | code[4:3] == 2'b10 & (cacop_hit | cache_hit));
+
+    reg dcacop_hit0, dcacop_hit1;
+    always @(posedge clk) begin
+        if (!resetn) begin
+            dcacop_hit0 <= 1'b0;
+            dcacop_hit1 <= 1'b0;
+        end
+        else if (cacop & code[4:3] == 2'b10 & way0_hit) begin
+            dcacop_hit0 <= 1'b1;
+        end
+        else if (cacop & code[4:3] == 2'b10 & way1_hit) begin
+            dcacop_hit1 <= 1'b1;
+        end
+        else if (~cacop) begin
+            dcacop_hit0 <= 1'b0;
+            dcacop_hit1 <= 1'b0;
+    end
+end
 
 
 
