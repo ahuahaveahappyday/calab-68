@@ -556,4 +556,12 @@ module IDreg(
                                 :id_excep_INE ? 6'hd
                                 :6'hb;  // syscall
 
+//cache instruction
+ wire inst_cacop ;
+ wire icacop;
+
+ wire cacop_code [4:0];
+ assign inst_cacop = op_31_26_d[6'h01] &op_25_22_d[4'h8];
+ assign cacop_code = id_inst[4:0]; //cacop指令码传入两个Cache
+ assign icacop =inst_cacop & cacop_code[2:0]==3'b000; //该信号传入ICache
 endmodule

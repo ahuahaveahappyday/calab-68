@@ -80,7 +80,10 @@ module cache(
     output wire [127:0] wr_data,
     input wire          wr_rdy,
     // axi write ret
-    input wire          wr_bvalid
+    input wire          wr_bvalid,
+    //cacop inst
+    input               cacop,
+    input       [ 4:0]  code
 );
 
     parameter IDLE 		= 5'b00001;
@@ -314,7 +317,10 @@ module cache(
     // tag, v table
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type;
+    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type
+                            | cacop & offset[0]== 0 & code[4:3] != 2'b10 
+                            | cacop_wr_tagv & way0_v & (way0_tag == tag) & req_buffer_type & code[4:3]==2'b10;     
+
     assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
     tagv_regfile tagv_ram_way0 (
         .clka   (clk),
@@ -327,7 +333,10 @@ module cache(
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type;
+    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type
+                                | cacop & offset[0]== 1 & code[4:3] != 2'b10 
+                                | cacop_wr_tagv & way1_v & (way1_tag == tag) & req_buffer_type & code[4:3]==2'b10;
+
     assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
     tagv_regfile tagv_ram_way1 (
         .clka   (clk),
@@ -492,6 +501,28 @@ module cache(
             w_buffer_wdata <= req_buffer_wdata;
             w_buffer_bank <= req_buffer_offset[3:2];
         end
+    end
+
+    reg cacop_wr_tagv;
+    always @(posedge clk) begin
+        if (!resetn) begin
+            cacop_wr_tagv <= 1'b0;
+        end
+        else if (cacop & ~cacop_next) begin
+            cacop_wr_tagv <= 1'b1;
+        end
+        else begin
+            cacop_wr_tagv <= 1'b0;
+            end
+    end
+
+    reg cacop_next;
+    always @(posedge clk) begin
+        if (!resetn) begin
+        cacop_next <= 1'b0;
+        end
+        else
+            cacop_next <= cacop;
     end
 
 
