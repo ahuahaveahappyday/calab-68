@@ -418,7 +418,7 @@ module cache(
                             |{32{way1_hit}} & way1_load_word;
     assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
                             :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
-    assign replace_d =  replace_data ? way1_d: way0_d;
+    assign replace_d =  replace_way ? way1_d: way0_d;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
     assign replace_v =  replace_way ? way1_v : way0_v;
     // miss buffer
@@ -466,7 +466,8 @@ module cache(
     end
 
     assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
-                                            : req_buffer_op);   // non-cache write
+                                                                : (cacop & code[4:3] == 2'b01 & (req_buffer_offset[0] ? way1_d:way0_d) & reg_tagv_dcacop[0] |cacop & code[4:3] == 2'b10 & cache_write) ? 1
+                                                                : req_buffer_op);   // non-cache write
     assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
     assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
                                         : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}:
