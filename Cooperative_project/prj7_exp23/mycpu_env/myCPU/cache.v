@@ -321,7 +321,10 @@ module cache(
                             | cacop & offset[0]== 0 & code[4:3] != 2'b10 
                             | cacop_wr_tagv & way0_v & (way0_tag == tag) & req_buffer_type & code[4:3]==2'b10;     
 
-    assign tagv_way0_wdata = {req_buffer_tag, 1'b1};
+    assign tagv_way0_wdata = {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 0 & req_buffer_type}}
+                            | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 0 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
+                            | {21'b0} & {21{cacop & offset[0] == 0 & code[4:3] == 2'b00}};
+
     tagv_regfile tagv_ram_way0 (
         .clka   (clk),
         .resetn  (resetn),
@@ -337,7 +340,10 @@ module cache(
                                 | cacop & offset[0]== 1 & code[4:3] != 2'b10 
                                 | cacop_wr_tagv & way1_v & (way1_tag == tag) & req_buffer_type & code[4:3]==2'b10;
 
-    assign tagv_way1_wdata =    {req_buffer_tag, 1'b1};
+    assign tagv_way1_wdata =    {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 1 & req_buffer_type}}
+                                | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 1 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
+                                | {21'b0} & {21{cacop & offset[0] == 1 & code[4:3] == 2'b00}};
+                                
     tagv_regfile tagv_ram_way1 (
         .clka   (clk),
         .resetn (resetn),
@@ -523,6 +529,25 @@ module cache(
         end
         else
             cacop_next <= cacop;
+    end
+
+    reg [20:0] reg_tagv_dcacop;
+    always @(posedge clk) begin
+        if (!resetn) begin
+        reg_tagv_dcacop <= 20'b0;
+        end
+        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b01) begin
+            reg_tagv_dcacop <= offset[0] ?  {way1_tag,way1_v} : {way0_tag,way0_v};
+        end
+        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way0_hit) begin
+            reg_tagv_dcacop <= {way0_tag,way0_v};
+        end
+        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way1_hit) begin
+            reg_tagv_dcacop <= {way1_tag,way1_v};
+        end
+        else if((|reg_tagv_dcacop) & ~cacop) begin
+            reg_tagv_dcacop <= 20'b0;
+        end 
     end
 
 
