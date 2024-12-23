@@ -4,7 +4,7 @@ module IDreg(
     //if模块与id模块交互接口
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
-    output wire [33:0]            id_to_if_bus,//{br_taken, br_target}
+    output wire [70:0]            id_to_if_bus,//{br_taken, br_target}
     input  wire [111:0]            if_to_id_bus,
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
@@ -17,6 +17,9 @@ module IDreg(
 
     input  wire                   flush,
     input  wire                   has_int
+
+    output wire inst_cacop;
+    output wire [4:0] cacop_code;
 );
     wire        stuck;
     wire        id_ready_go;
@@ -235,7 +238,7 @@ module IDreg(
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
     assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb, mem_res_from_mem} = mem_to_id_bus;
     assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
-    assign id_to_if_bus = {br_taken, br_target, br_stall}; 
+    assign id_to_if_bus = {br_taken, br_target, br_stall ,icacop ,cacop_code, icacop_addr}; 
 
     assign id_rkd_value = rkd_value; 
     assign id_to_ex_bus = {id_alu_op,          //19 bit
@@ -385,7 +388,7 @@ module IDreg(
     //各条指令需要的立即数格式
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui 
-                        | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h;
+                        | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h | inst_cacop;
     assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;     //添加blt等指令
     assign need_si20  =  inst_lu12i_w | inst_pcaddul2i;
     assign need_si26  =  inst_b | inst_bl;
@@ -559,9 +562,12 @@ module IDreg(
 //cache instruction
  wire inst_cacop ;
  wire icacop;
+ wire [4:0] cacop_code ;
+ wire [31:0]icacop_addr ;
 
- wire cacop_code [4:0];
  assign inst_cacop = op_31_26_d[6'h01] &op_25_22_d[4'h8];
  assign cacop_code = id_inst[4:0]; //cacop指令码传入两个Cache
  assign icacop =inst_cacop & cacop_code[2:0]==3'b000; //该信号传入ICache
+ assign icacop_addr        = rf_rdata1 + imm;
+
 endmodule

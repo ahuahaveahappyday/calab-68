@@ -67,7 +67,7 @@ module mycpu_top
     wire [250:0] ex_to_mem_bus;
     wire [210:0] mem_to_wb_bus;
 
-    wire [33:0] id_to_if_bus;
+    wire [70:0] id_to_if_bus;
     wire [39:0] ex_to_id_bus;
     wire [39:0] mem_to_id_bus;
     wire [37:0] wb_to_id_bus;
@@ -120,7 +120,7 @@ module mycpu_top
     wire         data_type;
     //--------------------------------------------------output from if ------------------------------------------
     wire [18:0]                 if_s0_vppn;
-    wire                        if_s0_va_bit12;    
+    wire                        if_s0_va_bit12;   
     wire [7:0]                  inst_vindex;
     wire [3:0]                  inst_voffset;
     // ----------------------------------------------   output from ex -------------------------------------------------------------
@@ -213,6 +213,9 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
+    //
+    wire inst_cacop;
+    wire [4:0] cacop_code;
     // ----------------------------------------------------------------icache--------------------------------------------------------------
     wire                      icache_rd_req;
     wire [2:0]                icache_rd_type;
@@ -294,7 +297,9 @@ module mycpu_top
         .mem_to_id_bus      (mem_to_id_bus),
         .ex_to_id_bus       (ex_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
-        .has_int            (has_int)
+        .has_int            (has_int),
+        .inst_cacop         (inst_cacop),
+        .cacop_code         (cacop_code)
     );
 
     EXEreg my_exeReg(
@@ -653,7 +658,12 @@ module mycpu_top
         .wr_wstrb           (),
         .wr_rdy            (1'b1),
         // axi write ret
-        .wr_bvalid          (1'b0)
+        .wr_bvalid          (1'b0),
+
+        .cacop              (inst_cacop),
+        .code               (cacop_code),
+        .cache_write    ()
+
     );
  
     cache dcache(
