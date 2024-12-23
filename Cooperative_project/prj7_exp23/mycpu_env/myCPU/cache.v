@@ -208,9 +208,9 @@ module cache(
                     main_next_state = IDLE;
 
             LOOKUP:
-                if(cache_hit & (~valid | ~addr_ok))
+                if(cache_hit & (~valid | ~addr_ok) & ~cache_write)
                     main_next_state = IDLE;
-                else if(~cache_hit)
+                else if(~cache_hit & ~cache_write)
                     main_next_state = MISS;
                 else
                     main_next_state = LOOKUP;
@@ -467,11 +467,14 @@ module cache(
 
     assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
                                             : req_buffer_op);   // non-cache write
-    assign wr_data =    req_buffer_type ? replace_data : {4{req_buffer_wdata}};
-    assign wr_addr =    req_buffer_type ? {replace_tag, req_buffer_index, 4'b0} 
+    assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
+    assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
+                                        : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}:
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
-    assign wr_type =    req_buffer_type ? 3'b100 : 3'b010;
-    assign wr_wstrb =   req_buffer_type ? 4'b1111 : req_buffer_wstrb;
+                                        
+
+    assign wr_type =    req_buffer_type | cacop ? 3'b100 : 3'b010;
+    assign wr_wstrb =   req_buffer_type | cacop ? 4'b1111 : req_buffer_wstrb;
     
 
     assign rd_req =     (main_current_state == REPLACE) & (req_buffer_type? 1'b1 
