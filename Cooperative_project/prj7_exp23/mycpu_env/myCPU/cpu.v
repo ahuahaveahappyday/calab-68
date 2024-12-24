@@ -81,6 +81,9 @@ module mycpu_top
     wire csr_we;
     wire [31:0] csr_wmask;
     wire [31:0] csr_wvalue;
+    wire cacop_excep_en;
+    wire [5:0]cacop_excep_code;
+    wire [8:0]cacop_excep_subcode;
 
     wire wb_ex;
     wire [5:0] wb_ecode;
@@ -289,7 +292,10 @@ module mycpu_top
 
         .icacop            (icacop),
         .cacop_code       (icacop_code),
-        .cacop_end        (cacop_end)
+        .cacop_end        (cacop_end),
+        .cacop_excep_en   (cacop_excep_en),
+        .cacop_excep_code (cacop_excep_code),
+        .cacop_excep_subcode (cacop_excep_subcode)
     
     );
 
@@ -308,7 +314,10 @@ module mycpu_top
         .ex_to_id_bus       (ex_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .has_int            (has_int),
-        .cacop_end          (cacop_end)
+        .cacop_end          (cacop_end),
+        .cacop_excep_en     (cacop_excep_en),
+        .cacop_excep_code   (cacop_excep_code),
+        .cacop_excep_subcode(cacop_excep_subcode)
     );
 
     EXEreg my_exeReg(

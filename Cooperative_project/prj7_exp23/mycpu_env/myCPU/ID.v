@@ -17,7 +17,11 @@ module IDreg(
 
     input  wire                   flush,
     input  wire                   has_int,
-    input wire                    cacop_end
+    input wire                    cacop_end,
+
+    input wire   cacop_excep_en,
+    input wire [5:0] cacop_excep_code,
+    input wire [8:0] cacop_excep_subcode
 );
     wire        stuck;
     wire        id_ready_go;
@@ -559,13 +563,15 @@ module IDreg(
     assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
     assign id_excep_INE     =   no_inst
                                 || (inst_invtlb && id_invtlb_op > 5'h06);        // 记录该条指令是否存在INE异常
-    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en | cacop_excep_en;         //只要有一个异常就置1
     assign id_esubcode =        (if_excep_en) ? if_esubcode
+                                :cacop_excep_en ? cacop_excep_subcode
                                 :9'b0;
     assign id_ecode =           (if_excep_en) ? if_ecode
                                 :id_excep_INT ? 6'h0
                                 :id_excep_BRK ? 6'hc
                                 :id_excep_INE ? 6'hd
+                                :cacop_excep_en ? cacop_excep_code
                                 :6'hb;  // syscall
 
 //cache instruction

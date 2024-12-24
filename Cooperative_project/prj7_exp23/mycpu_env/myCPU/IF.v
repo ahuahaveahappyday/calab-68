@@ -41,7 +41,10 @@ module IFreg(
 
     output wire icacop,
     output wire [4:0] cacop_code,
-    output wire  cacop_end
+    output wire  cacop_end,
+    output wire  cacop_excep_en,
+    output wire [5:0] cacop_excep_code,
+    output wire [5:0] cacop_excep_subcode
 
 );
 // pre if reg 接受 inst_sram 数据
@@ -102,10 +105,10 @@ module IFreg(
             cacop_end_reg <= 1'b1;
         else if((icacop | icacop_reg) & inst_sram_req & inst_sram_addr_ok)
             cacop_end_reg <= 1'b1;
-        else if(icacop & (~inst_sram_req | ~inst_sram_addr_ok))
+        else if(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)
             cacop_end_reg <= 1'b0;
     end
-    assign cacop_end =   ~(icacop & (~inst_sram_req | ~inst_sram_addr_ok))  // first clk
+    assign cacop_end =   ~(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)  // first clk
                             & cacop_end_reg;
 
 
@@ -329,6 +332,10 @@ module IFreg(
         else if(inst_sram_req & inst_sram_addr_ok)
             icacop_reg <= 1'b0;
     end
+    assign cacop_excep_en = pre_if_excep_en & (icacop | icacop_reg);
+    assign cacop_excep_code = pre_if_ecode;
+    assign cacop_excep_subcode = pre_if_esubcode;
+    
 
 
 
