@@ -30,12 +30,12 @@ module tagv_regfile(
     integer i;
     always @(posedge clka) begin
         if (~resetn) begin
-            // 复位时清零整个数�?
+            // 复位时清零整个数�?
             for (i = 0; i < 256; i = i + 1) begin
                 array[i] <= 21'b0;
             end
         end else if (wea) begin
-            // 写操�?
+            // 写操�?
             array[addra] <= dina;
         end
     end

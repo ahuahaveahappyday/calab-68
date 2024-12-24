@@ -399,6 +399,196 @@ assign data_sram_wr_data_ok = b_current_state == B_WAIT;
     
 \end{enumerate}
 
+\noindent
+$\bullet$
+\textbf{cacop指令的添加}。
+\begin{enumerate}
+    \item CACOP指令基本数据通路
+    
+    首先需要添加cacop指令的译码信号,然后在流水线中搭建数据通路
+    \begin{lstlisting}[language=verilog]
+    wire inst_cacop;
+    assign inst_cacop = op_31_26_d[6'h01] &op_25_22_d[4'h8];
+    assign cacop_code = inst_ID[4:0]; //cacop指令码传入两个Cache
+    assign icacop =inst_cacop&cacop_code[2:0]==3'b000;//该信号传入ICache
+    assign dcacop =ex_inst_cacop & ex_cacop_code[2:0]==3'b001;//该信号传入DCache
+    \end{lstlisting}
+    \item Cache模块中对CACOP指令的实现
+    
+    的cacop指令都可能涉及对于tagv的读写,以way0为例，当为初始化指令时，将指定Cache行的tagv写为0；当为一致化指令时，将指定Cache行的tag保留，将valid
+    位置为0。详细代码如下:
+    \begin{lstlisting}[language=verilog]
+        // tag, v table
+        assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
+                                    :req_buffer_index;      // replace and refill;
+        assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type
+                                | cacop & offset[0]== 0 & code[4:3] != 2'b10 
+                                | cacop_wr_tagv & way0_v & (way0_tag == tag) & req_buffer_type & code[4:3]==2'b10;     
+    
+        assign tagv_way0_wdata = {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 0 & req_buffer_type}}
+                                | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 0 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
+                                | {21'b0} & {21{cacop & offset[0] == 0 & code[4:3] == 2'b00}};
+    \end{lstlisting}
+
+    此外，ICache没有其他操作，但DCache可能涉及到写内存操作，此时需要一个标志信号来记录本指令是否
+需要写内存，代码如下：
+    \begin{lstlisting}[language=verilog]
+        wire   cache_write_new;
+        assign cache_write_new = (offset[0] ? way1_d : way0_d) & (offset[0] ? {way1_tag,way1_v} : {way0_tag,way0_v} ) & cacop & code[4:3] == 2'b01
+                                | way0_d & way0_v & cacop & code[4:3] == 2'b10 & way0_hit 
+                                | way1_d & way1_v & cacop & code[4:3] == 2'b10 & way1_hit;
+        
+        reg cache_write_reg;
+        always @(posedge clk) begin
+            if (!resetn) begin
+                cache_write_reg <= 1'b0;
+            end
+            else if (cache_write_new) begin
+                 cache_write_reg <= 1'b1;
+            end
+            else if (~cacop) begin
+                cache_write_reg <= 1'b0;
+            end
+        end
+    
+        reg cacop_hit;
+        always @(posedge clk) begin
+            if (!resetn) begin
+                cacop_hit <= 1'b0;
+            end
+            else if (cacop & cache_write) begin
+                cacop_hit <= 1'b1;
+            end
+            else if (~cacop) begin
+                cacop_hit <= 1'b0;
+            end
+        end
+    
+        assign cache_write = (cache_write_reg | cache_write_new) & cacop & (code[4:3] == 2'b01 | code[4:3] == 2'b10 & (cacop_hit | cache_hit));    
+    \end{lstlisting}
+    
+    使用该信号控制状态机，使其进入MISS状态
+    \begin{lstlisting}[language=verilog]
+        LOOKUP:
+        if(cache_hit & (~valid | ~addr_ok) & ~cache_write)
+            main_next_state = IDLE;
+        else if(~cache_hit & ~cache_write)
+            main_next_state = MISS;
+        else
+            main_next_state = LOOKUP;
+
+    MISS:
+        if(~wr_rdy)
+            main_next_state = MISS;
+        else
+            main_next_state = REPLACE;
+    \end{lstlisting}
+
+    在MISS状态下，其向AXI总线桥发出相应的访存信号，代码如下：
+    \begin{lstlisting}[language=verilog]
+        assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
+        : (cacop & code[4:3] == 2'b01 & (req_buffer_offset[0] ? way1_d:way0_d) & reg_tagv_dcacop[0] |cacop & code[4:3] == 2'b10 & cache_write) ? 1
+        : req_buffer_op);   // non-cache write
+        assign wr_data =    req_buffer_type | cacop  ? replace_data_final : {4{req_buffer_wdata}};
+        assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
+        : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}
+        : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+
+
+    assign wr_type =    req_buffer_type | cacop ? 3'b100 : 3'b010;
+    assign wr_wstrb =   req_buffer_type | cacop ? 4'b1111 : req_buffer_wstrb;
+    \end{lstlisting}
+
+    其中，reg_tagv_dcacop是用来寄存即将写入dacache中tagv的寄存器
+    \begin{lstlisting}[language=verilog]
+        reg [20:0] reg_tagv_dcacop;
+        always @(posedge clk) begin
+            if (!resetn) begin
+            reg_tagv_dcacop <= 20'b0;
+            end
+            else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b01) begin
+                reg_tagv_dcacop <= offset[0] ?  {way1_tag,way1_v} : {way0_tag,way0_v};
+            end
+            else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way0_hit) begin
+                reg_tagv_dcacop <= {way0_tag,way0_v};
+            end
+            else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way1_hit) begin
+                reg_tagv_dcacop <= {way1_tag,way1_v};
+            end
+            else if((|reg_tagv_dcacop) & ~cacop) begin
+                reg_tagv_dcacop <= 20'b0;
+            end 
+        end
+    \end{lstlisting}
+    \item CPU中ICache对CACOP指令的实现
+    
+    将ICache的cacop执行位于ID阶段，下一条指令取值之前。ICache的cacop指令信号需要挤占ICache取指信号的通路，然后
+    在if模块添加新的通路，代码如下：
+    \begin{lstlisting}[language=verilog]
+        assign inst_vindex = inst_sram_addr[11: 4] & {8{~icacop | cacop_code[4:3]==2'b10 | icacop_complete}}
+                    | icacop_addr[11: 4] & {8{icacop & ~icacop_complete & cacop_code[4:3]!=2'b10}};
+
+        assign inst_voffset =inst_sram_addr[ 3: 0] & {4{~icacop | cacop_code[4:3]==2'b10 | icacop_complete}}
+                    | icacop_addr[ 3: 0] & {4{icacop & ~icacop_complete & cacop_code[4:3]!=2'b10}};
+                    assign pre_pc_pa =          (!csr_crmd_pg | inst_cacop & cacop_code[4:3] == 2'b00 | inst_cacop & cacop_code[4:3] == 2'b01) ? pre_pc            // direct translate
+                    :pre_pc_map;                    // enable mapping
+                
+                assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == pre_pc[31:29];
+                assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == pre_pc[31:29];
+
+                assign pre_pc_map =         hit_dmw0 ? {csr_dmw0_pseg, pre_pc[28:0]}         // dierct map windows 0
+                    :hit_dmw1? {csr_dmw1_pseg, pre_pc[28:0]}         // direct map windows 1
+                    :(s0_ps == 6'b010101) ? {s0_ppn[19:9], icacop_vaddr[20:0]}   // tlb map: ps 4Mb
+                    :{s0_ppn,icacop_vaddr[11:0]};                             // tlb map : ps 4kb
+
+    \end{lstlisting}
+
+    其中的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕，这是因为op为10时，需要两个周期才能完成，op不为10时需一个周期完成。其代码如下
+    \begin{lstlisting}[language=verilog]
+        always @(posedge clk) begin
+    if (~resetn) begin
+        icacop_complete <= 1'b1;
+    end
+    else if (icacop & cacop_code[4:3] != 2'b10) begin
+        icacop_complete <= 1'b1;
+    end
+    else if (icacop_next & cacop_code[4:3] == 2'b10) begin
+        icacop_complete <= 1'b1;
+    end
+    else  
+        icacop_complete <= 1'b0;
+    end
+    \end{lstlisting}
+
+    当op为10时，需要将cacop指令的虚拟地址s0_vppn, s0_va_bit12传入tlb，代码如下：
+    \begin{lstlisting}[language=verilog]
+        assign icacop_vaddr = pre_pc & {32{~icacop| cacop_code[4:3]!=2'b10|icacop_complete}}
+        | icacop_addr&{32{icacop & ~icacop_complete &cacop_code[4:3]==2'b10}};
+        assign {s0_vppn, s0_va_bit12} = icacop_vaddr[31:12];// output to tlb
+    \end{lstlisting}
+    \item CPU中DCache对CACOP指令的实现
+    
+    dcache的主要操作与icache相类似，此处不再赘述。
+
+    \begin{lstlisting}[language=verilog]
+        assign sram_addr_pa =       (!csr_crmd_pg | ex_cacop & ex_cacop_code == 5'b00001 | ex_cacop & ex_cacop_code == 5'b01001) ? ex_alu_result    // direct translate
+        :  sram_addr_map  ;                 // enable mapping
+    
+        assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == ex_alu_result[31:29] & ~(dcacop & ex_cacop_code[4:3] != 2'b10);
+        assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == ex_alu_result[31:29] & !hit_dmw0 & ~(dcacop & ex_cacop_code[4:3] != 2'b10);
+
+        assign sram_addr_map =       hit_dmw0 ? {csr_dmw0_pseg, ex_alu_result[28:0]}         // dierct map windows 0
+                :hit_dmw1? {csr_dmw1_pseg, ex_alu_result[28:0]}         // direct map windows 1
+                :(s1_ps == 6'b010101) ? {s1_ppn[19:9], ex_alu_result[20:0]}   // tlb map: ps 4Mb
+                :{s1_ppn,ex_alu_result[11:0]};                             // tlb map : ps 4kb
+//
+wire dcacop;
+assign dcacop = ex_cacop & (ex_cacop_code[2:0] == 3'b001);
+    \end{lstlisting}
+\end{enumerate}
+
+
+
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
 
 \noindent
@@ -426,7 +616,7 @@ assign data_ok =
 \vspace{1ex}
 
 \section{小组成员分工合作情况}
-王敬华负责TLB模块实现，部分TLB指令的添加和冲突的处理。
+王敬华负责cacop指令的实现。
 
 李霄宇负责集成dCache到cpu中，非缓存的添加。
 
