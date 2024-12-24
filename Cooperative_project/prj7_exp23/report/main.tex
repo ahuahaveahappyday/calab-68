@@ -279,7 +279,7 @@ end
         endcase
     end
     \end{lstlisting}
-如果是读请求，等到返回cpu请求的数据时（即miss\_buffer\_cnt == req_buffer_offset[3:2]）
+如果是读请求，等到返回cpu请求的数据时（即miss\_buffer\_cnt == req\_buffer\_offset[3:2]）
 ，即可拉高data\_ok信号，将数据传给cpu。不必等到Cache进入idle状态。
 \begin{lstlisting}[language=verilog]
 // 读请求，等到返回cpu请求的数据时，即可向cpu返回data_ok信号，并将数据传给cpu
@@ -333,9 +333,71 @@ end
 
 \end{enumerate}
 
+\noindent
+$\bullet$
+\textbf{在CPU中集成DCache}。
 
+与ICache集成在CPU中的结构类似，区别主要在于DCache与bridge之间的写请求和写响应是由意义的，而在ICache中因为不会有写操作因此icache模块写请求和写响应相关的信号无意义。
 
+\begin{enumerate}
+    \item DCache与CPU的接口设计
 
+    Dcache的接口接法与Icache类似，输入信号主要来自于EX模块，输出信号中的地址OK信号发送给EX模块，数据OK信号发送给MEM模块。Dcache同样采用“虚Index实Tag”的方式。
+
+    \item DCache与转接桥的接口设计
+
+    与ICache相比，与转接桥相连的写请求与写响应端口不能再无视了。
+
+    从DCache中连接至转接桥的wr\_req, wr\_type, wr\_addr, wr\_data, wr\_wstrb均在cache模块中赋值后发送。
+
+    \begin{lstlisting}[language=verilog]
+    assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
+                                            : req_buffer_op);   // non-cache write
+    assign wr_data =    req_buffer_type ? replace_data : {4{req_buffer_wdata}};
+    assign wr_addr =    req_buffer_type ? {replace_tag, req_buffer_index, 4'b0} 
+                                        : {req_buffer_tag, req_buffer_index, req_buffer_offset};
+    assign wr_type =    req_buffer_type ? 3'b100 : 3'b010;
+    assign wr_wstrb =   req_buffer_type ? 4'b1111 : req_buffer_wstrb;
+    \end{lstlisting}
+    
+    传给DCache的wr\_rdy和wr\_bvalid信号分别连接至转接桥的data\_sram\_wr\_addr\_ok和data\_sram\_wr\_data\_ok。
+
+    \begin{lstlisting}[language=verilog]
+assign data_sram_wr_addr_ok = aw_current_state == AW_WAIT;
+assign data_sram_wr_data_ok = b_current_state == B_WAIT;
+    \end{lstlisting}
+
+    \item 非缓存
+
+    在cache模块中添加一个一位宽的表示是否可缓存的变量type。
+
+    icache和dcache的type的值均在csrfile.v内做判断。直接地址翻译模式下存储类型由CRMD的DATF和DATM域决定，直接映射地址翻译模式下由命中窗口的MAT域决定，页表映射地址翻译模式下由所用页表项的MAT域决定。
+
+    \begin{lstlisting}[language=verilog]
+    assign inst_type = (~csr_crmd_pg) ? (csr_crmd_datf==2'b01) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01) :
+                       s0_mat;
+    assign data_type = (~csr_crmd_pg) ? (csr_crmd_datm==2'b01) :
+                       hit_dmw0 ? (csr_dmw0_mat==2'b01) :
+                       hit_dmw1 ? (csr_dmw1_mat==2'b01) :
+                       s1_mat;
+    \end{lstlisting}
+
+    之后再根据传进cache模块的type变量对cache模块做修改。确保发生非缓存时不对cache缓存做任何修改。
+
+    以非缓存的load指令为例，确保LOOKUP状态不看比较结果直接进入MISS状态，且不向Cache发送读操作，也不产生对外的替换写。
+
+    \begin{lstlisting}[language=verilog]
+    assign cache_hit = (way0_hit || way1_hit) && req_buffer_type;
+    assign data_ok =    (main_current_state == REFILL & ret_valid & (((miss_buffer_cnt == req_buffer_offset[3:2]) & req_buffer_type) | ~req_buffer_type) & ~req_buffer_op)         // read miss
+                        |(main_current_state == LOOKUP & (cache_hit | req_buffer_op));             // hit or write
+            assign data_way0_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i)? w_buffer_wstrb
+                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i & req_buffer_type) ? 4'b1111
+                                        :4'b0000;
+    \end{lstlisting}
+    
+\end{enumerate}
 
 \section{实验过程中遇到的问题、对问题的思考过程及解决方法（比如RTL代码中出现的逻辑bug，逻辑仿真和FPGA调试过程中的难点等）}
 
@@ -366,7 +428,7 @@ assign data_ok =
 \section{小组成员分工合作情况}
 王敬华负责TLB模块实现，部分TLB指令的添加和冲突的处理。
 
-李霄宇负责TLB相关指令的添加，部分冲突的处理，接口连接。
+李霄宇负责集成dCache到cpu中，非缓存的添加。
 
 艾华春负责Cache模块设计，集成iCache到cpu中。
 
