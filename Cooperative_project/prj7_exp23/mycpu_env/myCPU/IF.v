@@ -44,7 +44,7 @@ module IFreg(
     output wire  cacop_end,
     output wire  cacop_excep_en,
     output wire [5:0] cacop_excep_code,
-    output wire [5:0] cacop_excep_subcode
+    output wire [8:0] cacop_excep_subcode
 
 );
 // pre if reg 接受 inst_sram 数据
