@@ -4,7 +4,7 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [307:0] id_to_ex_bus,
+    input wire [308:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -95,6 +95,7 @@ module EXEreg(
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
     reg         ex_dcacop;
+    reg         ex_icacop;
     reg   [4:0] ex_cacop_code;
     reg   [31:0] ex_cacop_va;
     
@@ -160,15 +161,15 @@ module EXEreg(
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_cacop_code, ex_cacop_va
-              }       <= 308'b0;
+              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_icacop,ex_cacop_code, ex_cacop_va
+              }       <= 309'b0;
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_cacop_code, ex_cacop_va
+             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_icacop,ex_cacop_code, ex_cacop_va
              }     <= id_to_ex_bus;    
     end
 
@@ -240,7 +241,7 @@ module EXEreg(
                                 ex_tlb_op,                  //5 bit
                                 ex_srch_conflict,            //1 bit
                                 ex_tlbsrch_res,             // 5 bit
-                                ex_dcacop,                       
+                                ex_icacop,                       
                                 ex_cacop_code
                                 };
 
