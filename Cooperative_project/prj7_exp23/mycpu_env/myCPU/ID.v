@@ -241,7 +241,7 @@ module IDreg(
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
     assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb, mem_res_from_mem} = mem_to_id_bus;
     assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
-    assign id_to_if_bus = {br_taken, br_target, br_stall,id_icacop ,id_cacop_code, id_cacop_va}; 
+    assign id_to_if_bus = {br_taken, br_target, br_stall,id_icacop & id_valid ,id_cacop_code, id_cacop_va}; 
 
     assign id_rkd_value = rkd_value; 
     assign id_to_ex_bus = {id_alu_op,          //19 bit
