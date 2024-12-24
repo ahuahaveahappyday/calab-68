@@ -30,12 +30,12 @@ module tagv_regfile(
     integer i;
     always @(posedge clka) begin
         if (~resetn) begin
-            // 复位时清零整个数组
+            // 复位时清零整个数�?
             for (i = 0; i < 256; i = i + 1) begin
                 array[i] <= 21'b0;
             end
         end else if (wea) begin
-            // 写操作
+            // 写操�?
             array[addra] <= dina;
         end
     end
@@ -478,7 +478,7 @@ module cache(
                                                                 : req_buffer_op);   // non-cache write
     assign wr_data =    req_buffer_type | cacop  ? replace_data_final : {4{req_buffer_wdata}};
     assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
-                                        : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}:
+                                        : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
                                         
 

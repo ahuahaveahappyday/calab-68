@@ -10,16 +10,16 @@ module IDreg(
     input  wire                   ex_allowin,
     output wire                   id_to_ex_valid,
     output wire [275:0]           id_to_ex_bus,
-    //数据前递总线
+    //数据前�?��?�线
     input  wire [37:0]            wb_to_id_bus, // {wb_rf_we, wb_rf_waddr, wb_rf_wdata}
     input  wire [39:0]            mem_to_id_bus,// {mem_rf_we, mem_rf_waddr, mem_rf_wdata}
     input  wire [39:0]            ex_to_id_bus,  // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
 
     input  wire                   flush,
-    input  wire                   has_int
+    input  wire                   has_int,
 
-    output wire inst_cacop;
-    output wire [4:0] cacop_code;
+    output wire inst_cacop,
+    output wire [4:0] cacop_code
 );
     wire        stuck;
     wire        id_ready_go;
@@ -209,15 +209,15 @@ module IDreg(
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
-// 流水线控制信号
-    assign id_ready_go      =   ~stuck;//流水线阻塞的时候，id_ready_go值为零
+// 流水线控制信�?
+    assign id_ready_go      =   ~stuck;//流水线阻塞的时�?�，id_ready_go值为�?
     assign id_allowin       =   ~id_valid 
                                 | id_ready_go & ex_allowin 
-                                | br_taken | flush;             // 消耗if级错误指令缓存 
+                                | br_taken | flush;             // 消�?�if级错误指令缓�? 
     assign id_to_ex_valid   =   id_valid & id_ready_go;
 
 
-//更新id模块中的寄存器
+//更新id模块中的寄存�?
     always @(posedge clk) begin
         if(~resetn)
             id_valid <= 1'b0;
@@ -234,7 +234,7 @@ module IDreg(
         end
     end
 
-//模块间通信
+//模块间�?�信
     assign {wb_rf_we, wb_rf_waddr, wb_rf_wdata} = wb_to_id_bus;
     assign {mem_rf_we, mem_rf_waddr, mem_rf_wdata, mem_res_from_wb, mem_res_from_mem} = mem_to_id_bus;
     assign {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_rf_wdata, ex_res_from_wb} = ex_to_id_bus;
@@ -362,10 +362,10 @@ module IDreg(
                     | inst_lu12i_w | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddul2i
                     | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_ld_b | inst_ld_h | inst_ld_bu
                     | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break
-                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill |inst_invtlb);          //指令不存在
+                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill |inst_invtlb);          //指令不存�?
 
 
-    //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
+    //各条指令对应的alu_op（b、beq、bne不需要用到alu运算�?
     assign id_alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w  | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h
                         | inst_jirl | inst_bl | inst_pcaddul2i;
     assign id_alu_op[ 1] = inst_sub_w;
@@ -387,11 +387,11 @@ module IDreg(
     assign id_alu_op[17] = inst_mod_w;
     assign id_alu_op[18] = inst_mod_wu;
 
-    //各条指令需要的立即数格式
+    //各条指令�?要的立即数格�?
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui 
                         | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h | inst_cacop;
-    assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;     //添加blt等指令
+    assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;     //添加blt等指�?
     assign need_si20  =  inst_lu12i_w | inst_pcaddul2i;
     assign need_si26  =  inst_b | inst_bl;
     assign need_ui12  =  inst_andi   | inst_ori | inst_xori ;
@@ -399,7 +399,7 @@ module IDreg(
 
     assign imm = src2_is_4 ? 32'h4                      :
                  need_si20 ? {i20[19:0], 12'b0}         :
-                 (need_ui5 || need_si12) ? {{20{i12[11]}}, i12[11:0]} ://ui5立即数只需要5位，而且是截取的，所以不需要另外写
+                 (need_ui5 || need_si12) ? {{20{i12[11]}}, i12[11:0]} ://ui5立即数只�?�?5位，而且是截取的，所以不�?要另外写
                 {20'b0, i12[11:0]};
 
 
@@ -420,13 +420,13 @@ module IDreg(
                     ) && id_valid && ~stuck && ex_allowin;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bltu || inst_bge || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
                                                    /*inst_jirl*/ (rj_value + jirl_offs);        //添加blt等指令的跳转地址：与bne,beq相同
-    assign br_stall =   (inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu| inst_bgeu| inst_jirl| inst_bl| inst_b) & stuck;        // 转移计算未完成
+    assign br_stall =   (inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu| inst_bgeu| inst_jirl| inst_bl| inst_b) & stuck;        // 转移计算未完�?
 
     assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                                 {{14{i16[15]}}, i16[15:0], 2'b0} ;
     assign jirl_offs = {{14{i16[15]}}, i16[15:0], 2'b0};
 
-    //alu源操作数的选择
+    //alu源操作数的�?�择
     assign id_src1_is_pc    = inst_jirl | inst_bl | inst_pcaddul2i;
     assign id_src2_is_imm   = inst_slli_w |
                               inst_srli_w |
@@ -453,7 +453,7 @@ module IDreg(
     assign id_alu_src1 = id_src1_is_pc  ? id_pc[31:0] : rj_value;
     assign id_alu_src2 = id_src2_is_imm ? imm : rkd_value;
 
-    //寄存器的读地址选择、寄存器的实例化
+    //寄存器的读地�?选择、寄存器的实例化
     assign src_reg_is_rd =      inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu 
                                 | inst_st_w | inst_st_b | inst_st_h | inst_csrwr | inst_csxchg;     
     assign rf_raddr1 = rj;
@@ -469,7 +469,7 @@ module IDreg(
         .wdata  (wb_rf_wdata )
     );
 
-    //寄存器的写地址和写使能
+    //寄存器的写地�?和写使能
     assign gr_we            =   ~inst_st_w & ~inst_st_b & ~inst_st_h 
                                 & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b 
                                 & ~inst_syscall & ~inst_ertn & ~inst_break
@@ -492,7 +492,7 @@ module IDreg(
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 //处理冲突
-    //冲突发生的条件为：1、寄存器非0 2、寄存器号相同 3、在EX、MEM、WB流水级上面的指令对寄存器进行写操作 4、ID流水级指令需要读对应的寄存器
+    //冲突发生的条件为�?1、寄存器�?0 2、寄存器号相�? 3、在EX、MEM、WB流水级上面的指令对寄存器进行写操�? 4、ID流水级指令需要读对应的寄存器
     assign conflict_r1_wb  = (|rf_raddr1) & (rf_raddr1 == wb_rf_waddr)  & wb_rf_we & need_r1;
     assign conflict_r2_wb  = (|rf_raddr2) & (rf_raddr2 == wb_rf_waddr)  & wb_rf_we & need_r2;
     assign conflict_r1_mem = (|rf_raddr1) & (rf_raddr1 == mem_rf_waddr) & mem_rf_we & need_r1;
@@ -500,21 +500,21 @@ module IDreg(
     assign conflict_r1_ex  = (|rf_raddr1) & (rf_raddr1 == ex_rf_waddr)  & ex_rf_we & need_r1;
     assign conflict_r2_ex  = (|rf_raddr2) & (rf_raddr2 == ex_rf_waddr)  & ex_rf_we & need_r2;
 
-    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w & ~inst_pcaddul2i & ~inst_csrrd & ~inst_csrwr;//需要使用（读）源寄存器1（rj）的指令
+    assign need_r1         = ~inst_b & ~inst_bl & ~inst_lu12i_w & ~inst_pcaddul2i & ~inst_csrrd & ~inst_csrwr;//�?要使用（读）源寄存器1（rj）的指令
     assign need_r2         =  inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_and | inst_or | inst_nor | inst_xor
-                              | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu                           //添加blt等指令
+                              | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu                           //添加blt等指�?
                               | inst_st_w | inst_sll_w| inst_srl_w | inst_sra_w | inst_mul_w 
                               | inst_mulh_w | inst_mulh_wu | inst_mod_w | inst_mod_wu | inst_div_w |inst_div_wu
                               | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_invtlb;
-                              //需要使用（读）源寄存器2（rk/rd）的指令
+                              //�?要使用（读）源寄存器2（rk/rd）的指令
 
-    //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲突
+    //发生阻塞的条件：exe阶段为load指令并且与ID流水级指令发生冲�?
     assign stuck           = ex_res_from_mem & (conflict_r1_ex|conflict_r2_ex)
                             |mem_res_from_mem & (conflict_r1_mem|conflict_r2_mem)
                             |ex_res_from_wb & (conflict_r1_ex|conflict_r2_ex)
                             |mem_res_from_wb & (conflict_r1_mem|conflict_r2_mem);    
 
-    //前递的数据在这里使用，发生conflict时代替寄存器中读出的值
+    //前�?�的数据在这里使用，发生conflict时代替寄存器中读出的�?
     //由于优先级的原因，所以下面的顺序不能调换
     assign rj_value  =  conflict_r1_ex ? ex_rf_wdata:
                         conflict_r1_mem ? mem_rf_wdata:
@@ -541,7 +541,7 @@ module IDreg(
     assign id_tlb_op = {inst_tlbsrch,inst_tlbwr,inst_tlbfill,inst_tlbrd,inst_invtlb};
     assign id_srch_conflict = inst_csrwr | inst_csxchg | inst_tlbrd;
 
-// 计数器读和TID读
+// 计数器读和TID�?
     assign id_read_counter     = inst_rdcntvl_w | inst_rdcntvh_w;
     assign id_read_counter_low = inst_rdcntvl_w;
     assign id_read_TID         = inst_rdcntid; 
@@ -552,7 +552,7 @@ module IDreg(
     assign id_excep_BRK     =   inst_break;     // 记录该条指令是否存在BRK异常
     assign id_excep_INE     =   no_inst
                                 || (inst_invtlb && id_invtlb_op > 5'h06);        // 记录该条指令是否存在INE异常
-    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就置1
+    assign id_excep_en =        id_excep_INT | id_excep_SYSCALL | id_excep_BRK | id_excep_INE | if_excep_en;         //只要有一个异常就�?1
     assign id_esubcode =        (if_excep_en) ? if_esubcode
                                 :9'b0;
     assign id_ecode =           (if_excep_en) ? if_ecode
