@@ -73,6 +73,7 @@ module mycpu_top
     wire [37:0] wb_to_id_bus;
     wire        wb_to_ex_bus;
     wire [2:0]  mem_to_ex_bus;
+    wire cacop_end;
 
     wire csr_re;
     wire [13:0] csr_num;
@@ -287,7 +288,8 @@ module mycpu_top
         .s0_v               (s0_v),
 
         .icacop            (icacop),
-        .cacop_code       (icacop_code)
+        .cacop_code       (icacop_code),
+        .cacop_end        (cacop_end)
     
     );
 
@@ -305,7 +307,8 @@ module mycpu_top
         .mem_to_id_bus      (mem_to_id_bus),
         .ex_to_id_bus       (ex_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
-        .has_int            (has_int)
+        .has_int            (has_int),
+        .cacop_end          (cacop_end)
     );
 
     EXEreg my_exeReg(

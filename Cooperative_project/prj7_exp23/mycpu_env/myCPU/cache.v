@@ -347,7 +347,7 @@ module cache(
     assign tagv_way0_wen =  main_current_state == REFILL & (replace_way == 1'b0 & ret_valid & ret_last & req_buffer_type
                                                         |  req_buffer_cacop & replace_way == 1'b0);
 
-    assign tagv_way0_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
+    assign tagv_way0_wdata =    req_buffer_cacop ?  21'b0//{20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
                                 : {req_buffer_tag, 1'b1};
 
     tagv_regfile tagv_ram_way0 (
@@ -364,7 +364,7 @@ module cache(
     assign tagv_way1_wen =      main_current_state == REFILL & (replace_way == 1'b1 & ret_valid & ret_last & req_buffer_type
                                                         |  req_buffer_cacop & replace_way == 1'b1);
 
-    assign tagv_way1_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
+    assign tagv_way1_wdata =    req_buffer_cacop ? 21'b0 //{20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
                                 : {req_buffer_tag, 1'b1};
 
     tagv_regfile tagv_ram_way1 (

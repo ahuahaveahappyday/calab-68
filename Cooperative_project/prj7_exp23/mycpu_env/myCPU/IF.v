@@ -40,7 +40,8 @@ module IFreg(
     input  wire                        s0_v,
 
     output wire icacop,
-    output wire [4:0] cacop_code
+    output wire [4:0] cacop_code,
+    output wire  cacop_end
 
 );
 // pre if reg 接受 inst_sram 数据
@@ -94,6 +95,20 @@ module IFreg(
     reg          icacop_reg;
     reg [4:0]   cacop_code_reg;
     reg [31:0]    cacop_va_reg;
+    reg         cacop_end_reg;
+
+    always @(posedge clk) begin
+        if(~resetn)
+            cacop_end_reg <= 1'b1;
+        else if((icacop | icacop_reg) & inst_sram_req & inst_sram_addr_ok)
+            cacop_end_reg <= 1'b1;
+        else if(icacop & (~inst_sram_req | ~inst_sram_addr_ok))
+            cacop_end_reg <= 1'b0;
+    end
+    assign cacop_end =   ~(icacop & (~inst_sram_req | ~inst_sram_addr_ok))  // first clk
+                            & cacop_end_reg;
+
+
 //----------------------------------------------------------------------------------------------------------------------------------------------
 //===============================================流水线控制信号和数据交互
     /* if 级的握手信号*/
@@ -272,7 +287,7 @@ module IFreg(
                                 :{s0_ppn,pre_pc[11:0]};       
 
 //====================================================取指地址错异常处理
-    assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
+    assign pre_if_excep_ADEF   =        (~icacop & ~icacop_reg) &  pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
     assign pre_if_excep_TLBR   =        en_map & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
     assign pre_if_excep_PIF =           en_map & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
     assign pre_if_excep_PPI =           en_map & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (csr_crmd_plv > s0_plv);
