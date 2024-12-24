@@ -37,7 +37,10 @@ module IFreg(
     input  wire [5:0]                  s0_ps,
     input  wire [1:0]                  s0_plv,
     input  wire                        s0_d,
-    input  wire                        s0_v
+    input  wire                        s0_v,
+
+    output wire icacop,
+    output wire [4:0] cacop_code
 
 );
 // pre if reg 接受 inst_sram 数据
@@ -81,13 +84,16 @@ module IFreg(
     wire        pre_if_excep_PPI;
 
 
-    wire       icacop;
-    wire [4:0] cacop_code ;
 // if reg 接受从wb级 的数据
     reg          flush_reg;
     reg  [ 31:0] flush_entry_reg;
 
     reg          inst_cancel;
+// cacop
+    wire [31:0] cacop_va;
+    reg          icacop_reg;
+    reg [4:0]   cacop_code_reg;
+    reg [31:0]    cacop_va_reg;
 //----------------------------------------------------------------------------------------------------------------------------------------------
 //===============================================流水线控制信号和数据交互
     /* if 级的握手信号*/
@@ -110,7 +116,7 @@ module IFreg(
                                 | if_ready_go & id_allowin ;   
 
     /* 与id的数据和控制信号交互 */
-    assign {br_taken, br_target, br_stall, icacop, cacop_code, icacop_addr} =        id_to_if_bus;
+    assign {br_taken, br_target, br_stall, icacop, cacop_code, cacop_va} =        id_to_if_bus;
     assign if_to_id_bus =                           {if_inst,       // 32 bit
                                                     if_pc,          // 32 bit 
                                                     if_excep_en,    // 1 bit
@@ -157,6 +163,8 @@ module IFreg(
     assign seq_pc           =   if_pc + 3'h4;  
     assign pre_pc           =   flush_reg ? flush_entry_reg
                                 : flush ? wb_flush_entry
+                                :icacop ? cacop_va
+                                :icacop_reg ? cacop_va_reg
                                 : br_taken_reg ? br_target_reg 
                                 : br_taken ? br_target 
                                 : seq_pc;
@@ -240,36 +248,34 @@ module IFreg(
             if_ir_valid <= 1'b0;
     end
 // =============================================虚实地址转换
-    assign {s0_vppn, s0_va_bit12} = icacop_vaddr[31:12];// output to tlb
+    wire en_map;
+    assign en_map =   icacop ? cacop_code[4:3] == 2'b10
+                    :icacop_reg ? cacop_code_reg[4:3] == 2'b10
+                    :csr_crmd_pg;
 
-    assign inst_vindex = inst_sram_addr[11: 4] & {8{~icacop | cacop_code[4:3]==2'b10 | icacop_complete}}
-                                | icacop_addr[11: 4] & {8{icacop & ~icacop_complete & cacop_code[4:3]!=2'b10}};
-
-    assign inst_voffset =inst_sram_addr[ 3: 0] & {4{~icacop | cacop_code[4:3]==2'b10 | icacop_compelete}}
-                                | icacop_addr[ 3: 0] & {4{icacop & ~icacop_compelete & cacop_code[4:3]!=2'b10}};
-
-    //assign inst_vindex = pre_pc[11:4];
-    //assign inst_voffset = pre_pc[3:0];
+    assign {s0_vppn, s0_va_bit12} = pre_pc[31:12];// output to tlb
+    assign inst_vindex = pre_pc[11:4];
+    assign inst_voffset = pre_pc[3:0];
 
     wire [31:0]                 pre_pc_map;
     wire                        hit_dmw0;
     wire                        hit_dmw1;
-    assign pre_pc_pa =          (!csr_crmd_pg | inst_cacop & cacop_code[4:3] == 2'b00 | inst_cacop & cacop_code[4:3] == 2'b01) ? pre_pc            // direct translate
-                                :pre_pc_map;                    // enable mapping
+    assign pre_pc_pa =          en_map ? pre_pc_map    // enable mapping
+                                :pre_pc;                    // direct translate
                             
     assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == pre_pc[31:29];
     assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == pre_pc[31:29];
 
     assign pre_pc_map =         hit_dmw0 ? {csr_dmw0_pseg, pre_pc[28:0]}         // dierct map windows 0
                                 :hit_dmw1? {csr_dmw1_pseg, pre_pc[28:0]}         // direct map windows 1
-                                :(s0_ps == 6'b010101) ? {s0_ppn[19:9], icacop_vaddr[20:0]}   // tlb map: ps 4Mb
-                                :{s0_ppn,icacop_vaddr[11:0]};                             // tlb map : ps 4kb
+                                :(s0_ps == 6'b010101) ? {s0_ppn[19:9], pre_pc[20:0]}   // tlb map: ps 4Mb
+                                :{s0_ppn,pre_pc[11:0]};       
 
 //====================================================取指地址错异常处理
     assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
-    assign pre_if_excep_TLBR   =        csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
-    assign pre_if_excep_PIF =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
-    assign pre_if_excep_PPI =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (csr_crmd_plv > s0_plv);
+    assign pre_if_excep_TLBR   =        en_map & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
+    assign pre_if_excep_PIF =           en_map & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
+    assign pre_if_excep_PPI =           en_map & ~hit_dmw0 & ~hit_dmw1 & s0_found & s0_v & (csr_crmd_plv > s0_plv);
     assign pre_if_ecode =               pre_if_excep_ADEF?  6'h08   // adef
                                         :pre_if_excep_TLBR?6'h3f  // tlbr
                                         :pre_if_excep_PIF? 6'h3 // pif
@@ -293,35 +299,72 @@ module IFreg(
 
 
 
-////icacop
- wire [31:0]icacop_vaddr;
- assign icacop_vaddr = pre_pc & {32{~icacop| cacop_code[4:3]!=2'b10|icacop_complete}}
-                    | icacop_addr&{32{icacop & ~icacop_complete &cacop_code[4:3]==2'b10}};
+//icacop
+    always @(posedge clk) begin
+        if(~resetn)begin
+            icacop_reg <= 1'b0;
+            cacop_code_reg <= 5'b0;
+            cacop_va_reg <= 32'b0;
+        end
+        else if((~inst_sram_req | ~inst_sram_addr_ok) & icacop)begin
+            icacop_reg <= 1'b1;
+            cacop_code_reg <= cacop_code;
+            cacop_va_reg <= cacop_va;
+        end
+        else if(inst_sram_req & inst_sram_addr_ok)
+            icacop_reg <= 1'b0;
+    end
 
-//的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕
-//为op为10时，需要两个周期才能完成，op不为10时需一个周期完成
-reg icacop_compelete;
-always @(posedge clk) begin
-    if (reset) begin
-        icacop_compelete <= 1'b1;
-    end
-    else if (icacop & cacop_code[4:3] != 2'b10) begin
-        icacop_compelete <= 1'b1;
-    end
-    else if (icacop_next & cacop_code[4:3] == 2'b10) begin
-        icacop_compelete <= 1'b1;
-    end
-    else  
-        icacop_compelete <= 1'b0;
-end
 
-reg icacop_next;
-always @(posedge clk) begin
-    if (reset) begin
-        icacop_next <= 1'b0;
-    end
-    else
-        icacop_next <= icacop;
-end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//  wire [31:0]icacop_vaddr;
+//  assign icacop_vaddr = pre_pc & {32{~icacop| cacop_code[4:3]!=2'b10|icacop_complete}}
+//                     | icacop_addr&{32{icacop & ~icacop_complete &cacop_code[4:3]==2'b10}};
+
+// //的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕
+// //为op为10时，需要两个周期才能完成，op不为10时需一个周期完成
+// reg icacop_compelete;
+// always @(posedge clk) begin
+//     if (reset) begin
+//         icacop_compelete <= 1'b1;
+//     end
+//     else if (icacop & cacop_code[4:3] != 2'b10) begin
+//         icacop_compelete <= 1'b1;
+//     end
+//     else if (icacop_next & cacop_code[4:3] == 2'b10) begin
+//         icacop_compelete <= 1'b1;
+//     end
+//     else  
+//         icacop_compelete <= 1'b0;
+// end
+
+// reg icacop_next;
+// always @(posedge clk) begin
+//     if (reset) begin
+//         icacop_next <= 1'b0;
+//     end
+//     else
+//         icacop_next <= icacop;
+// end
 
 endmodule

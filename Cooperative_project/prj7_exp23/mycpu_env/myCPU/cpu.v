@@ -63,7 +63,7 @@ module mycpu_top
     wire mem_to_wb_valid;
 
     wire [111:0] if_to_id_bus;
-    wire [275:0] id_to_ex_bus;
+    wire [307:0] id_to_ex_bus;
     wire [256:0] ex_to_mem_bus;
     wire [210:0] mem_to_wb_bus;
 
@@ -213,9 +213,6 @@ module mycpu_top
     wire [1:0]                  r_mat1;
     wire                        r_d1;
     wire                        r_v1;
-    //
-    wire inst_cacop;
-    wire [4:0] cacop_code;
     // ----------------------------------------------------------------icache--------------------------------------------------------------
     wire                      icache_rd_req;
     wire [2:0]                icache_rd_type;
@@ -242,7 +239,15 @@ module mycpu_top
     wire                      dcache_wr_bvalid;  
 
     //--------------------------------------------------------------------------------------------------------------------------------
+    wire icacop;
+    wire [4:0] icacop_code;
 
+    wire  dcacop;
+    wire [4:0] dcacop_code;
+
+
+
+    // ---------------------------------------------------------------------------------------------------------------------------
     IFreg my_ifReg(
         .clk                (aclk),
         .resetn             (aresetn),
@@ -279,7 +284,10 @@ module mycpu_top
         .s0_ps              (s0_ps),
         .s0_plv             (s0_plv),
         .s0_d               (s0_d),
-        .s0_v               (s0_v)
+        .s0_v               (s0_v),
+
+        .icacop            (icacop),
+        .cacop_code       (icacop_code)
     
     );
 
@@ -354,7 +362,10 @@ module mycpu_top
         .csr_dmw1_vseg      (csr_output_dmw1_vseg),
 
         .hit_dmw0           (hit_dmw0),
-        .hit_dmw1           (hit_dmw1)
+        .hit_dmw1           (hit_dmw1),
+
+        .dcacop              (dcacop),
+        .dcacop_code         (dcacop_code)
     );
 
     MEMreg my_memReg(
@@ -662,7 +673,11 @@ module mycpu_top
 
         .cacop              (inst_cacop),
         .code               (cacop_code),
-        .cache_write    ()
+        .cache_write    (),
+        //cacop
+        .way               (inst_sram_addr[0]),
+        .cacop              (icacop),
+        .cacop_code         (icacop_code)
 
     );
  
@@ -699,7 +714,11 @@ module mycpu_top
         .wr_wstrb           (dcache_wr_wsrb),
         .wr_rdy            (dcache_wr_rdy),
         // axi write ret
-        .wr_bvalid          (dcache_wr_bvalid)
+        .wr_bvalid          (dcache_wr_bvalid),
+        //cacop
+        .way               (data_sram_addr[0]),
+        .cacop              (dcacop),
+        .cacop_code         (dcacop_code)
     );
 
 endmodule

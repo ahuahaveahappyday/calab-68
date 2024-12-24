@@ -4,7 +4,7 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [275:0] id_to_ex_bus,
+    input wire [307:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
@@ -60,8 +60,11 @@ module EXEreg(
     input wire  [2:0]   csr_dmw1_vseg,
 
     output wire         hit_dmw0,
-    output wire         hit_dmw1
+    output wire         hit_dmw1,
 
+    // cacop
+    output wire         dcacop,
+    output wire [4:0]   dcacop_code
 );
 //ex reg 从id级接受数据
     reg         ex_valid;
@@ -91,8 +94,9 @@ module EXEreg(
     reg  [13:0] ex_csr_num;
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
-    reg         ex_cacop;
+    reg         ex_dcacop;
     reg   [4:0] ex_cacop_code;
+    reg   [31:0] ex_cacop_va;
     
     reg  [8:0]  id_esubcode;
     reg  [5:0]  id_ecode;
@@ -129,6 +133,8 @@ module EXEreg(
     wire        ex_excep_PPI;
     wire        ex_excep_PME;
 
+    wire [31:0] dsram_va;
+
     // tlb relevant       
     wire [4:0]  ex_tlbsrch_res;    // {s1_found,s1_index} 
 
@@ -154,15 +160,15 @@ module EXEreg(
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_cacop,ex_cacop_code
-              }       <= 276'b0;
+              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_cacop_code, ex_cacop_va
+              }       <= 308'b0;
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_cacop,ex_cacop_code
+             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_dcacop,ex_cacop_code, ex_cacop_va
              }     <= id_to_ex_bus;    
     end
 
@@ -234,35 +240,12 @@ module EXEreg(
                                 ex_tlb_op,                  //5 bit
                                 ex_srch_conflict,            //1 bit
                                 ex_tlbsrch_res,             // 5 bit
-                                ex_cacop,                       
+                                ex_dcacop,                       
                                 ex_cacop_code
                                 };
 
 // 读计数器
     assign ex_counter_result = ex_read_counter_low ? counter[31:0] : counter[63:32];            //处理rdcntvl.w rdcntvh.w指令
-
-// 异常处理
-    assign ex_excep_en =        ex_excep_ALE | ex_excep_TLBR|ex_excep_PIL| ex_excep_PIS| ex_excep_PPI|ex_excep_PME| id_excep_en;
-    assign ex_excep_ALE =       (ex_res_from_mem | ex_mem_we) & 
-                                    ((ex_op_st_ld_h & ex_alu_result[0]) 
-                                    | (ex_op_st_ld_w & (ex_alu_result[1] | ex_alu_result[0])));     // 记录该条指令是否存在ALE异常
-    assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
-    assign ex_excep_PIL =       (ex_res_from_mem) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
-    assign ex_excep_PIS =       (ex_mem_we) &csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
-    assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv < csr_crmd_plv);
-    assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we) & csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d;
-    
-    assign ex_badv =            (id_excep_en) ? id_badv
-                                : ex_alu_result;
-    assign ex_esubcode =        (id_excep_en) ? id_esubcode
-                                :9'b0;
-    assign ex_ecode =           (id_excep_en) ? id_ecode
-                                :ex_excep_ALE ? 6'h9
-                                :ex_excep_TLBR ?6'h3f     // tlb refill
-                                :ex_excep_PIL ?6'h1
-                                :ex_excep_PIS ?6'h2
-                                :ex_excep_PPI ?6'h7
-                                :6'h4;  // pme
 
 //TLB相关 ---------------------------------------------------------------------------------------------------------------------------
     assign ex_tlb_srch = ex_tlb_op[4];
@@ -272,23 +255,52 @@ module EXEreg(
                             : csr_asid;
     assign {s1_vppn, s1_va_bit12} =   ex_tlb_inv ?  ex_rkd_value[31:12]     // rk
                                     : ex_tlb_srch ? {csr_tlbehi_vppn, 1'b0}
-                                    : ex_alu_result[31:12];     // data_sram_addr
+                                    : dsram_va[31:12];     // data_sram_addr
     assign ex_tlbsrch_res = {s1_found,s1_index};
-    assign data_vindex = ex_alu_result[11:4];
-    assign data_voffset = ex_alu_result[3:0];
+    assign data_vindex = dsram_va[11:4];
+    assign data_voffset = dsram_va[3:0];
     // addr translate
-    assign sram_addr_pa =       (!csr_crmd_pg | ex_cacop & ex_cacop_code == 5'b00001 | ex_cacop & ex_cacop_code == 5'b01001) ? ex_alu_result;    // direct translate
-                                :  sram_addr_map                   // enable mapping
+
+    wire en_map ;
+    assign en_map = ex_dcacop ? ex_cacop_code[4:3] == 2'd2 : csr_crmd_pg;
+
+    assign dsram_va =           ex_dcacop ? ex_cacop_va
+                                :ex_alu_result;
+    assign sram_addr_pa =       en_map ? sram_addr_map    // enable mapping
+                                :dsram_va;                    // direct translate
                             
-    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == ex_alu_result[31:29] & ~(dcacop & ex_cacop_code[4:3] != 2'b10);
-    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == ex_alu_result[31:29] & !data_flag_dmw0_hit & ~(dcacop & ex_cacop_code[4:3] != 2'b10)
+    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == dsram_va[31:29];
+    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == dsram_va[31:29];
 
-    assign sram_addr_map =       hit_dmw0 ? {csr_dmw0_pseg, ex_alu_result[28:0]}         // dierct map windows 0
-                                :hit_dmw1? {csr_dmw1_pseg, ex_alu_result[28:0]}         // direct map windows 1
-                                :(s1_ps == 6'b010101) ? {s1_ppn[19:9], ex_alu_result[20:0]}   // tlb map: ps 4Mb
-                                :{s1_ppn,ex_alu_result[11:0]};                             // tlb map : ps 4kb
-//
-wire dcacop;
-assign dcacop = ex_cacop & (ex_cacop_code[2:0] == 3'b001);
+    assign sram_addr_map =       hit_dmw0 ? {csr_dmw0_pseg, dsram_va[28:0]}         // dierct map windows 0
+                                :hit_dmw1? {csr_dmw1_pseg, dsram_va[28:0]}         // direct map windows 1
+                                :(s1_ps == 6'b010101) ? {s1_ppn[19:9], dsram_va[20:0]}   // tlb map: ps 4Mb
+                                :{s1_ppn,dsram_va[11:0]};                             // tlb map : ps 4kb
 
+// cacop
+    assign dcacop = ex_dcacop;
+    assign dcacop_code = ex_cacop_code;
+
+// 异常处理
+    assign ex_excep_en =        ex_excep_ALE | ex_excep_TLBR|ex_excep_PIL| ex_excep_PIS| ex_excep_PPI|ex_excep_PME| id_excep_en;
+    assign ex_excep_ALE =       (ex_res_from_mem | ex_mem_we) & 
+                                    ((ex_op_st_ld_h & dsram_va[0]) 
+                                    | (ex_op_st_ld_w & (dsram_va[1] | dsram_va[0])));     // 记录该条指令是否存在ALE异常
+    assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we) &en_map & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
+    assign ex_excep_PIL =       (ex_res_from_mem) &en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+    assign ex_excep_PIS =       (ex_mem_we) &en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+    assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv < csr_crmd_plv);
+    assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d;
+    
+    assign ex_badv =            (id_excep_en) ? id_badv
+                                : dsram_va;
+    assign ex_esubcode =        (id_excep_en) ? id_esubcode
+                                :9'b0;
+    assign ex_ecode =           (id_excep_en) ? id_ecode
+                                :ex_excep_ALE ? 6'h9
+                                :ex_excep_TLBR ?6'h3f     // tlb refill
+                                :ex_excep_PIL ?6'h1
+                                :ex_excep_PIS ?6'h2
+                                :ex_excep_PPI ?6'h7
+                                :6'h4;  // pme
 endmodule

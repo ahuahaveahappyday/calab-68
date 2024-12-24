@@ -59,6 +59,7 @@ module cache(
     input wire [3:0]    wstrb,
     input wire [31:0]   wdata,
     input wire          type,
+    input wire          way,
     // output to cpu
     output wire         addr_ok,
     output wire         data_ok,
@@ -83,7 +84,7 @@ module cache(
     input wire          wr_bvalid,
     //cacop inst
     input               cacop,
-    input       [ 4:0]  code, 
+    input       [ 4:0]  cacop_code,
     output              cache_write
 );
 
@@ -521,6 +522,7 @@ module cache(
             w_buffer_bank <= req_buffer_offset[3:2];
         end
     end
+/*-------------------------------------------cacop -------------------------------------------------------------------------------------*/
 
     reg cacop_wr_tagv;
     always @(posedge clk) begin
@@ -614,7 +616,5 @@ module cache(
             dcacop_hit1 <= 1'b0;
     end
 end
-
-
 
 endmodule
