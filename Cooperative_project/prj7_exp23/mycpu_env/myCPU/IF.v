@@ -1,7 +1,7 @@
 module IFreg(
     input  wire   clk,
     input  wire   resetn,
-    //if模块与指令存储器的交互接口
+    //if模块与指令存储器的交互接�?
     output wire         inst_sram_req,
     output wire         inst_sram_wr,
     output wire [3:0]   inst_sram_wstrb,
@@ -18,7 +18,7 @@ module IFreg(
     input  wire [70:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
     output wire [111:0]  if_to_id_bus,
-    //etrn清空流水线
+    //etrn清空流水�?
     input  wire         flush,
     input  wire [31:0]  wb_flush_entry,
     // 虚实地址转换
@@ -45,7 +45,7 @@ module IFreg(
     reg  [31:0] pre_if_ir;
     reg         pre_if_ir_valid;
 // if reg接受从pre if 级的数据
-    reg         if_valid;       //if流水级是否有效：正在等待或者已经接受到指令
+    reg         if_valid;       //if流水级是否有效：正在等待或�?�已经接受到指令
     reg  [31:0] if_pc;
     reg  [31:0] if_ir;
     reg         if_ir_valid;
@@ -63,7 +63,7 @@ module IFreg(
     wire [31:0] pre_pc;
     wire [31:0] pre_pc_pa;
     wire [31:0] if_inst;
-//branch类指令的信号和目标地址，来自ID模块
+//branch类指令的信号和目标地�?，来自ID模块
     reg          br_taken_reg;
     reg  [ 31:0] br_target_reg;
 
@@ -83,7 +83,9 @@ module IFreg(
 
     wire       icacop;
     wire [4:0] cacop_code ;
-// if reg 接受从wb级 的数据
+    reg icacop_complete;
+
+// if reg 接受从wb�? 的数�?
     reg          flush_reg;
     reg  [ 31:0] flush_entry_reg;
 
@@ -91,10 +93,10 @@ module IFreg(
 //----------------------------------------------------------------------------------------------------------------------------------------------
 //===============================================流水线控制信号和数据交互
     /* if 级的握手信号*/
-    always @(posedge clk) begin         // 表示if级当前正在等待指令返回，或者if级的指令缓存有效
+    always @(posedge clk) begin         // 表示if级当前正在等待指令返回，或�?�if级的指令缓存有效
         if(~resetn)
             if_valid <=         1'b0;
-        else if(~(inst_sram_req & inst_sram_addr_ok) & (br_taken | flush)) // 排除跳转目的的pc值下一个周期就返回
+        else if(~(inst_sram_req & inst_sram_addr_ok) & (br_taken | flush)) // 排除跳转目的的pc值下�?个周期就返回
             if_valid <=         1'b0;
         else if(pre_if_readygo & if_allowin)
             if_valid <=         to_if_valid;
@@ -119,15 +121,15 @@ module IFreg(
                                                     if_badv
                                                     };         
 
-    /* 清空流水线时，第一个指令需要丢弃*/
+    /* 清空流水线时，第�?个指令需要丢�?*/
     always @(posedge clk) begin
         if(~resetn)
             inst_cancel <= 1'b0;
         else if (   (if_valid & ~if_ir_valid & ~inst_sram_data_ok & ~if_excep_en  // if正在等待指令返回
-                    |pre_if_reqed_reg & ~pre_if_ir_valid & ~inst_sram_data_ok)// pre_if 级发出请求，但是数据没有返回，也还没有进入if级
+                    |pre_if_reqed_reg & ~pre_if_ir_valid & ~inst_sram_data_ok)// pre_if 级发出请求，但是数据没有返回，也还没有进入if�?
                 & (flush | br_taken))
             inst_cancel <= 1'b1;
-        else if(inst_sram_data_ok)      // 异常后第一个需要被舍弃的指令返回
+        else if(inst_sram_data_ok)      // 异常后第�?个需要被舍弃的指令返�?
             inst_cancel <= 1'b0;
     end
 
@@ -145,10 +147,10 @@ module IFreg(
     assign inst_sram_wr     =   1'b0;
     assign inst_sram_wdata  =   32'b0;
 
-    assign inst_sram_req    =   resetn & ~pre_if_reqed_reg        // pre if 没有已经发出请求的指令 
-                                & ( inst_sram_data_ok  // 上一个请求恰好返回  
-                                    | if_ir_valid         // 上一个请求已经返回，且未进入id级
-                                    | if_allowin)     // 上一个请求已经返回，且已经进入id级
+    assign inst_sram_req    =   resetn & ~pre_if_reqed_reg        // pre if 没有已经发出请求的指�? 
+                                & ( inst_sram_data_ok  // 上一个请求恰好返�?  
+                                    | if_ir_valid         // 上一个请求已经返回，且未进入id�?
+                                    | if_allowin)     // 上一个请求已经返回，且已经进入id�?
                                 & ~br_stall          //  转移计算已经完成
                                 & ~pre_if_excep_en;      
     assign inst_sram_addr   =   pre_pc_pa;
@@ -187,8 +189,8 @@ module IFreg(
             flush_reg <= 1'b0;
     end
     
-    always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if级
-        if(~resetn)                 // 同时可以表明，当前inst_sram返回的指令是属于pre_if级的，而不是if级的
+    always @(posedge clk) begin     // pre if 已经发出请求，且没有进入if�?
+        if(~resetn)                 // 同时可以表明，当前inst_sram返回的指令是属于pre_if级的，�?�不是if级的
             pre_if_reqed_reg <= 1'b0;
         else if(pre_if_readygo && if_allowin)   // move forward to if
             pre_if_reqed_reg <= 1'b0;
@@ -203,7 +205,7 @@ module IFreg(
             pre_if_ir <= 32'b0;
         end
         else if(    inst_sram_data_ok 
-                    & pre_if_reqed_reg  // pre if 已经发出请求，且没有进入if级
+                    & pre_if_reqed_reg  // pre if 已经发出请求，且没有进入if�?
                     & ~if_allowin)     begin   
             pre_if_ir_valid <= 1'b1;
             pre_if_ir <= inst_sram_rdata;
@@ -223,15 +225,15 @@ module IFreg(
     /* inst to id */
     assign if_inst    =     if_ir_valid ?  if_ir
                             :inst_sram_rdata;
-    // if 级指令缓存
+    // if 级指令缓�?
     always @(posedge clk)begin
         if(~resetn) begin 
             if_ir_valid <=  1'b0;
             if_ir <=        32'b0;
         end
-        else if(    (inst_sram_data_ok & ~pre_if_reqed_reg & ~if_ir_valid & ~id_allowin        // if级当前返回的指令不能进入id级   
-                    | pre_if_readygo & if_allowin & ~(flush | br_taken) & (pre_if_ir_valid        // pre_if缓存的指令必须先进入if级的缓存，不能直接进入id级
-                                                | inst_sram_data_ok & pre_if_reqed_reg)) ) begin// pre_if返回的指令必须先进入if级的缓存，不能直接进入id级
+        else if(    (inst_sram_data_ok & ~pre_if_reqed_reg & ~if_ir_valid & ~id_allowin        // if级当前返回的指令不能进入id�?   
+                    | pre_if_readygo & if_allowin & ~(flush | br_taken) & (pre_if_ir_valid        // pre_if缓存的指令必须先进入if级的缓存，不能直接进入id�?
+                                                | inst_sram_data_ok & pre_if_reqed_reg)) ) begin// pre_if返回的指令必须先进入if级的缓存，不能直接进入id�?
             if_ir_valid <=  1'b1;
             if_ir <=        inst_sram_data_ok ? inst_sram_rdata
                                             :pre_if_ir;
@@ -245,8 +247,8 @@ module IFreg(
     assign inst_vindex = inst_sram_addr[11: 4] & {8{~icacop | cacop_code[4:3]==2'b10 | icacop_complete}}
                                 | icacop_addr[11: 4] & {8{icacop & ~icacop_complete & cacop_code[4:3]!=2'b10}};
 
-    assign inst_voffset =inst_sram_addr[ 3: 0] & {4{~icacop | cacop_code[4:3]==2'b10 | icacop_compelete}}
-                                | icacop_addr[ 3: 0] & {4{icacop & ~icacop_compelete & cacop_code[4:3]!=2'b10}};
+    assign inst_voffset =inst_sram_addr[ 3: 0] & {4{~icacop | cacop_code[4:3]==2'b10 | icacop_complete}}
+                                | icacop_addr[ 3: 0] & {4{icacop & ~icacop_complete & cacop_code[4:3]!=2'b10}};
 
     //assign inst_vindex = pre_pc[11:4];
     //assign inst_voffset = pre_pc[3:0];
@@ -265,7 +267,7 @@ module IFreg(
                                 :(s0_ps == 6'b010101) ? {s0_ppn[19:9], icacop_vaddr[20:0]}   // tlb map: ps 4Mb
                                 :{s0_ppn,icacop_vaddr[11:0]};                             // tlb map : ps 4kb
 
-//====================================================取指地址错异常处理
+//====================================================取指地址错异常处�?
     assign pre_if_excep_ADEF   =        pre_pc[0] | pre_pc[1];   // 记录该条指令是否存在ADEF异常
     assign pre_if_excep_TLBR   =        csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & ~s0_found;    // TLB refull
     assign pre_if_excep_PIF =           csr_crmd_pg & ~hit_dmw0 & ~hit_dmw1 & s0_found & ~s0_v;
@@ -295,29 +297,32 @@ module IFreg(
 
 ////icacop
  wire [31:0]icacop_vaddr;
+ wire [31:0]icacop_addr;
+ wire inst_cacop;
+ wire [4:0] cacop_code;
+ 
  assign icacop_vaddr = pre_pc & {32{~icacop| cacop_code[4:3]!=2'b10|icacop_complete}}
                     | icacop_addr&{32{icacop & ~icacop_complete &cacop_code[4:3]==2'b10}};
 
 //的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕
-//为op为10时，需要两个周期才能完成，op不为10时需一个周期完成
-reg icacop_compelete;
+//为op�?10时，�?要两个周期才能完成，op不为10时需�?个周期完�?
 always @(posedge clk) begin
-    if (reset) begin
-        icacop_compelete <= 1'b1;
+    if (~resetn) begin
+        icacop_complete <= 1'b1;
     end
     else if (icacop & cacop_code[4:3] != 2'b10) begin
-        icacop_compelete <= 1'b1;
+        icacop_complete <= 1'b1;
     end
     else if (icacop_next & cacop_code[4:3] == 2'b10) begin
-        icacop_compelete <= 1'b1;
+        icacop_complete <= 1'b1;
     end
     else  
-        icacop_compelete <= 1'b0;
+        icacop_complete <= 1'b0;
 end
 
 reg icacop_next;
 always @(posedge clk) begin
-    if (reset) begin
+    if (~resetn) begin
         icacop_next <= 1'b0;
     end
     else
