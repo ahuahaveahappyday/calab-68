@@ -59,7 +59,6 @@ module cache(
     input wire [3:0]    wstrb,
     input wire [31:0]   wdata,
     input wire          type,
-    input wire          way,
     // output to cpu
     output wire         addr_ok,
     output wire         data_ok,
@@ -83,9 +82,9 @@ module cache(
     // axi write ret
     input wire          wr_bvalid,
     //cacop inst
+    input wire          way,
     input               cacop,
-    input       [ 4:0]  cacop_code,
-    output              cache_write
+    input       [ 4:0]  cacop_code
 );
 
     parameter IDLE 		= 5'b00001;
@@ -108,6 +107,9 @@ module cache(
     reg [3:0]   req_buffer_wstrb;
     reg [31:0]  req_buffer_wdata;
     reg         req_buffer_type;
+    reg         req_buffer_cacop;
+    reg [4:0]   req_buffer_cacop_code;
+    reg         req_buffer_way;
 // write buffer
     reg  [7:0]  w_buffer_index;
     reg         w_buffer_way;
@@ -120,7 +122,6 @@ module cache(
     wire [31:0]     way1_load_word;
     wire [31:0]     load_hit_res;
     wire [127:0]    replace_data;
-    wire [127:0]    replace_data_final;
     wire            replace_way;
     wire            replace_d;
     wire            replace_v;
@@ -161,6 +162,19 @@ module cache(
     wire            d_way1_wen;
     wire            d_way1_wdata;
     wire            way1_d;
+// cacop
+    wire          cacop_wback;
+    reg     replace_v_reg;
+    reg replace_tag_reg;
+    reg hit_way_reg;
+
+
+
+
+
+
+
+
 // non-cache write
     reg            non_cache_wreq;
 // stop the mem visit before non_cache write finish
@@ -210,12 +224,18 @@ module cache(
                     main_next_state = IDLE;
 
             LOOKUP:
-                if(cache_hit & (~valid | ~addr_ok) & ~cache_write)
-                    main_next_state = IDLE;
-                else if(~cache_hit & ~cache_write)
+                if(valid & addr_ok)
+                    main_next_state = LOOKUP;
+                else if(~cache_hit | cacop_wback)
                     main_next_state = MISS;
                 else
-                    main_next_state = LOOKUP;
+                    main_next_state = IDLE;
+                // if(cache_hit & (~valid | ~addr_ok))
+                //     main_next_state = IDLE;
+                // else if(~cache_hit & ~cacop_wback)
+                //     main_next_state = MISS;
+                // else
+                //     main_next_state = LOOKUP;
 
             MISS:
                 if(~wr_rdy)
@@ -230,7 +250,7 @@ module cache(
                     main_next_state = REFILL;
 
             REFILL:
-                if((ret_valid & ret_last) | (~req_buffer_type & req_buffer_op))
+                if((ret_valid & ret_last) | req_buffer_cacop)
                     main_next_state = IDLE;
                 else
                     main_next_state = REFILL;
@@ -285,7 +305,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way0_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 0 & w_buffer_bank == i)? w_buffer_wstrb
-                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i & req_buffer_type) ? 4'b1111
+                                        :(main_current_state == REFILL & replace_way ==0 & ret_valid & miss_buffer_cnt == i & req_buffer_type & ~req_buffer_cacop) ? 4'b1111
                                         :4'b0000;
             data_bank_ram data_way0(
                 .clka   (clk),
@@ -306,7 +326,7 @@ module cache(
                                         :(main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                         :req_buffer_index;      // replace and refill
             assign data_way1_wen[i] =    (wr_current_state == WR_WRITE & w_buffer_way == 1 & w_buffer_bank == i) ? w_buffer_wstrb
-                                        :(main_current_state == REFILL & replace_way ==1 & ret_valid & miss_buffer_cnt == i & req_buffer_type) ? 4'b1111
+                                        :(main_current_state == REFILL & replace_way ==1 & ret_valid & miss_buffer_cnt == i & req_buffer_type & ~req_buffer_cacop) ? 4'b1111
                                         :4'b0000;
             data_bank_ram data_way1(
                 .clka   (clk),
@@ -318,15 +338,17 @@ module cache(
         end
     endgenerate
     // tag, v table
+    wire  cacop_stag;
+    assign cacop_stag = cacop & valid & addr_ok & cacop_code[4:3] == 2'b0;
+
+
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way0_wen =  main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type
-                            | cacop & offset[0]== 0 & code[4:3] != 2'b10 
-                            | cacop_wr_tagv & way0_v & (way0_tag == tag) & req_buffer_type & code[4:3]==2'b10;     
+    assign tagv_way0_wen =  main_current_state == REFILL & (replace_way == 0 & ret_valid & ret_last & req_buffer_type)
+                                                        |  (req_buffer_cacop & replace_way == 0);
 
-    assign tagv_way0_wdata = {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 0 & req_buffer_type}}
-                            | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 0 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
-                            | {21'b0} & {21{cacop & offset[0] == 0 & code[4:3] == 2'b00}};
+    assign tagv_way0_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
+                                : {req_buffer_tag, 1'b1};
 
     tagv_regfile tagv_ram_way0 (
         .clka   (clk),
@@ -339,13 +361,11 @@ module cache(
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way1_wen =      main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type
-                                | cacop & offset[0]== 1 & code[4:3] != 2'b10 
-                                | cacop_wr_tagv & way1_v & (way1_tag == tag) & req_buffer_type & code[4:3]==2'b10;
+    assign tagv_way1_wen =      main_current_state == REFILL & (replace_way == 0 & ret_valid & ret_last & req_buffer_type)
+                                                        |  (req_buffer_cacop & replace_way == 1);
 
-    assign tagv_way1_wdata =    {req_buffer_tag, 1'b1} & {21{ret_valid & ret_last & replace_way == 1 & req_buffer_type}}
-                                | {reg_tagv_dcacop[20:1], 1'b0} & {21{cacop & offset[0] == 1 & (code[4:3] == 2'b01 | code[4:3] == 2'b10)}}
-                                | {21'b0} & {21{cacop & offset[0] == 1 & code[4:3] == 2'b00}};
+    assign tagv_way1_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
+                                : {req_buffer_tag, 1'b1};
 
     tagv_regfile tagv_ram_way1 (
         .clka   (clk),
@@ -359,7 +379,7 @@ module cache(
     assign d_way0_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
                             : req_buffer_index;     // replace and refill
     assign d_way0_wen =     wr_current_state == WR_WRITE & w_buffer_way == 0
-                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type;
+                            |main_current_state == REFILL & replace_way == 0 & ret_valid & ret_last & req_buffer_type & ~req_buffer_cacop;
     assign d_way0_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way0(
         .clk        (clk),
@@ -372,7 +392,7 @@ module cache(
     assign d_way1_index =   (wr_current_state == WR_WRITE) ? w_buffer_index // hit write
                             : req_buffer_index;         // replace and refill
     assign d_way1_wen =     wr_current_state == WR_WRITE & w_buffer_way == 1
-                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type;
+                            |main_current_state == REFILL & replace_way == 1 & ret_valid & ret_last & req_buffer_type & ~req_buffer_cacop;
     assign d_way1_wdata =   wr_current_state == WR_WRITE;
     d_regfile d_way1(
         .clk        (clk),
@@ -393,6 +413,9 @@ module cache(
             req_buffer_wstrb <=    4'b0;
             req_buffer_wdata <=    32'b0;
             req_buffer_type  =     1'b0;
+            req_buffer_cacop =     1'b0;
+            req_buffer_cacop_code = 5'b0;
+            req_buffer_way =       1'b0;
         end
         else if(addr_ok & valid)begin      // next_state == LOOKUP
             req_buffer_op <=       op;
@@ -401,7 +424,10 @@ module cache(
             req_buffer_offset <=   offset;
             req_buffer_wstrb <=    wstrb;
             req_buffer_wdata <=    wdata;
-            req_buffer_type  <=    type;       
+            req_buffer_type  <=    type;
+            req_buffer_cacop <=    cacop;
+            req_buffer_cacop_code <= cacop_code;
+            req_buffer_way <=      way;       
         end
     end
     // tag compare
@@ -411,7 +437,7 @@ module cache(
 
     assign way0_hit = way0_v && (way0_tag == req_buffer_tag);
     assign way1_hit = way1_v && (way1_tag == req_buffer_tag);
-    assign cache_hit = (way0_hit || way1_hit) && req_buffer_type;
+    assign cache_hit = (way0_hit || way1_hit) && req_buffer_type && ~req_buffer_cacop;
     // data select
     assign way0_load_word = way0_data[req_buffer_offset[3:2]];
     assign way1_load_word = way1_data[req_buffer_offset[3:2]];
@@ -419,17 +445,35 @@ module cache(
     assign load_hit_res =   {32{way0_hit}} & way0_load_word
                             |{32{way1_hit}} & way1_load_word;
     assign replace_data =   replace_way ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]} 
-                            :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]}  ;
-
-    assign replace_data_final = cacop & code[4:3] == 2'b01 & offset[0] ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]}
-                                :cacop & code[4:3] == 2'b01 & ~offset[0] ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]}
-                                :cacop & code[4:3] == 2'b10 & dcacop_hit0 ? {way0_data[3], way0_data[2], way0_data[1], way0_data[0]}
-                                :cacop & code[4:3] == 2'b10 & dcacop_hit1 ? {way1_data[3], way1_data[2], way1_data[1], way1_data[0]}
-                                :replace_data;
+                            :{way0_data[3], way0_data[2], way0_data[1], way0_data[0]};
 
     assign replace_d =  replace_way ? way1_d: way0_d;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
     assign replace_v =  replace_way ? way1_v : way0_v;
+    always @(posedge clk)begin
+        if(~resetn)begin
+            replace_v_reg <= 1'b0;
+        end
+        else if(main_current_state == LOOKUP)begin
+            replace_v_reg <= replace_way ? way1_v : way0_v;
+        end
+    end
+    always @(posedge clk)begin
+        if(~resetn)begin
+            replace_tag_reg <= 20'b0;
+        end
+        else if(main_current_state == LOOKUP)begin
+            replace_tag_reg <= replace_way ? way1_tag : way0_tag;
+        end
+    end
+    always @(posedge clk)begin
+        if(~resetn)begin
+            hit_way_reg <= 1'b0;
+        end
+        else if(main_current_state == LOOKUP)begin
+            hit_way_reg <= way0_hit ? 1'b0 :1'b1;
+        end
+    end
     // miss buffer
     // always @(posedge clk)begin
     //     if(~resetn)begin
@@ -474,12 +518,11 @@ module cache(
         end
     end
 
-    assign wr_req =     first_clk_of_replace & (req_buffer_type ? (replace_d & replace_v)
-                                                                : (cacop & code[4:3] == 2'b01 & (req_buffer_offset[0] ? way1_d:way0_d) & reg_tagv_dcacop[0] |cacop & code[4:3] == 2'b10 & cache_write) ? 1
-                                                                : req_buffer_op);   // non-cache write
-    assign wr_data =    req_buffer_type | cacop  ? replace_data_final : {4{req_buffer_wdata}};
-    assign wr_addr =    req_buffer_type & ~cacop ? {replace_tag, req_buffer_index, 4'b0} 
-                                        : cacop & code[4:3]==2'b01 ? {reg_tagv_dcacop[20:1],req_buffer_index,req_buffer_offset[3:1],1'b0}:
+    assign wr_req =     first_clk_of_replace & (( ~req_buffer_cacop & (req_buffer_type ? (replace_d & replace_v) : req_buffer_op))
+                                                | req_buffer_cacop & req_buffer_cacop_code[4:3] != 2'b00); 
+
+    assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
+    assign wr_addr =    req_buffer_type  ? {replace_tag, req_buffer_index, 4'b0} 
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
                                         
 
@@ -487,8 +530,8 @@ module cache(
     assign wr_wstrb =   req_buffer_type | cacop ? 4'b1111 : req_buffer_wstrb;
     
 
-    assign rd_req =     (main_current_state == REPLACE) & (req_buffer_type? 1'b1 
-                                                                        : ~req_buffer_op);    // non-cache read
+    assign rd_req =     (main_current_state == REPLACE & ~req_buffer_cacop) & (req_buffer_type? 1'b1 
+                                                                            : ~req_buffer_op);    // non-cache read
     assign rd_addr =    req_buffer_type ? {req_buffer_tag, req_buffer_index, 4'b0} 
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
     assign rd_type =    req_buffer_type ? 3'b100 : 3'b010;
@@ -504,7 +547,9 @@ module cache(
         else if(main_current_state == REFILL & ret_valid & ret_last)
             lfsr <= {lfsr[6:0], feedback};
     end
-    assign replace_way =    lfsr[0];
+    assign replace_way =    req_buffer_cacop & req_buffer_cacop_code[4] == 1'b0  ? req_buffer_way           // direct index
+                            : req_buffer_cacop & req_buffer_cacop_code[4] == 1'b1  ? hit_way_reg                // search index
+                            : lfsr[0];
 
     // write buffer
     always @(posedge clk)begin
@@ -523,98 +568,7 @@ module cache(
         end
     end
 /*-------------------------------------------cacop -------------------------------------------------------------------------------------*/
-
-    reg cacop_wr_tagv;
-    always @(posedge clk) begin
-        if (!resetn) begin
-            cacop_wr_tagv <= 1'b0;
-        end
-        else if (cacop & ~cacop_next) begin
-            cacop_wr_tagv <= 1'b1;
-        end
-        else begin
-            cacop_wr_tagv <= 1'b0;
-            end
-    end
-
-    reg cacop_next;
-    always @(posedge clk) begin
-        if (!resetn) begin
-        cacop_next <= 1'b0;
-        end
-        else
-            cacop_next <= cacop;
-    end
-
-    reg [20:0] reg_tagv_dcacop;
-    always @(posedge clk) begin
-        if (!resetn) begin
-        reg_tagv_dcacop <= 20'b0;
-        end
-        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b01) begin
-            reg_tagv_dcacop <= offset[0] ?  {way1_tag,way1_v} : {way0_tag,way0_v};
-        end
-        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way0_hit) begin
-            reg_tagv_dcacop <= {way0_tag,way0_v};
-        end
-        else if (~(|reg_tagv_dcacop) & cacop & code[4:3] == 2'b10 & way1_hit) begin
-            reg_tagv_dcacop <= {way1_tag,way1_v};
-        end
-        else if((|reg_tagv_dcacop) & ~cacop) begin
-            reg_tagv_dcacop <= 20'b0;
-        end 
-    end
-
-
-    wire   cache_write_new;
-    assign cache_write_new = (offset[0] ? way1_d : way0_d) & (offset[0] ? {way1_tag,way1_v} : {way0_tag,way0_v} ) & cacop & code[4:3] == 2'b01
-                            | way0_d & way0_v & cacop & code[4:3] == 2'b10 & way0_hit 
-                            | way1_d & way1_v & cacop & code[4:3] == 2'b10 & way1_hit;
-    
-    reg cache_write_reg;
-    always @(posedge clk) begin
-        if (!resetn) begin
-            cache_write_reg <= 1'b0;
-        end
-        else if (cache_write_new) begin
-             cache_write_reg <= 1'b1;
-        end
-        else if (~cacop) begin
-            cache_write_reg <= 1'b0;
-        end
-    end
-
-    reg cacop_hit;
-    always @(posedge clk) begin
-        if (!resetn) begin
-            cacop_hit <= 1'b0;
-        end
-        else if (cacop & cache_write) begin
-            cacop_hit <= 1'b1;
-        end
-        else if (~cacop) begin
-            cacop_hit <= 1'b0;
-        end
-    end
-
-    assign cache_write = (cache_write_reg | cache_write_new) & cacop & (code[4:3] == 2'b01 | code[4:3] == 2'b10 & (cacop_hit | cache_hit));
-
-    reg dcacop_hit0, dcacop_hit1;
-    always @(posedge clk) begin
-        if (!resetn) begin
-            dcacop_hit0 <= 1'b0;
-            dcacop_hit1 <= 1'b0;
-        end
-        else if (cacop & code[4:3] == 2'b10 & way0_hit) begin
-            dcacop_hit0 <= 1'b1;
-        end
-        else if (cacop & code[4:3] == 2'b10 & way1_hit) begin
-            dcacop_hit1 <= 1'b1;
-        end
-        else if (~cacop) begin
-            dcacop_hit0 <= 1'b0;
-            dcacop_hit1 <= 1'b0;
-    end
-end
-
+    assign cacop_wback =  req_buffer_cacop & (req_buffer_cacop_code[4:3] == 2'b0
+                                            | req_buffer_cacop_code[4:3] == 2'b01
+                                            |req_buffer_cacop_code[4:3] == 2'b10 & (way0_hit | way1_hit));
 endmodule
