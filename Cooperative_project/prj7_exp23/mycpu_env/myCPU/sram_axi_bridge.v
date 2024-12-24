@@ -325,6 +325,8 @@ always @(posedge clk)begin
     if(~resetn)begin
         wdata_cnt <= 2'b0;
     end
+    else if(aw_current_state == AW_SEND_DATA && wlast && wready)
+        wdata_cnt <= 2'b0;
     else if(aw_current_state == AW_SEND_DATA && wready)begin
         wdata_cnt <= wdata_cnt + 1;
     end

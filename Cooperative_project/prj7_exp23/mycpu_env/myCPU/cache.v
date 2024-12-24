@@ -510,7 +510,7 @@ module cache(
         if(~resetn)begin
             first_clk_of_replace <= 1'b0;
         end
-        else if(main_current_state == MISS & wr_rdy & (~req_buffer_type & req_buffer_op))begin
+        else if(main_current_state == MISS & wr_rdy)begin
             first_clk_of_replace <= 1'b1;
         end
         else begin
@@ -519,7 +519,7 @@ module cache(
     end
 
     assign wr_req =     first_clk_of_replace & (( ~req_buffer_cacop & (req_buffer_type ? (replace_d & replace_v) : req_buffer_op))
-                                                | req_buffer_cacop & req_buffer_cacop_code[4:3] != 2'b00); 
+                                                | (req_buffer_cacop & req_buffer_cacop_code[4:3] != 2'b00)); 
 
     assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
     assign wr_addr =    req_buffer_type  ? {replace_tag, req_buffer_index, 4'b0} 
