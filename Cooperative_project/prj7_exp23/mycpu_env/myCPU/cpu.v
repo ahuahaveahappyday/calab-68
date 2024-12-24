@@ -63,8 +63,8 @@ module mycpu_top
     wire mem_to_wb_valid;
 
     wire [111:0] if_to_id_bus;
-    wire [269:0] id_to_ex_bus;
-    wire [250:0] ex_to_mem_bus;
+    wire [275:0] id_to_ex_bus;
+    wire [256:0] ex_to_mem_bus;
     wire [210:0] mem_to_wb_bus;
 
     wire [70:0] id_to_if_bus;

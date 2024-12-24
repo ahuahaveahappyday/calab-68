@@ -4,7 +4,7 @@ module MEMreg(
     //mem与ex模块交互接口
     output wire        mem_allowin,
     input  wire        ex_to_mem_valid,
-    input  wire [250:0]ex_to_mem_bus, 
+    input  wire [256:0]ex_to_mem_bus, 
     //mem与wb模块交互接口
     input  wire        wb_allowin,
     output wire        mem_to_wb_valid,
@@ -47,6 +47,8 @@ module MEMreg(
     reg         mem_excep_en;
     reg [31:0]  mem_badv;
     reg [4:0]   mem_tlbsrch_res;
+    reg         mem_cacop;
+    reg [4:0]   mem_cacop_code;
 
 // 流水级控制信号
     wire        mem_ready_go;
@@ -86,7 +88,7 @@ module MEMreg(
              mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
              mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              mem_excep_en, mem_esubcode, mem_ecode, mem_badv,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= 251'b0;
+             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res,mem_cacop,mem_cacop_code} <= 257'b0;
         end
         if(ex_to_mem_valid & mem_allowin) begin
             {mem_pc,mem_res_from_mem, mem_rf_we, mem_rf_waddr, 
@@ -94,7 +96,7 @@ module MEMreg(
             mem_op_st_ld_b, mem_op_st_ld_h, mem_op_st_ld_u, mem_read_counter, mem_counter_result, mem_read_TID,
             mem_csr_re,mem_csr_we,mem_csr_num,mem_csr_wmask, mem_ertn_flush,
              mem_excep_en, mem_esubcode, mem_ecode, mem_badv,mem_sram_requed,
-             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res} <= ex_to_mem_bus;
+             mem_tlb_op,mem_srch_conflict, mem_tlbsrch_res,mem_cacop,mem_cacop_code} <= ex_to_mem_bus;
         end
     end
 

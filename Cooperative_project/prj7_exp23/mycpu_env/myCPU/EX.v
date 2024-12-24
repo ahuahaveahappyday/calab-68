@@ -4,12 +4,12 @@ module EXEreg(
     //id与ex模块交互接口
     output  wire       ex_allowin,
     input wire         id_to_ex_valid,
-    input wire [269:0] id_to_ex_bus,
+    input wire [275:0] id_to_ex_bus,
     output wire [39:0] ex_to_id_bus, // {ex_res_from_mem, ex_rf_we, ex_rf_waddr, ex_alu_result}
     //ex与mem模块接口
     input  wire        mem_allowin,
     output wire        ex_to_mem_valid,
-    output wire [250:0]ex_to_mem_bus,
+    output wire [256:0]ex_to_mem_bus,
     input  wire [2:0]  mem_to_ex_bus,
     //ex与wb模块交互接口
     input  wire        wb_to_ex_bus,
@@ -91,6 +91,8 @@ module EXEreg(
     reg  [13:0] ex_csr_num;
     reg  [31:0] ex_csr_wmask;
     reg         ex_ertn_flush;
+    reg         ex_cacop;
+    reg   [4:0] ex_cacop_code;
     
     reg  [8:0]  id_esubcode;
     reg  [5:0]  id_ecode;
@@ -152,15 +154,15 @@ module EXEreg(
               ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
               ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-              ex_tlb_op,ex_srch_conflict,ex_invtlb_op
-              }       <= 270'b0;
+              ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_cacop,ex_cacop_code
+              }       <= 276'b0;
         else if(id_to_ex_valid & ex_allowin)
             {ex_alu_op, ex_res_from_mem, ex_alu_src1, ex_alu_src2,
              ex_mem_we, ex_rf_we, ex_rf_waddr, ex_rkd_value, ex_pc, 
              ex_op_st_ld_b, ex_op_st_ld_h, ex_op_st_ld_w, ex_op_st_ld_u, ex_read_counter, ex_read_counter_low, ex_read_TID, 
              ex_csr_re, ex_csr_we, ex_csr_num, ex_csr_wmask, ex_ertn_flush,
               id_excep_en, id_esubcode, id_ecode,id_badv,
-             ex_tlb_op,ex_srch_conflict,ex_invtlb_op
+             ex_tlb_op,ex_srch_conflict,ex_invtlb_op,ex_cacop,ex_cacop_code
              }     <= id_to_ex_bus;    
     end
 
@@ -231,7 +233,9 @@ module EXEreg(
                                 ex_mem_req,                  //1 bit 
                                 ex_tlb_op,                  //5 bit
                                 ex_srch_conflict,            //1 bit
-                                ex_tlbsrch_res              // 5 bit
+                                ex_tlbsrch_res,             // 5 bit
+                                ex_cacop,                       
+                                ex_cacop_code
                                 };
 
 // 读计数器
@@ -273,15 +277,18 @@ module EXEreg(
     assign data_vindex = ex_alu_result[11:4];
     assign data_voffset = ex_alu_result[3:0];
     // addr translate
-    assign sram_addr_pa =       csr_crmd_pg ? sram_addr_map    // enable mapping
-                                :ex_alu_result;                    // direct translate
+    assign sram_addr_pa =       (!csr_crmd_pg | ex_cacop & ex_cacop_code == 5'b00001 | ex_cacop & ex_cacop_code == 5'b01001) ? ex_alu_result;    // direct translate
+                                :  sram_addr_map                   // enable mapping
                             
-    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == ex_alu_result[31:29];
-    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == ex_alu_result[31:29];
+    assign hit_dmw0 =           csr_dmw0_plv_met & csr_dmw0_vseg == ex_alu_result[31:29] & ~(dcacop & ex_cacop_code[4:3] != 2'b10);
+    assign hit_dmw1 =           csr_dmw1_plv_met & csr_dmw1_vseg == ex_alu_result[31:29] & !data_flag_dmw0_hit & ~(dcacop & ex_cacop_code[4:3] != 2'b10)
 
     assign sram_addr_map =       hit_dmw0 ? {csr_dmw0_pseg, ex_alu_result[28:0]}         // dierct map windows 0
                                 :hit_dmw1? {csr_dmw1_pseg, ex_alu_result[28:0]}         // direct map windows 1
                                 :(s1_ps == 6'b010101) ? {s1_ppn[19:9], ex_alu_result[20:0]}   // tlb map: ps 4Mb
                                 :{s1_ppn,ex_alu_result[11:0]};                             // tlb map : ps 4kb
+//
+wire dcacop;
+assign dcacop = ex_cacop & (ex_cacop_code[2:0] == 3'b001);
 
 endmodule

@@ -301,7 +301,7 @@ module IFreg(
 //的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕
 //为op为10时，需要两个周期才能完成，op不为10时需一个周期完成
 reg icacop_compelete;
-always @(posedge aclk) begin
+always @(posedge clk) begin
     if (reset) begin
         icacop_compelete <= 1'b1;
     end
@@ -316,7 +316,7 @@ always @(posedge aclk) begin
 end
 
 reg icacop_next;
-always @(posedge aclk) begin
+always @(posedge clk) begin
     if (reset) begin
         icacop_next <= 1'b0;
     end
