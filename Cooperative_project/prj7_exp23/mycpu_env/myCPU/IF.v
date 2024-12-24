@@ -15,7 +15,7 @@ module IFreg(
     input wire  [31:0]  inst_sram_rdata,
     //if模块与id模块交互接口
     input  wire         id_allowin,
-    input  wire [70:0]  id_to_if_bus,//{br_taken, br_target}
+    input  wire [71:0]  id_to_if_bus,//{br_taken, br_target}
     output wire         if_to_id_valid,
     output wire [111:0]  if_to_id_bus,
     //etrn清空流水线

@@ -250,7 +250,7 @@ module cache(
                     main_next_state = REFILL;
 
             REFILL:
-                if((ret_valid & ret_last) | req_buffer_cacop)
+                if((ret_valid & ret_last) | req_buffer_cacop | (~req_buffer_type & req_buffer_op))
                     main_next_state = IDLE;
                 else
                     main_next_state = REFILL;
@@ -344,8 +344,8 @@ module cache(
 
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way0_wen =  main_current_state == REFILL & (replace_way == 0 & ret_valid & ret_last & req_buffer_type)
-                                                        |  (req_buffer_cacop & replace_way == 0);
+    assign tagv_way0_wen =  main_current_state == REFILL & (replace_way == 1'b0 & ret_valid & ret_last & req_buffer_type
+                                                        |  req_buffer_cacop & replace_way == 1'b0);
 
     assign tagv_way0_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
                                 : {req_buffer_tag, 1'b1};
@@ -361,8 +361,8 @@ module cache(
 
     assign tagv_way1_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
-    assign tagv_way1_wen =      main_current_state == REFILL & (replace_way == 0 & ret_valid & ret_last & req_buffer_type)
-                                                        |  (req_buffer_cacop & replace_way == 1);
+    assign tagv_way1_wen =      main_current_state == REFILL & (replace_way == 1'b1 & ret_valid & ret_last & req_buffer_type
+                                                        |  req_buffer_cacop & replace_way == 1'b1);
 
     assign tagv_way1_wdata =    req_buffer_cacop ?  {20'b0, req_buffer_cacop_code[4:3] == 2'b0 ?  replace_v_reg : 1'b0}
                                 : {req_buffer_tag, 1'b1};
@@ -499,11 +499,11 @@ module cache(
         if(~resetn)begin
             miss_buffer_cnt <= 2'b0;
         end
-        else if(main_current_state == REFILL & ret_valid)begin
-            miss_buffer_cnt <= miss_buffer_cnt + 1;
-        end
         else if(main_current_state == REFILL & ret_valid & ret_last)begin
             miss_buffer_cnt <= 2'b0;
+        end
+        else if(main_current_state == REFILL & ret_valid)begin
+            miss_buffer_cnt <= miss_buffer_cnt + 1;
         end
     end
     always @(posedge clk)begin

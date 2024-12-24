@@ -4,7 +4,7 @@ module IDreg(
     //if模块与id模块交互接口
     input  wire                   if_to_id_valid,
     output wire                   id_allowin,
-    output wire [70:0]            id_to_if_bus,//{br_taken, br_target}
+    output wire [71:0]            id_to_if_bus,//{br_taken, br_target}
     input  wire [111:0]            if_to_id_bus,
     //id模块与ex模块交互接口
     input  wire                   ex_allowin,
@@ -205,7 +205,7 @@ module IDreg(
 
     wire        id_dcacop;
     wire [4:0]  id_cacop_code;
-    wire        id_cacop_va;
+    wire [31:0] id_cacop_va;
 
     wire        id_icacop;
 
@@ -367,7 +367,7 @@ module IDreg(
                     | inst_lu12i_w | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddul2i
                     | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_ld_b | inst_ld_h | inst_ld_bu
                     | inst_ld_hu | inst_st_b | inst_st_h | inst_csrrd | inst_csrwr | inst_csxchg | inst_ertn | inst_syscall | inst_break
-                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill |inst_invtlb);          //指令不存在
+                    | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill |inst_invtlb| inst_cacop);          //指令不存在
 
 
     //各条指令对应的alu_op（b、beq、bne不需要用到alu运算）
@@ -570,7 +570,7 @@ module IDreg(
     assign id_cacop_code        = id_inst[4:0];
     assign id_cacop_va          = rj_value + imm;
 
-    assign id_dcacop           = id_cacop_code[2:0] == 3'd1;
-    assign id_icacop           = id_cacop_code[2:0] == 3'd0;
+    assign id_dcacop           = inst_cacop & id_cacop_code[2:0] == 3'd1;
+    assign id_icacop           = inst_cacop & id_cacop_code[2:0] == 3'd0;
 
 endmodule
