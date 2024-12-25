@@ -543,9 +543,9 @@ $\bullet$
 
     \end{lstlisting}
 
-    其中的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕，这是因为op为10时，需要两个周期才能完成，op不为10时需一个周期完成。其代码如下
+    其中的icacop_complete信号，用来标记ICache的cacop指令是否执行完毕.
     \begin{lstlisting}[language=verilog]
-        always @(posedge clk) begin
+    always @(posedge clk) begin
     if (~resetn) begin
         icacop_complete <= 1'b1;
     end

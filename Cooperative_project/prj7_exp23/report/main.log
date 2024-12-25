@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023) (preloaded format=xelatex 2023.9.24)  24 DEC 2024 17:21
+This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023) (preloaded format=xelatex 2023.9.24)  25 DEC 2024 23:28
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1128,7 +1128,8 @@ Package cleveref Info: `algorithmicx' support loaded on input line 3120.
 Package cleveref Info: `listings' support loaded on input line 3131.
 Package cleveref Info: always capitalise cross-reference names on input line 7830.
 Package cleveref Info: always capitalise cross-reference names on input line 7852.
-) (./main.aux)
+)
+No file main.aux.
 \openout1 = `main.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 91.
@@ -1147,7 +1148,6 @@ LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 91.
 LaTeX Font Info:    ... okay on input line 91.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 91.
 LaTeX Font Info:    ... okay on input line 91.
-
 *geometry* driver: auto-detecting
 *geometry* detected driver: xetex
 *geometry* verbose mode - [ preamble ] result:
@@ -1268,7 +1268,11 @@ File: fig/fig2.png Graphic file (type bmp)
  [2]
 File: fig/fig4.png Graphic file (type bmp)
 <fig/fig4.png>
- [3] [4]
+ [3]
+
+LaTeX Warning: Reference `fig:4' on page 4 undefined on input line 232.
+
+[4]
 File: fig/fig3.png Graphic file (type bmp)
 <fig/fig3.png>
  [5]
@@ -1276,14 +1280,21 @@ Overfull \hbox (63.00171pt too wide) in paragraph at lines 363--364
 []\TU/SimSun(0)/m/n/10 传 给 \TU/lmr/m/n/10 DCache \TU/SimSun(0)/m/n/10 的 \TU/lmr/m/n/10 wr_rdy \TU/SimSun(0)/m/n/10 和 \TU/lmr/m/n/10 wr_bvalid \TU/SimSun(0)/m/n/10 信 号 分 别 连 接 至 转 接 桥 的 \TU/lmr/m/n/10 data_sram_wr_addr_ok \TU/SimSun(0)/m/n/10 和 \TU/lmr/m/n/10 data_sram_wr_data_ok\TU/SimSun(0)/m/n/10 。| 
  []
 
-[6] [7] [8] [9] [10] [11] (./main.aux) ) 
+[6] [7] [8] [9] [10] [11] (./main.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ ) 
 Here is how much of TeX's memory you used:
- 45906 strings out of 476683
- 1142899 string characters out of 5807575
- 2010213 words of memory out of 5000000
+ 45904 strings out of 476683
+ 1142881 string characters out of 5807575
+ 2015072 words of memory out of 5000000
  65482 multiletter control sequences out of 15000+600000
  519160 words of font info for 89 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 108i,6n,113p,470b,2035s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 108i,6n,113p,470b,2036s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on main.pdf (11 pages).
