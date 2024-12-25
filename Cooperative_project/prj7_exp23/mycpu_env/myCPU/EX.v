@@ -66,15 +66,15 @@ module EXEreg(
     output wire         dcacop,
     output wire [4:0]   dcacop_code
 );
-//ex reg 从id级接受数据
+//ex reg 从id级接受数�?
     reg         ex_valid;
-    reg  [31:0] ex_pc;//ex流水级的pc值
+    reg  [31:0] ex_pc;//ex流水级的pc�?
     reg  [18:0] ex_alu_op;
-    reg  [31:0] ex_alu_src1;//alu操作数
+    reg  [31:0] ex_alu_src1;//alu操作�?
     reg  [31:0] ex_alu_src2;
-    reg  [31:0] ex_rkd_value;//源寄存器2读出的值
-    reg         ex_res_from_mem;//load指令码
-    reg         ex_mem_we;//store指令码
+    reg  [31:0] ex_rkd_value;//源寄存器2读出的�??
+    reg         ex_res_from_mem;//load指令�?
+    reg         ex_mem_we;//store指令�?
     reg         ex_rf_we;//寄存器写使能
     reg  [4 :0] ex_rf_waddr;//寄存器写地址
     reg         ex_op_st_ld_b;
@@ -139,7 +139,7 @@ module EXEreg(
     // tlb relevant       
     wire [4:0]  ex_tlbsrch_res;    // {s1_found,s1_index} 
 
-//流水线控制信号
+//流水线控制信�?
     assign ex_ready_go      = ~block & alu_complete & (~data_sram_req | data_sram_req & data_sram_addr_ok);//等待alu完成运算
     assign ex_allowin       = ~ex_valid | ex_ready_go & mem_allowin;     
     assign ex_to_mem_valid  = ex_valid & ex_ready_go;
@@ -183,7 +183,7 @@ module EXEreg(
         .alu_result     (ex_alu_result),
         .complete       (alu_complete)
     );
-// 发送访存请求----------------------------------------------------------------------------------------------------------------------------------------
+// 发�?�访存请�?----------------------------------------------------------------------------------------------------------------------------------------
     assign data_sram_addr   =   sram_addr_pa;
     assign data_sram_wdata  =   {32{ex_op_st_ld_b}} & {4{ex_rkd_value[7:0]}}
                                 |{32{ex_op_st_ld_h}} & {2{ex_rkd_value[15:0]}}
@@ -202,12 +202,12 @@ module EXEreg(
     assign ex_mem_req       =   (ex_res_from_mem | ex_mem_we | ex_dcacop) & ex_valid 
                                 & ~mem_excep_en & ~mem_ertn_flush         // mem级有异常
                                 & ~ex_excep_en  & ~ex_ertn_flush          // ex级有异常
-                                & ~flush;                                 // wb级报出异常
-//模块间通信----------------------------------------------------------------------------------------------------------------------------------------
-// 来自mem和wb的异常数据
+                                & ~flush;                                 // wb级报出异�?
+//模块间�?�信----------------------------------------------------------------------------------------------------------------------------------------
+// 来自mem和wb的异常数�?
     assign wb_srch_conflict = wb_to_ex_bus; 
     assign {mem_excep_en,mem_ertn_flush,mem_srch_conflict} = mem_to_ex_bus;
-// 寄存器写回数据来自wb级
+// 寄存器写回数据来自wb�?
     assign ex_res_from_wb  = ex_csr_re;
     //打包
     assign ex_to_id_bus     =   {ex_res_from_mem & ex_valid , 
