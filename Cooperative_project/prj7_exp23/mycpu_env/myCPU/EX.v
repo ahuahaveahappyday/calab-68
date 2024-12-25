@@ -287,11 +287,11 @@ module EXEreg(
     assign ex_excep_ALE =       (~ex_dcacop) & (ex_res_from_mem | ex_mem_we) & 
                                     ((ex_op_st_ld_h & dsram_va[0]) 
                                     | (ex_op_st_ld_w & (dsram_va[1] | dsram_va[0])));     // 记录该条指令是否存在ALE异常
-    assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we) &en_map & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
-    assign ex_excep_PIL =       (ex_res_from_mem) &en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
+    assign ex_excep_TLBR =      (ex_res_from_mem | ex_mem_we | ex_dcacop) &en_map & ~hit_dmw0 & ~hit_dmw1 & ~s1_found;    // TLB refull
+    assign ex_excep_PIL =       (ex_res_from_mem | ex_dcacop) &en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
     assign ex_excep_PIS =       (ex_mem_we) &en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & ~s1_v;  
-    assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv < csr_crmd_plv);
-    assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d;
+    assign ex_excep_PPI =        (ex_res_from_mem | ex_mem_we |ex_dcacop) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv < csr_crmd_plv);
+    assign ex_excep_PME =        (ex_res_from_mem | ex_mem_we| ex_dcacop) & en_map & ~hit_dmw0 & ~hit_dmw1 & s1_found & s1_v & (s1_plv >= csr_crmd_plv) & ~s1_d;
     
     assign ex_badv =            (id_excep_en) ? id_badv
                                 : dsram_va;
