@@ -17,7 +17,7 @@ module IDreg(
 
     input  wire                   flush,
     input  wire                   has_int,
-    input wire                    cacop_end,
+    input wire                    cacop_reqed,
 
     input wire   cacop_excep_en,
     input wire [5:0] cacop_excep_code,
@@ -217,8 +217,35 @@ module IDreg(
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------
 
+reg cacop_end;
+reg first_clk_of_id;
+always @(posedge clk) begin
+    if(~resetn)
+        cacop_end <= 1'b1;
+    else if(cacop_reqed)
+        cacop_end <= 1'b1;
+    else if(id_icacop & id_valid & first_clk_of_id)
+        cacop_end <= 1'b0;
+end
+
+always @(posedge clk) begin
+    if(~resetn)
+        first_clk_of_id <= 1'b0;
+    else if(id_allowin & if_to_id_valid)
+        first_clk_of_id <= 1'b1;
+    else
+        first_clk_of_id <= 1'b0;
+end
+
+
+
+
+
+
+
+
 // 流水线控制信号
-    assign id_ready_go      =   ~stuck & cacop_end;//流水线阻塞的时候，id_ready_go值为零
+    assign id_ready_go      =   ~stuck & (cacop_end | id_excep_en);//流水线阻塞的时候，id_ready_go值为零
     assign id_allowin       =   ~id_valid 
                                 | id_ready_go & ex_allowin 
                                 | br_taken | flush;             // 消�?�if级错误指令缓�? 

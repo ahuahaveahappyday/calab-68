@@ -338,10 +338,6 @@ module cache(
         end
     endgenerate
     // tag, v table
-    wire  cacop_stag;
-    assign cacop_stag = cacop & valid & addr_ok & cacop_code[4:3] == 2'b0;
-
-
     assign tagv_way0_index =    (main_current_state == LOOKUP || main_current_state == IDLE) ? index   // look up
                                 :req_buffer_index;      // replace and refill;
     assign tagv_way0_wen =  main_current_state == REFILL & (replace_way == 1'b0 & ret_valid & ret_last & req_buffer_type

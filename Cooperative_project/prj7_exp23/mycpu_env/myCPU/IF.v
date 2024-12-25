@@ -41,7 +41,7 @@ module IFreg(
 
     output wire icacop,
     output wire [4:0] cacop_code,
-    output wire  cacop_end,
+    output wire  cacop_reqed,
     output wire  cacop_excep_en,
     output wire [5:0] cacop_excep_code,
     output wire [8:0] cacop_excep_subcode
@@ -100,16 +100,18 @@ module IFreg(
     reg [31:0]    cacop_va_reg;
     reg         cacop_end_reg;
 
-    always @(posedge clk) begin
-        if(~resetn)
-            cacop_end_reg <= 1'b1;
-        else if((icacop | icacop_reg) & inst_sram_req & inst_sram_addr_ok)
-            cacop_end_reg <= 1'b1;
-        else if(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)
-            cacop_end_reg <= 1'b0;
-    end
-    assign cacop_end =   ~(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)  // first clk
-                            & cacop_end_reg;
+    // always @(posedge clk) begin
+    //     if(~resetn)
+    //         cacop_end_reg <= 1'b1;
+    //     else if((icacop | icacop_reg) & inst_sram_req & inst_sram_addr_ok)
+    //         cacop_end_reg <= 1'b1;
+    //     else if(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)
+    //         cacop_end_reg <= 1'b0;
+    // end
+    // assign cacop_end =   ~(icacop & (~inst_sram_req | ~inst_sram_addr_ok) & ~cacop_excep_en)  // first clk
+    //                         & cacop_end_reg;
+    // wire cacop_reqed;
+    assign cacop_reqed = (icacop | icacop_reg) & inst_sram_req & inst_sram_addr_ok;
 
 
 //----------------------------------------------------------------------------------------------------------------------------------------------

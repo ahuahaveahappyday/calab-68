@@ -73,7 +73,7 @@ module mycpu_top
     wire [37:0] wb_to_id_bus;
     wire        wb_to_ex_bus;
     wire [2:0]  mem_to_ex_bus;
-    wire cacop_end;
+    wire cacop_reqed;
 
     wire csr_re;
     wire [13:0] csr_num;
@@ -292,7 +292,7 @@ module mycpu_top
 
         .icacop            (icacop),
         .cacop_code       (icacop_code),
-        .cacop_end        (cacop_end),
+        .cacop_reqed        (cacop_reqed),
         .cacop_excep_en   (cacop_excep_en),
         .cacop_excep_code (cacop_excep_code),
         .cacop_excep_subcode (cacop_excep_subcode)
@@ -314,7 +314,7 @@ module mycpu_top
         .ex_to_id_bus       (ex_to_id_bus),
         .flush              (ertn_flush || wb_ex || wb_refetch_flush),
         .has_int            (has_int),
-        .cacop_end          (cacop_end),
+        .cacop_reqed          (cacop_reqed),
         .cacop_excep_en     (cacop_excep_en),
         .cacop_excep_code   (cacop_excep_code),
         .cacop_excep_subcode(cacop_excep_subcode)
