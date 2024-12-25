@@ -333,7 +333,8 @@ module IFreg(
             icacop_reg <= 1'b0;
     end
     assign cacop_excep_en = pre_if_excep_en & (icacop | icacop_reg);
-    assign cacop_excep_code = pre_if_ecode;
+    assign cacop_excep_code = pre_if_ecode == 6'h3 ? 6'h1 // load invalid
+                                :pre_if_ecode;
     assign cacop_excep_subcode = pre_if_esubcode;
     
 

@@ -273,7 +273,7 @@ module IDreg(
                            id_excep_en,          // 1 bit
                            id_esubcode,     // 9 bit
                            id_ecode,        // 6 bit
-                           id_badv,         // 32 bit
+                           id_icacop ? id_cacop_va : id_badv,         // 32 bit
                            id_tlb_op,             //5 bit
                            id_srch_conflict,       //1 bit
                            id_invtlb_op,             //5 bit
