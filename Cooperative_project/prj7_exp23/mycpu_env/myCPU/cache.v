@@ -518,7 +518,7 @@ module cache(
                                                 | (req_buffer_cacop & req_buffer_cacop_code[4:3] != 2'b00)); 
 
     assign wr_data =    req_buffer_type | cacop  ? replace_data : {4{req_buffer_wdata}};
-    assign wr_addr =    req_buffer_type  ? {replace_tag, req_buffer_index, 4'b0} 
+    assign wr_addr =    req_buffer_type | cacop  ? {replace_tag, req_buffer_index, 4'b0} 
                                         : {req_buffer_tag, req_buffer_index, req_buffer_offset};
                                         
 
